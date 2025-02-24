@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import remarkBreaks from 'remark-breaks'; // Add this import
+import remarkBreaks from 'remark-breaks';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { useEffect, useRef, useState } from 'react';
@@ -29,9 +29,10 @@ export function ChatMessage({ message, isLast }: ChatMessageProps) {
   const normalizeContent = (content: string) => {
     return content
       .trim()
-      .replace(/\n{2,}/g, '\n') // Reduce 3+ newlines to 2
-      .replace(/(\S)\n(\S)/g, '$1\n\n$2'); // Preserve single newlines between text
+      .replace(/\n{2,}/g, '\n')
+      .replace(/(\S)\n(\S)/g, '$1\n\n$2');
   };
+
   useEffect(() => {
     if (isLast && messageRef.current) {
       messageRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -85,7 +86,7 @@ export function ChatMessage({ message, isLast }: ChatMessageProps) {
                 code({ node: _node, className, children, ...props }) {
                   const match = /language-(\w+)/.exec(className || '');
                   const code = String(children).replace(/\n$/, '');
-                  
+
                   return match ? (
                     <div className="relative">
                       <button
@@ -98,21 +99,22 @@ export function ChatMessage({ message, isLast }: ChatMessageProps) {
                           <Copy className="w-4 h-4 text-muted-foreground hover:text-foreground" />
                         )}
                       </button>
-                      <SyntaxHighlighter
-                        language={match[1]}
-                        style={oneDark as unknown as { [key: string]: React.CSSProperties }}
-                        PreTag="div"
-                        customStyle={{
-                          margin: 0,
-                          padding: '1rem',
-                          fontSize: '0.875rem',
-                          borderRadius: '0.375rem',
-                          overflowX: 'auto' // added horizontal scroll
-                        }}
-                        {...props}
-                      >
-                        {code}
-                      </SyntaxHighlighter>
+                      {/* @ts-ignore */}
+<SyntaxHighlighter
+  language={match[1]}
+  style={oneDark as any}
+  PreTag="div"
+  customStyle={{
+    margin: 0,
+    padding: '1rem',
+    fontSize: '0.875rem',
+    borderRadius: '0.375rem',
+    overflowX: 'auto'
+  }}
+  {...props}
+>
+  {code}
+</SyntaxHighlighter>
                     </div>
                   ) : (
                     <code className={className} {...props}>
