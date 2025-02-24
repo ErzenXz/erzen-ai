@@ -15,7 +15,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
   return (
     <div className={cn(
       'flex gap-4 p-4',
-      message.role === 'user' ? 'bg-background' : 'bg-muted'
+      message.role === 'user' ? 'bg-background' : 'bg-transparent'
     )}>
       <div className="flex-shrink-0">
         {message.role === 'user' ? (
@@ -37,10 +37,10 @@ export function ChatMessage({ message }: ChatMessageProps) {
             {format(new Date(message.timestamp), 'HH:mm')}
           </span>
         </div>
-        <div className="prose prose-sm dark:prose-invert max-w-none">
+        <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-line">
           {message.content ? (
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {message.content}
+              {message.content.trim()}
             </ReactMarkdown>
           ) : (
             <div className="animate-pulse">
