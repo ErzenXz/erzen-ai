@@ -14,7 +14,6 @@ export function useChat() {
   const [hasMore, setHasMore] = useState(true);
   const abortControllerRef = useRef<AbortController | null>(null);
   const messageMapRef = useRef<Map<string, Message[]>>(new Map());
-  // NEW: A ref to always track the current thread id
   const currentThreadIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -36,10 +35,7 @@ export function useChat() {
       setThreads((prev) => {
         if (reset) return loadedThreads;
 
-        // Create a map of existing threads
         const threadMap = new Map(prev.map((thread) => [thread.id, thread]));
-
-        // Update or add new threads
         loadedThreads.forEach((thread) => {
           threadMap.set(thread.id, thread);
         });
@@ -59,7 +55,6 @@ export function useChat() {
       setIsLoading(true);
       const messages = await fetchThreadMessages(threadId);
 
-      // Convert API message format to our internal format and sort by date
       const formattedMessages = messages
         .map((msg) => ({
           id: msg.id,
@@ -80,8 +75,19 @@ export function useChat() {
   };
 
   const getCurrentThread = useCallback(() => {
-    if (!currentThreadId) return null;
-    const thread = threads.find((t) => t.id === currentThreadId);
+    const threadId = currentThreadId || "new";
+    if (threadId === "new") {
+      return {
+        id: "new",
+        title: "New Chat",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        userId: "",
+        messages: messageMapRef.current.get("new") || [],
+      };
+    }
+
+    const thread = threads.find((t) => t.id === threadId);
     if (!thread) return null;
 
     return {
@@ -90,20 +96,20 @@ export function useChat() {
     };
   }, [currentThreadId, threads]);
 
-  // Update the setter so the ref is always in sync
-  const setCurrentThread = useCallback((threadId: string) => {
-    setCurrentThreadId(threadId);
-    currentThreadIdRef.current = threadId;
-  }, []);
-
   const createThread = useCallback(() => {
     setCurrentThreadId(null);
     currentThreadIdRef.current = null;
     messageMapRef.current.set("new", []);
+    setThreads((prev) => [...prev]); // Force re-render
   }, []);
 
   const sendMessage = useCallback(
-    async (content: string, model: string) => {
+    async (
+      content: string,
+      model: string,
+      browseMode: boolean,
+      reasoning: boolean
+    ) => {
       try {
         setError(null);
         setIsLoading(true);
@@ -122,19 +128,25 @@ export function useChat() {
           timestamp: new Date(),
         };
 
-        const thread = getCurrentThread();
-        const threadKey = thread?.id ?? "new";
-        const messages = [
-          ...(messageMapRef.current.get(threadKey) || []),
+        const threadId = currentThreadId || "new";
+        const currentMessages = messageMapRef.current.get(threadId) || [];
+        const updatedMessages = [
+          ...currentMessages,
           userMessage,
           assistantMessage,
         ];
-        messageMapRef.current.set(threadKey, messages);
+        messageMapRef.current.set(threadId, updatedMessages);
         setThreads((prev) => [...prev]); // Force re-render
 
         abortControllerRef.current = new AbortController();
 
-        const { stream } = await streamChat(content, model, thread?.id);
+        const { stream } = await streamChat(
+          content,
+          model,
+          currentThreadId ?? undefined,
+          browseMode,
+          reasoning
+        );
 
         let fullResponse = "";
         let newThreadId: string | null = null;
@@ -143,53 +155,55 @@ export function useChat() {
           try {
             const response = JSON.parse(chunk);
 
-            if (response.chatId && !newThreadId) {
-              // New thread created
+            if (response.chatId && threadId === "new" && !newThreadId) {
+              // Only handle chatId for new threads
               newThreadId = response.chatId;
 
-              // Update threads list without duplicates
               setThreads((prev) => {
                 const newThread = {
                   id: newThreadId!,
                   title: content.slice(0, 50) + "...",
                   createdAt: new Date().toISOString(),
                   updatedAt: new Date().toISOString(),
-                  userId: "", // Will be set by the server
+                  userId: "",
                   messages: [],
                 };
 
-                // Check if thread already exists
                 const exists = prev.some((t) => t.id === newThreadId);
                 if (exists) return prev;
 
                 return [newThread, ...prev];
               });
 
-              setCurrentThread(newThreadId!);
+              setCurrentThreadId(newThreadId);
+              currentThreadIdRef.current = newThreadId;
 
               // Move messages from 'new' to the new thread ID
               const newMessages = messageMapRef.current.get("new") || [];
-              messageMapRef.current.set(newThreadId!, newMessages);
-              messageMapRef.current.delete("new");
+              if (newThreadId) {
+                messageMapRef.current.set(newThreadId, newMessages);
+                messageMapRef.current.delete("new");
+              }
             } else if (response.result) {
               fullResponse += response.result.content;
+
+              // Update messages immediately with each chunk
+              const activeThreadId =
+                threadId === "new" ? newThreadId || "new" : threadId;
+              const currentMessages =
+                messageMapRef.current.get(activeThreadId) || [];
+              if (currentMessages.length > 0) {
+                const updatedMessages = [...currentMessages];
+                updatedMessages[updatedMessages.length - 1] = {
+                  ...updatedMessages[updatedMessages.length - 1],
+                  content: fullResponse,
+                };
+                messageMapRef.current.set(activeThreadId, updatedMessages);
+                setThreads((prev) => [...prev]); // Force re-render
+              }
             }
           } catch (err) {
             console.error("Error parsing chunk:", err);
-          }
-
-          // Use the ref value so we always get the latest current thread id
-          const activeThreadId =
-            newThreadId || currentThreadIdRef.current || "new";
-          const currentMessages =
-            messageMapRef.current.get(activeThreadId) || [];
-          if (currentMessages.length > 0) {
-            currentMessages[currentMessages.length - 1] = {
-              ...currentMessages[currentMessages.length - 1],
-              content: fullResponse,
-            };
-            messageMapRef.current.set(activeThreadId, currentMessages);
-            setThreads((prev) => [...prev]); // Force re-render
           }
         }
       } catch (err) {
@@ -199,13 +213,13 @@ export function useChat() {
         abortControllerRef.current = null;
       }
     },
-    [getCurrentThread]
+    [currentThreadId]
   );
 
   const loadMoreThreads = useCallback(() => {
     if (!hasMore || isLoading) return;
     loadThreads();
-  }, [hasMore, isLoading, loadThreads]);
+  }, [hasMore, isLoading]);
 
   return {
     threads,
@@ -214,7 +228,7 @@ export function useChat() {
     error,
     sendMessage,
     createThread,
-    setCurrentThread,
+    setCurrentThread: setCurrentThreadId,
     loadMoreThreads,
     hasMore,
   };

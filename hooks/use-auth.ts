@@ -19,8 +19,8 @@ export function useAuth() {
         // Clear tokens if authentication fails
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
-        // const currentUrl = encodeURIComponent(window.location.href);
-        // window.location.href = `https://auth.erzen.tk?returnTo=${currentUrl}`;
+        const currentUrl = encodeURIComponent(window.location.href);
+        window.location.href = `https://auth.erzen.tk?return_to=${currentUrl}`;
       } finally {
         setIsLoading(false);
       }

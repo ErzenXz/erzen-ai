@@ -5,7 +5,6 @@ import {
   ChatThread,
   ChatMemory,
   UserInstruction,
-  ChatResponse,
   Message,
 } from "./types";
 
@@ -153,22 +152,24 @@ export async function streamChat(
   message: string,
   model: string,
   chatId?: string,
-  useBrowserMode: boolean = false
+  useBrowserMode: boolean = false,
+  reasoning: boolean = false
 ): Promise<{
   stream: () => AsyncGenerator<string, void, unknown>;
   cancel: () => void;
 }> {
   const endpoint = useBrowserMode
-    ? `${API_BASE_URL}/intelligence/chat/plain/stream`
+    ? `${API_BASE_URL}/intelligence/chat/stream`
     : `${API_BASE_URL}/intelligence/chat/plain/stream`;
+
+  const bodyObj: any = { message, model, chatId };
+  if (useBrowserMode && reasoning) {
+    bodyObj.reasoning = true;
+  }
 
   const response = await fetchWithAuth(endpoint, {
     method: "POST",
-    body: JSON.stringify({
-      message,
-      model,
-      chatId,
-    }),
+    body: JSON.stringify(bodyObj),
   });
 
   if (!response.body) {

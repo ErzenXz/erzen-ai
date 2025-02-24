@@ -24,9 +24,15 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
     async function loadModels() {
       try {
         const availableModels = await fetchModels();
-        setModels(availableModels);
-        if (availableModels.length > 0 && !value) {
-          onChange(availableModels[0].id);
+        const sortedModels = availableModels.sort((a, b) =>
+          a.description.localeCompare(b.description)
+        );
+        setModels(sortedModels);
+        if (!value && sortedModels.length > 0) {
+          const geminiFlash = sortedModels.find(
+            (model) => model.description === "Gemini Flash 2.0"
+          );
+          onChange(geminiFlash ? geminiFlash.model : sortedModels[0].model);
         }
       } catch (err) {
         setError('Failed to load models');
