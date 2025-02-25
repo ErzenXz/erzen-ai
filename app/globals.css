@@ -80,9 +80,3 @@
     @apply bg-background text-foreground;
   }
 }
-
-.prose br {
-  content: ' ';
-  display: block;
-  margin-top: -0.25em;
-}
