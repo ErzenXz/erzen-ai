@@ -3,7 +3,8 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { nanoid } from "nanoid";
 import { Message, ChatThread } from "@/lib/types";
-import { streamChat, fetchThreads, fetchThreadMessages } from "@/lib/api";
+import { fetchThreads, fetchThreadMessages } from "@/lib/api";
+import { io, Socket } from "socket.io-client";
 
 export function useChat() {
   const [threads, setThreads] = useState<ChatThread[]>([]);
@@ -12,12 +13,18 @@ export function useChat() {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const socketRef = useRef<Socket | null>(null);
   const messageMapRef = useRef<Map<string, Message[]>>(new Map());
   const currentThreadIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     loadThreads();
+    initializeSocket();
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -26,6 +33,24 @@ export function useChat() {
       loadThreadMessages(currentThreadId);
     }
   }, [currentThreadId]);
+
+  const initializeSocket = () => {
+    const token = localStorage.getItem("accessToken"); // Assuming token is stored in localStorage
+    if (!token) {
+      setError("Authentication token not found");
+      return;
+    }
+
+    socketRef.current = io("wss://apis.erzen.tk/ai", {
+      query: { token },
+      transports: ["websocket"],
+    });
+
+    socketRef.current.on("connect_error", (error) => {
+      setError(`Connection error: ${error.message}`);
+      setIsLoading(false);
+    });
+  };
 
   const loadThreads = async (reset: boolean = false) => {
     try {
@@ -110,6 +135,11 @@ export function useChat() {
       browseMode: boolean,
       reasoning: boolean
     ) => {
+      if (!socketRef.current) {
+        setError("Socket connection not established");
+        return;
+      }
+
       try {
         setError(null);
         setIsLoading(true);
@@ -138,79 +168,80 @@ export function useChat() {
         messageMapRef.current.set(threadId, updatedMessages);
         setThreads((prev) => [...prev]); // Force re-render
 
-        abortControllerRef.current = new AbortController();
-
-        const { stream } = await streamChat(
-          content,
-          model,
-          currentThreadId ?? undefined,
-          browseMode,
-          reasoning
-        );
-
         let fullResponse = "";
         let newThreadId: string | null = null;
 
-        for await (const chunk of stream()) {
-          try {
-            const response = JSON.parse(chunk);
+        // Set up socket event handlers
+        socketRef.current.on("chatChunk", (data) => {
+          fullResponse += data.content;
 
-            if (response.chatId && threadId === "new" && !newThreadId) {
-              // Only handle chatId for new threads
-              newThreadId = response.chatId;
-
-              setThreads((prev) => {
-                const newThread = {
-                  id: newThreadId!,
-                  title: content.slice(0, 50) + "...",
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                  userId: "",
-                  messages: [],
-                };
-
-                const exists = prev.some((t) => t.id === newThreadId);
-                if (exists) return prev;
-
-                return [newThread, ...prev];
-              });
-
-              setCurrentThreadId(newThreadId);
-              currentThreadIdRef.current = newThreadId;
-
-              // Move messages from 'new' to the new thread ID
-              const newMessages = messageMapRef.current.get("new") || [];
-              if (newThreadId) {
-                messageMapRef.current.set(newThreadId, newMessages);
-                messageMapRef.current.delete("new");
-              }
-            } else if (response.result) {
-              fullResponse += response.result.content;
-
-              // Update messages immediately with each chunk
-              const activeThreadId =
-                threadId === "new" ? newThreadId || "new" : threadId;
-              const currentMessages =
-                messageMapRef.current.get(activeThreadId) || [];
-              if (currentMessages.length > 0) {
-                const updatedMessages = [...currentMessages];
-                updatedMessages[updatedMessages.length - 1] = {
-                  ...updatedMessages[updatedMessages.length - 1],
-                  content: fullResponse,
-                };
-                messageMapRef.current.set(activeThreadId, updatedMessages);
-                setThreads((prev) => [...prev]); // Force re-render
-              }
-            }
-          } catch (err) {
-            console.error("Error parsing chunk:", err);
+          // Update messages immediately with each chunk
+          const activeThreadId =
+            threadId === "new" ? newThreadId || "new" : threadId;
+          const currentMessages =
+            messageMapRef.current.get(activeThreadId) || [];
+          if (currentMessages.length > 0) {
+            const updatedMessages = [...currentMessages];
+            updatedMessages[updatedMessages.length - 1] = {
+              ...updatedMessages[updatedMessages.length - 1],
+              content: fullResponse,
+            };
+            messageMapRef.current.set(activeThreadId, updatedMessages);
+            setThreads((prev) => [...prev]); // Force re-render
           }
-        }
+        });
+
+        socketRef.current.on("chatComplete", (data) => {
+          if (data?.chatId && threadId === "new" && !newThreadId) {
+            newThreadId = data.chatId;
+
+            setThreads((prev) => {
+              const newThread = {
+                id: newThreadId!,
+                title: content.slice(0, 50) + "...",
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                userId: "",
+                messages: [],
+              };
+
+              const exists = prev.some((t) => t.id === newThreadId);
+              if (exists) return prev;
+
+              return [newThread, ...prev];
+            });
+
+            setCurrentThreadId(newThreadId);
+            currentThreadIdRef.current = newThreadId;
+
+            // Move messages from 'new' to the new thread ID
+            const newMessages = messageMapRef.current.get("new") || [];
+            if (newThreadId) {
+              messageMapRef.current.set(newThreadId, newMessages);
+              messageMapRef.current.delete("new");
+            }
+          }
+          setIsLoading(false);
+        });
+
+        socketRef.current.on("chatError", (error) => {
+          setError(
+            typeof error === "string" ? error : "Failed to send message"
+          );
+          setIsLoading(false);
+        });
+
+        // Send the message
+        socketRef.current.emit("chatPlainStream", {
+          message: content,
+          chatId: currentThreadId ?? undefined,
+          model: model,
+          browseMode,
+          reasoning,
+        });
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to send message");
-      } finally {
         setIsLoading(false);
-        abortControllerRef.current = null;
       }
     },
     [currentThreadId]
