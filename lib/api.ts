@@ -16,27 +16,332 @@ class APIError extends Error {
   }
 }
 
-async function fetchWithAuth(url: string, options: RequestInit = {}) {
-  const token = localStorage.getItem("accessToken");
+// Helper to check if code is running in browser environment
+const isBrowser = typeof window !== "undefined";
+
+// Safe localStorage access functions with debug logging
+const getStorageItem = (key: string): string | null => {
+  if (isBrowser) {
+    const value = localStorage.getItem(key);
+    console.debug(
+      `[TokenManager] Reading ${key}: ${value ? "exists" : "not found"}`
+    );
+    return value;
+  }
+  return null;
+};
+
+const setStorageItem = (key: string, value: string): void => {
+  if (isBrowser) {
+    console.debug(`[TokenManager] Setting ${key}`);
+    localStorage.setItem(key, value);
+  }
+};
+
+// Event manager for token refresh events
+class TokenEventManager {
+  private listeners: (() => void)[] = [];
+
+  addListener(callback: () => void) {
+    this.listeners.push(callback);
+    return () => {
+      this.listeners = this.listeners.filter(
+        (listener) => listener !== callback
+      );
+    };
+  }
+
+  notifyRefresh() {
+    console.debug(
+      `[TokenManager] Notifying ${this.listeners.length} listeners of token refresh`
+    );
+    this.listeners.forEach((callback) => callback());
+  }
+}
+
+// Create a singleton event manager
+const tokenEventManager = new TokenEventManager();
+
+// Token manager to handle token refreshing and expiration
+class TokenManager {
+  private refreshPromise: Promise<boolean> | null = null;
+  private tokenExpiration: number = 0;
+  private refreshBuffer = 2 * 60 * 1000; // 2 minutes in milliseconds
+  private lastRefreshAttempt: number = 0;
+  private minRefreshInterval = 10 * 1000; // Minimum 10 seconds between refresh attempts
+
+  constructor() {
+    if (isBrowser) {
+      this.loadTokenExpiration();
+
+      // Set up periodic token check every minute
+      setInterval(() => {
+        this.checkAndRefreshToken();
+      }, 60 * 1000);
+
+      // Do an immediate check
+      setTimeout(() => this.checkAndRefreshToken(), 1000);
+
+      console.debug("[TokenManager] Initialized");
+    }
+  }
+
+  private async checkAndRefreshToken() {
+    if (this.isTokenExpiringSoon() && isBrowser) {
+      console.debug("[TokenManager] Token is expiring soon, refreshing...");
+      await this.refreshTokenIfNeeded();
+    }
+  }
+
+  private loadTokenExpiration() {
+    const expiration = getStorageItem("tokenExpiration");
+    this.tokenExpiration = expiration ? parseInt(expiration, 10) : 0;
+    console.debug(
+      `[TokenManager] Loaded token expiration: ${new Date(
+        this.tokenExpiration
+      ).toISOString()}`
+    );
+  }
+
+  private saveTokenExpiration(expiresIn: number) {
+    // Calculate expiration time in milliseconds since epoch
+    const expirationTime = Date.now() + expiresIn * 1000;
+    setStorageItem("tokenExpiration", expirationTime.toString());
+    this.tokenExpiration = expirationTime;
+    console.debug(
+      `[TokenManager] Saved token expiration: ${new Date(
+        expirationTime
+      ).toISOString()}`
+    );
+  }
+
+  async getValidToken(): Promise<string | null> {
+    // Return null immediately if not in browser
+    if (!isBrowser) return null;
+
+    const token = getStorageItem("accessToken");
+
+    // If no token or token is about to expire, refresh it
+    if (!token || this.isTokenExpiringSoon()) {
+      console.debug(
+        `[TokenManager] Token is ${
+          !token ? "missing" : "expiring soon"
+        }, refreshing...`
+      );
+      const refreshed = await this.refreshTokenIfNeeded();
+      if (!refreshed) {
+        console.error("[TokenManager] Failed to refresh token");
+        return null;
+      }
+      return getStorageItem("accessToken");
+    }
+
+    return token;
+  }
+
+  isTokenExpiringSoon(): boolean {
+    const willExpireSoon =
+      Date.now() + this.refreshBuffer > this.tokenExpiration;
+    if (willExpireSoon) {
+      console.debug(
+        `[TokenManager] Token will expire soon. Current time: ${new Date().toISOString()}, Expiration: ${new Date(
+          this.tokenExpiration
+        ).toISOString()}`
+      );
+    }
+    return willExpireSoon;
+  }
+
+  async refreshTokenIfNeeded(): Promise<boolean> {
+    // Return false immediately if not in browser
+    if (!isBrowser) return false;
+
+    // If token is not expiring soon, no need to refresh
+    if (!this.isTokenExpiringSoon() && getStorageItem("accessToken")) {
+      return true;
+    }
+
+    // Prevent too frequent refresh attempts
+    const now = Date.now();
+    if (now - this.lastRefreshAttempt < this.minRefreshInterval) {
+      console.debug(
+        `[TokenManager] Skipping refresh, attempted too recently (${
+          (now - this.lastRefreshAttempt) / 1000
+        }s ago)`
+      );
+      return this.refreshPromise !== null; // Return true if there's an ongoing refresh
+    }
+
+    this.lastRefreshAttempt = now;
+
+    // If a refresh is already in progress, wait for it
+    if (this.refreshPromise) {
+      console.debug("[TokenManager] Refresh already in progress, waiting...");
+      return await this.refreshPromise;
+    }
+
+    // Start a new refresh process
+    console.debug("[TokenManager] Starting new refresh process");
+    this.refreshPromise = this.performRefresh();
+    const result = await this.refreshPromise;
+    this.refreshPromise = null;
+
+    if (result) {
+      // Notify listeners that token has been refreshed
+      tokenEventManager.notifyRefresh();
+    }
+
+    return result;
+  }
+
+  // Force a refresh regardless of current token state
+  async forceRefresh(): Promise<boolean> {
+    if (!isBrowser) return false;
+
+    console.debug("[TokenManager] Forcing token refresh");
+    this.lastRefreshAttempt = Date.now();
+
+    // If a refresh is already in progress, wait for it
+    if (this.refreshPromise) {
+      return await this.refreshPromise;
+    }
+
+    this.refreshPromise = this.performRefresh();
+    const result = await this.refreshPromise;
+    this.refreshPromise = null;
+
+    if (result) {
+      tokenEventManager.notifyRefresh();
+    }
+
+    return result;
+  }
+
+  private async performRefresh(): Promise<boolean> {
+    try {
+      console.debug("[TokenManager] Performing token refresh");
+      const response = await fetch(`${API_BASE_URL}/v1/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        console.error(
+          `[TokenManager] Refresh failed with status: ${response.status}`
+        );
+        return false;
+      }
+
+      const data: AuthResponse = await response.json();
+      setStorageItem("accessToken", data.accessToken);
+      setStorageItem("refreshToken", data.refreshToken);
+
+      // Save expiration info (assuming expiresIn is in seconds)
+      if (data.expiresIn) {
+        this.saveTokenExpiration(data.expiresIn);
+      } else {
+        // Default to 1 hour if not specified
+        this.saveTokenExpiration(500);
+      }
+
+      console.debug("[TokenManager] Token refreshed successfully");
+      return true;
+    } catch (error) {
+      console.error("[TokenManager] Token refresh failed:", error);
+      return false;
+    }
+  }
+
+  // Register a callback for token refresh events
+  onTokenRefresh(callback: () => void): () => void {
+    return tokenEventManager.addListener(callback);
+  }
+}
+
+// Create a singleton instance of TokenManager
+const tokenManager = new TokenManager();
+
+// Modified fetchWithAuth to use TokenManager and handle SSR
+async function fetchWithAuth(
+  url: string,
+  options: RequestInit = {},
+  retries = 3
+): Promise<Response> {
+  // Skip auth for server-side requests and just make the request without auth
+  if (!isBrowser) {
+    return fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        "Content-Type": "application/json",
+      },
+    });
+  }
+
+  // Get a valid token before making the request
+  const token = await tokenManager.getValidToken();
+
+  if (!token) {
+    console.error(
+      "[API] No valid authentication token available. Attempting force refresh."
+    );
+    const refreshSucceeded = await tokenManager.forceRefresh();
+    if (!refreshSucceeded) {
+      throw new APIError(
+        401,
+        "No valid authentication token available after refresh attempt"
+      );
+    }
+
+    const newToken = getStorageItem("accessToken");
+    if (!newToken) {
+      throw new APIError(
+        401,
+        "No authentication token after successful refresh"
+      );
+    }
+  }
+
+  const currentToken = getStorageItem("accessToken");
+  console.debug(`[API] Making authenticated request to ${url}`);
+
   const response = await fetch(url, {
     ...options,
     credentials: "include",
     headers: {
       ...options.headers,
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${currentToken}`,
     },
   });
 
-  if (response.status === 401) {
-    const refreshed = await refreshToken();
+  if (response.status === 401 && retries > 0) {
+    console.warn(
+      `[API] Authentication error (401) on request to ${url}, attempting refresh...`
+    );
+
+    // Force refresh the token
+    const refreshed = await tokenManager.forceRefresh();
+
     if (refreshed) {
-      return fetchWithAuth(url, options);
+      console.debug("[API] Token refreshed successfully, retrying request");
+      // Retry the request with one less retry attempt
+      return fetchWithAuth(url, options, retries - 1);
+    } else {
+      console.error("[API] Token refresh failed after 401 error");
     }
-    throw new APIError(401, "Authentication failed");
+
+    throw new APIError(
+      401,
+      "Authentication failed after token refresh attempt"
+    );
   }
 
   if (!response.ok) {
+    console.error(`[API] Request failed with status ${response.status}`);
     throw new APIError(response.status, "API request failed");
   }
 
@@ -44,26 +349,13 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
 }
 
 export async function refreshToken(): Promise<boolean> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/v1/auth/refresh`, {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+  // Skip token refresh in SSR context
+  if (!isBrowser) return false;
+  return tokenManager.forceRefresh(); // Use forceRefresh for explicit refreshes
+}
 
-    if (!response.ok) {
-      return false;
-    }
-
-    const data: AuthResponse = await response.json();
-    localStorage.setItem("accessToken", data.accessToken);
-    localStorage.setItem("refreshToken", data.refreshToken);
-    return true;
-  } catch (error) {
-    return false;
-  }
+export function onTokenRefresh(callback: () => void): () => void {
+  return tokenManager.onTokenRefresh(callback);
 }
 
 export async function fetchUserInfo(): Promise<UserInfo> {
@@ -158,6 +450,11 @@ export async function streamChat(
   stream: () => AsyncGenerator<string, void, unknown>;
   cancel: () => void;
 }> {
+  // Ensure token is valid before starting a streaming request (only in browser)
+  if (isBrowser) {
+    await tokenManager.refreshTokenIfNeeded();
+  }
+
   const endpoint = useBrowserMode
     ? `${API_BASE_URL}/intelligence/chat/stream`
     : `${API_BASE_URL}/intelligence/chat/plain/stream`;
@@ -167,6 +464,7 @@ export async function streamChat(
     bodyObj.reasoning = true;
   }
 
+  console.debug(`[API] Starting stream request to ${endpoint}`);
   const response = await fetchWithAuth(endpoint, {
     method: "POST",
     body: JSON.stringify(bodyObj),
