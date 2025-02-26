@@ -17,6 +17,7 @@ export function useModels() {
   const loadModels = async () => {
     try {
       setIsLoading(true);
+      setError(null);
 
       // Load from IndexedDB first
       const cachedModels = await db.getModels();
@@ -25,14 +26,28 @@ export function useModels() {
       }
 
       // Then fetch from API
-      const availableModels = await fetchModels();
-      const sortedModels = availableModels.sort((a, b) =>
-        a.description.localeCompare(b.description)
-      );
+      try {
+        const availableModels = await fetchModels();
+        if (availableModels && availableModels.length > 0) {
+          const sortedModels = availableModels.sort((a, b) =>
+            a.description.localeCompare(b.description)
+          );
 
-      await db.saveModels(sortedModels);
-      setModels(sortedModels);
+          await db.saveModels(sortedModels);
+          setModels(sortedModels);
+        } else if (cachedModels.length === 0) {
+          // Only set error if we have no cached models
+          setError("No models available");
+        }
+      } catch (apiError) {
+        console.error("Failed to fetch models from API:", apiError);
+        // Only set error if we have no cached models
+        if (cachedModels.length === 0) {
+          setError("Failed to load models");
+        }
+      }
     } catch (err) {
+      console.error("Error in useModels hook:", err);
       setError("Failed to load models");
     } finally {
       setIsLoading(false);

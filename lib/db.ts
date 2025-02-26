@@ -7,7 +7,7 @@ interface ChatDB extends DBSchema {
   threads: {
     key: string;
     value: ChatThread;
-    indexes: { "by-updated": Date };
+    indexes: { "by-updated": string };
   };
   messages: {
     key: string;
@@ -71,19 +71,58 @@ class DatabaseService {
 
     try {
       const db = await this.db;
-      const count = await db.count("threads");
-      const threads = await db.getAllFromIndex(
-        "threads",
-        "by-updated",
-        null,
-        limit
+      const tx = db.transaction("threads", "readonly");
+      const index = tx.store.index("by-updated");
+
+      // Get all threads sorted by updatedAt in descending order
+      const allThreads = await index.getAll();
+
+      // Sort threads by updatedAt in descending order (newest first)
+      allThreads.sort(
+        (a, b) =>
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
       );
-      // Adjust pagination logic
-      const paginatedThreads = threads.slice((page - 1) * limit, page * limit);
-      return threads.reverse();
+
+      // Apply pagination
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit;
+      const paginatedThreads = allThreads.slice(startIndex, endIndex);
+
+      await tx.done;
+      return paginatedThreads;
     } catch (error) {
       console.error("Error getting threads:", error);
       return [];
+    }
+  }
+
+  async getAllThreads(): Promise<ChatThread[]> {
+    if (!this.db) return [];
+
+    try {
+      const db = await this.db;
+      const threads = await db.getAll("threads");
+
+      // Sort threads by updatedAt in descending order (newest first)
+      return threads.sort(
+        (a, b) =>
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      );
+    } catch (error) {
+      console.error("Error getting all threads:", error);
+      return [];
+    }
+  }
+
+  async getThread(threadId: string): Promise<ChatThread | undefined> {
+    if (!this.db) return undefined;
+
+    try {
+      const db = await this.db;
+      return await db.get("threads", threadId);
+    } catch (error) {
+      console.error(`Error getting thread ${threadId}:`, error);
+      return undefined;
     }
   }
 
@@ -118,7 +157,20 @@ class DatabaseService {
 
     try {
       const db = await this.db;
+      // Delete thread
       await db.delete("threads", threadId);
+
+      // Delete all messages associated with this thread
+      const messagesIndex = db.transaction("messages").store.index("by-thread");
+      const threadMessages = await messagesIndex.getAll(threadId);
+
+      if (threadMessages.length > 0) {
+        const tx = db.transaction("messages", "readwrite");
+        await Promise.all([
+          ...threadMessages.map((msg) => tx.store.delete(msg.id)),
+          tx.done,
+        ]);
+      }
     } catch (error) {
       console.error("Error deleting thread:", error);
     }
@@ -131,13 +183,19 @@ class DatabaseService {
       const db = await this.db;
       const threads = await db.getAll("threads");
       const searchTerm = query.toLowerCase();
-      return threads.filter(
-        (thread: ChatThread) =>
-          thread.title?.toLowerCase().includes(searchTerm) ||
-          thread.messages?.some((msg) =>
-            msg.content.toLowerCase().includes(searchTerm)
-          )
-      );
+
+      return threads
+        .filter(
+          (thread: ChatThread) =>
+            thread.title?.toLowerCase().includes(searchTerm) ||
+            thread.messages?.some((msg) =>
+              msg.content.toLowerCase().includes(searchTerm)
+            )
+        )
+        .sort(
+          (a, b) =>
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        );
     } catch (error) {
       console.error("Error searching threads:", error);
       return [];
@@ -150,9 +208,25 @@ class DatabaseService {
 
     try {
       const db = await this.db;
-      return db.getAllFromIndex("messages", "by-thread", threadId);
+      const messages = await db.getAllFromIndex(
+        "messages",
+        "by-thread",
+        threadId
+      );
+
+      return messages.sort((a, b) => {
+        const timeA =
+          a.timestamp instanceof Date
+            ? a.timestamp.getTime()
+            : new Date(a.timestamp).getTime();
+        const timeB =
+          b.timestamp instanceof Date
+            ? b.timestamp.getTime()
+            : new Date(b.timestamp).getTime();
+        return timeA - timeB;
+      });
     } catch (error) {
-      console.error("Error getting messages:", error);
+      console.error(`Error getting messages for thread ${threadId}:`, error);
       return [];
     }
   }
@@ -163,6 +237,15 @@ class DatabaseService {
     try {
       const db = await this.db;
       await db.put("messages", message);
+
+      // Update the thread's updatedAt timestamp
+      if (message.chatId && message.chatId !== "new") {
+        const thread = await this.getThread(message.chatId);
+        if (thread) {
+          thread.updatedAt = new Date().toISOString();
+          await this.saveThread(thread);
+        }
+      }
     } catch (error) {
       console.error("Error saving message:", error);
     }
@@ -171,17 +254,58 @@ class DatabaseService {
   async saveMessages(
     messages: (Message & { chatId: string })[]
   ): Promise<void> {
-    if (!this.db) return;
+    if (!this.db || messages.length === 0) return;
 
     try {
       const db = await this.db;
       const tx = db.transaction("messages", "readwrite");
+
+      // Group messages by chatId
+      const messagesByChatId = messages.reduce((acc, msg) => {
+        if (msg.chatId && msg.chatId !== "new") {
+          if (!acc[msg.chatId]) acc[msg.chatId] = [];
+          acc[msg.chatId].push(msg);
+        }
+        return acc;
+      }, {} as Record<string, (Message & { chatId: string })[]>);
+
       await Promise.all([
         ...messages.map((message) => tx.store.put(message)),
         tx.done,
       ]);
+
+      // Update the updatedAt timestamp for each thread
+      for (const chatId in messagesByChatId) {
+        if (messagesByChatId[chatId].length > 0) {
+          const thread = await this.getThread(chatId);
+          if (thread) {
+            thread.updatedAt = new Date().toISOString();
+            await this.saveThread(thread);
+          }
+        }
+      }
     } catch (error) {
       console.error("Error saving messages:", error);
+    }
+  }
+
+  async deleteMessagesForThread(threadId: string): Promise<void> {
+    if (!this.db) return;
+
+    try {
+      const db = await this.db;
+      const messagesIndex = db.transaction("messages").store.index("by-thread");
+      const threadMessages = await messagesIndex.getAll(threadId);
+
+      if (threadMessages.length > 0) {
+        const tx = db.transaction("messages", "readwrite");
+        await Promise.all([
+          ...threadMessages.map((msg) => tx.store.delete(msg.id)),
+          tx.done,
+        ]);
+      }
+    } catch (error) {
+      console.error(`Error deleting messages for thread ${threadId}:`, error);
     }
   }
 
@@ -210,6 +334,20 @@ class DatabaseService {
       ]);
     } catch (error) {
       console.error("Error saving models:", error);
+    }
+  }
+
+  // DB maintenance
+  async clearAllData(): Promise<void> {
+    if (!this.db) return;
+
+    try {
+      const db = await this.db;
+      await db.clear("threads");
+      await db.clear("messages");
+      await db.clear("models");
+    } catch (error) {
+      console.error("Error clearing database:", error);
     }
   }
 }
