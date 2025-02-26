@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import dedent from "dedent"
 
 interface ChatMessageProps {
   message: Message
@@ -56,14 +57,14 @@ export function ChatMessage({ message, isLast }: ChatMessageProps) {
   }
 
   const normalizeContent = (content: string) => {
-    return content.replace(/\n$/, "")
+    return dedent(content)
   }
 
   useEffect(() => {
     if (isLast && messageRef.current) {
       messageRef.current.scrollIntoView({ behavior: "smooth", block: "end" })
     }
-  }, [isLast])
+  }, [isLast, message.content])
 
   return (
     <TooltipProvider>

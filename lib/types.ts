@@ -26,6 +26,7 @@ export interface AIModel {
 export interface AuthResponse {
   accessToken: string;
   refreshToken: string;
+  expiresIn?: number; // Time in seconds until token expires
 }
 
 export interface UserInfo {
