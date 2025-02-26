@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { nanoid } from "nanoid";
 import { Message, ChatThread } from "@/lib/types";
 import { streamChat, fetchThreads, fetchThreadMessages } from "@/lib/api";
+import { db } from "@/lib/db";
 
 export function useChat() {
   const [threads, setThreads] = useState<ChatThread[]>([]);
@@ -12,6 +13,7 @@ export function useChat() {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const abortControllerRef = useRef<AbortController | null>(null);
   const messageMapRef = useRef<Map<string, Message[]>>(new Map());
   const currentThreadIdRef = useRef<string | null>(null);
@@ -27,19 +29,49 @@ export function useChat() {
     }
   }, [currentThreadId]);
 
+  useEffect(() => {
+    if (searchQuery) {
+      searchThreads(searchQuery);
+    } else {
+      loadThreads(true);
+    }
+  }, [searchQuery]);
+
+  const searchThreads = async (query: string) => {
+    try {
+      const results = await db.searchThreads(query);
+      setThreads(results);
+      setHasMore(false);
+    } catch (err) {
+      setError("Failed to search threads");
+    }
+  };
+
   const loadThreads = async (reset: boolean = false) => {
     try {
       const newPage = reset ? 1 : page;
+
+      // Load from IndexedDB first
+      const cachedThreads = await db.getThreads(newPage, 10);
+      if (cachedThreads.length > 0) {
+        setThreads((prev) => {
+          if (reset) return cachedThreads;
+          const threadMap = new Map(
+            [...prev, ...cachedThreads].map((t) => [t.id, t])
+          );
+          return Array.from(threadMap.values());
+        });
+      }
+
+      // Then fetch from API
       const loadedThreads = await fetchThreads(newPage, 10);
+      await db.saveThreads(loadedThreads);
 
       setThreads((prev) => {
         if (reset) return loadedThreads;
-
-        const threadMap = new Map(prev.map((thread) => [thread.id, thread]));
-        loadedThreads.forEach((thread) => {
-          threadMap.set(thread.id, thread);
-        });
-
+        const threadMap = new Map(
+          [...prev, ...loadedThreads].map((t) => [t.id, t])
+        );
         return Array.from(threadMap.values());
       });
 
@@ -53,6 +85,15 @@ export function useChat() {
   const loadThreadMessages = async (threadId: string) => {
     try {
       setIsLoading(true);
+
+      // Load from IndexedDB first
+      const cachedMessages = await db.getMessages(threadId);
+      if (cachedMessages.length > 0) {
+        messageMapRef.current.set(threadId, cachedMessages);
+        setThreads((prev) => [...prev]); // Force re-render
+      }
+
+      // Then fetch from API
       const messages = await fetchThreadMessages(threadId);
 
       const formattedMessages = messages
@@ -62,8 +103,11 @@ export function useChat() {
           role:
             msg.role === "model" ? ("assistant" as const) : ("user" as const),
           timestamp: new Date(msg.createdAt ?? Date.now()),
+          chatId: threadId,
         }))
         .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
+      await db.saveMessages(formattedMessages);
 
       messageMapRef.current.set(threadId, formattedMessages);
       setThreads((prev) => [...prev]); // Force re-render
@@ -153,6 +197,11 @@ export function useChat() {
 
         for await (const chunk of stream()) {
           try {
+            // Check if the chunk is the end marker
+            if (chunk === "[DONE]") {
+              continue;
+            }
+
             const response = JSON.parse(chunk);
 
             if (response.chatId && threadId === "new" && !newThreadId) {
@@ -180,10 +229,8 @@ export function useChat() {
 
               // Move messages from 'new' to the new thread ID
               const newMessages = messageMapRef.current.get("new") || [];
-              if (newThreadId) {
-                messageMapRef.current.set(newThreadId, newMessages);
-                messageMapRef.current.delete("new");
-              }
+              messageMapRef.current.set(newThreadId!, newMessages);
+              messageMapRef.current.delete("new");
             } else if (response.result) {
               fullResponse += response.result.content;
 
@@ -231,5 +278,7 @@ export function useChat() {
     setCurrentThread: setCurrentThreadId,
     loadMoreThreads,
     hasMore,
+    searchQuery,
+    setSearchQuery,
   };
 }

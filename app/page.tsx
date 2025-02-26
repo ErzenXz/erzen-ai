@@ -1,14 +1,15 @@
 "use client";
-import { useState } from 'react';
-import { useChat } from '@/hooks/use-chat';
-import { useAuth } from '@/hooks/use-auth';
-import { ChatMessage } from '@/components/chat-message';
-import { ChatThreadList } from '@/components/chat-thread-list';
-import { ModelSelector } from '@/components/model-selector';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Loader2, Globe, Brain } from 'lucide-react';
+
+import { useState } from "react";
+import { useChat } from "@/hooks/use-chat";
+import { useAuth } from "@/hooks/use-auth";
+import { ChatMessage } from "@/components/chat-message";
+import { ChatThreadList } from "@/components/chat-thread-list";
+import { ModelSelector } from "@/components/model-selector";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Send, Loader2, Globe, Brain } from "lucide-react";
 
 export default function Home() {
   const {
@@ -21,11 +22,13 @@ export default function Home() {
     setCurrentThread,
     loadMoreThreads,
     hasMore,
+    searchQuery,
+    setSearchQuery,
   } = useChat();
 
   const { user } = useAuth();
-  const [message, setMessage] = useState('');
-  const [selectedModel, setSelectedModel] = useState('');
+  const [message, setMessage] = useState("");
+  const [selectedModel, setSelectedModel] = useState("");
   const [browseMode, setBrowseMode] = useState(false);
   const [reasoning, setReasoning] = useState(false);
 
@@ -34,7 +37,7 @@ export default function Home() {
     if (!message.trim() || !selectedModel || !user) return;
 
     const content = message;
-    setMessage('');
+    setMessage("");
     await sendMessage(content, selectedModel, browseMode, reasoning);
   };
 
@@ -49,8 +52,19 @@ export default function Home() {
         currentThreadId={currentThread?.id ?? null}
         onThreadSelect={(id) => setCurrentThread(id)}
         onNewThread={createThread}
+        onRenameThread={(threadId) => {
+          // Implement rename logic
+        }}
+        onDuplicateThread={(threadId) => {
+          // Implement duplicate logic
+        }}
+        onDeleteThread={(threadId) => {
+          // Implement delete logic
+        }}
         onLoadMore={loadMoreThreads}
         hasMore={hasMore}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
       />
       
       <div className="flex-1 flex flex-col">
