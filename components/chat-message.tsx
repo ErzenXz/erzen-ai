@@ -62,7 +62,16 @@ export function ChatMessage({ message, isLast }: ChatMessageProps) {
 
   useEffect(() => {
     if (isLast && messageRef.current) {
+      // Initial scroll attempt
       messageRef.current.scrollIntoView({ behavior: "smooth", block: "end" })
+      
+      // Also watch for any size changes in the message element
+      const observer = new ResizeObserver(() => {
+        messageRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
+      })
+      
+      observer.observe(messageRef.current)
+      return () => observer.disconnect()
     }
   }, [isLast, message.content])
 
