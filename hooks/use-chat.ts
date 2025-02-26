@@ -22,10 +22,12 @@ export function useChat() {
 
   useEffect(() => {
     loadThreads();
-    initializeSocket();
+
+    // Clean up any socket connection on unmount
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
+        socketRef.current = null;
       }
     };
   }, []);
@@ -37,9 +39,9 @@ export function useChat() {
     }
   }, [currentThreadId]);
 
-  const initializeSocket = async () => {
-    // Skip socket initialization if not in browser
-    if (!isBrowser) return;
+  // Create a new socket connection for a single message exchange
+  const createSocketConnection = async (): Promise<Socket | null> => {
+    if (!isBrowser) return null;
 
     // Ensure token is fresh before initializing socket
     await refreshToken();
@@ -47,32 +49,38 @@ export function useChat() {
     const token = localStorage.getItem("accessToken");
     if (!token) {
       setError("Authentication token not found");
-      return;
+      return null;
     }
 
-    socketRef.current = io("wss://apis.erzen.tk/ai", {
-      query: { token },
-      transports: ["websocket"],
-    });
+    try {
+      const socket = io("wss://apis.erzen.tk/ai", {
+        query: { token },
+        transports: ["websocket"],
+      });
 
-    socketRef.current.on("connect_error", (error) => {
-      console.error("Socket connection error:", error);
-      setError(`Connection error: ${error.message}`);
-      setIsLoading(false);
-
-      // If connection error is due to authentication, try to refresh token
-      if (
-        error.message.includes("authentication") ||
-        error.message.includes("Authorization")
-      ) {
-        refreshToken().then((success) => {
-          if (success) {
-            // Re-attempt socket connection with new token
-            initializeSocket();
-          }
+      return new Promise((resolve, reject) => {
+        socket.on("connect", () => {
+          console.log("Socket connected for message exchange");
+          resolve(socket);
         });
-      }
-    });
+
+        socket.on("connect_error", (error) => {
+          console.error("Socket connection error:", error);
+          setError(`Connection error: ${error.message}`);
+          reject(error);
+        });
+
+        // Set a timeout in case connection takes too long
+        setTimeout(() => {
+          if (socket.disconnected) {
+            reject(new Error("Socket connection timeout"));
+          }
+        }, 5000);
+      });
+    } catch (err) {
+      console.error("Failed to create socket connection:", err);
+      return null;
+    }
   };
 
   const loadThreads = async (reset: boolean = false) => {
@@ -166,18 +174,6 @@ export function useChat() {
         return;
       }
 
-      if (!socketRef.current) {
-        // Try to reinitialize socket if it's not available
-        await initializeSocket();
-        if (!socketRef.current) {
-          setError("Socket connection not established");
-          return;
-        }
-      }
-
-      // Ensure token is fresh before sending message
-      await refreshToken();
-
       try {
         setError(null);
         setIsLoading(true);
@@ -207,14 +203,22 @@ export function useChat() {
         messageMapRef.current.set(threadId, updatedMessages);
         setThreads((prev) => [...prev]); // Force re-render
 
+        // Create a new socket connection for this message
+        if (socketRef.current) {
+          // Clean up any existing socket
+          socketRef.current.disconnect();
+          socketRef.current = null;
+        }
+
+        socketRef.current = await createSocketConnection();
+
+        if (!socketRef.current) {
+          throw new Error("Failed to establish socket connection");
+        }
+
         let fullResponse = "";
         let newThreadId: string | null = null;
 
-        socketRef.current.off("chatChunk");
-        socketRef.current.off("chatComplete");
-        socketRef.current.off("chatError");
-
-        // Set up socket event handlers
         socketRef.current.on("chatChunk", (data) => {
           // Check if response contains a chat ID pattern
           const chatIdMatch = data.content?.match(/__CHATID__([0-9a-f-]+)__/);
@@ -306,6 +310,14 @@ export function useChat() {
               messageMapRef.current.delete("new");
             }
           }
+
+          // Close socket connection after completion
+          if (socketRef.current) {
+            console.log("Message exchange complete, closing socket");
+            socketRef.current.disconnect();
+            socketRef.current = null;
+          }
+
           setIsLoading(false);
         });
 
@@ -313,7 +325,23 @@ export function useChat() {
           setError(
             typeof error === "string" ? error : "Failed to send message"
           );
+
+          // Close socket connection on error
+          if (socketRef.current) {
+            socketRef.current.disconnect();
+            socketRef.current = null;
+          }
+
           setIsLoading(false);
+        });
+
+        // Set up disconnect handler
+        socketRef.current.on("disconnect", () => {
+          console.log("Socket disconnected");
+          // Only set loading to false if this wasn't triggered by an intentional disconnect
+          if (isLoading && !socketRef.current) {
+            setIsLoading(false);
+          }
         });
 
         // Determine which socket event to use based on browseMode and reasoning
@@ -333,6 +361,12 @@ export function useChat() {
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to send message");
         setIsLoading(false);
+
+        // Ensure socket is closed on error
+        if (socketRef.current) {
+          socketRef.current.disconnect();
+          socketRef.current = null;
+        }
       }
     },
     [currentThreadId]
