@@ -124,12 +124,12 @@ export function ChatMessage({ message, isLast }: ChatMessageProps) {
                     return match ? (
                       <Card className="relative overflow-hidden my-4">
                         <div className="absolute right-2 top-2 z-10">
-                          <Button
+                            <Button
                             variant="secondary"
-                            size="icon"
-                            className="h-7 w-7 bg-background/50 backdrop-blur-sm"
+                            size="sm"
+                            className="h-3 w-3 bg-background/50 backdrop-blur-sm flex items-center justify-center"
                             onClick={() => copyToClipboard(code)}
-                          >
+                            >
                             {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                             <span className="sr-only">Copy code</span>
                           </Button>
