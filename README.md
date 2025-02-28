@@ -133,16 +133,7 @@ Navigate to [http://localhost:3000](http://localhost:3000)
 The application can be configured through environment variables:
 
 ```env
-# API Configuration
 NEXT_PUBLIC_API_URL=your_api_url
-API_KEY=your_api_key
-
-# Authentication
-AUTH_SECRET=your_auth_secret
-
-# Feature Flags
-ENABLE_WEB_SEARCH=true
-ENABLE_FILE_UPLOAD=true
 ```
 
 ## 👥 Contributing
@@ -159,11 +150,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 📞 Contact
-
-- **Project Maintainer**: [Your Name](mailto:your.email@example.com)
-- **Website**: [your-website.com](https://your-website.com)
-- **Twitter**: [@yourhandle](https://twitter.com/yourhandle)
 
 ---
 
