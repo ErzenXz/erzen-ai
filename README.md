@@ -3,7 +3,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.1-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.3-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/badge/License-AGPL-green?style=for-the-badge)](LICENSE)
 
 > A powerful, web-based AI chat application with advanced features and a modern interface.
 
@@ -133,16 +133,7 @@ Navigate to [http://localhost:3000](http://localhost:3000)
 The application can be configured through environment variables:
 
 ```env
-# API Configuration
 NEXT_PUBLIC_API_URL=your_api_url
-API_KEY=your_api_key
-
-# Authentication
-AUTH_SECRET=your_auth_secret
-
-# Feature Flags
-ENABLE_WEB_SEARCH=true
-ENABLE_FILE_UPLOAD=true
 ```
 
 ## 👥 Contributing
@@ -159,11 +150,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 📞 Contact
-
-- **Project Maintainer**: [Your Name](mailto:your.email@example.com)
-- **Website**: [your-website.com](https://your-website.com)
-- **Twitter**: [@yourhandle](https://twitter.com/yourhandle)
 
 ---
 
