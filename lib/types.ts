@@ -5,6 +5,8 @@ export interface Message {
   timestamp: Date;
   chatId?: string;
   createdAt?: string;
+  thinking?: boolean;
+  thinkingContent?: string;
 }
 
 export interface ChatThread {

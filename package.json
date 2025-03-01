@@ -53,6 +53,7 @@
     "framer-motion": "^12.4.7",
     "idb": "^8.0.0",
     "input-otp": "^1.2.4",
+    "katex": "^0.16.21",
     "lucide-react": "^0.446.0",
     "nanoid": "^5.0.6",
     "next": "13.5.1",
@@ -66,8 +67,10 @@
     "react-resizable-panels": "^2.1.3",
     "react-syntax-highlighter": "^15.5.0",
     "recharts": "^2.12.7",
+    "rehype-katex": "^7.0.1",
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.0",
+    "remark-math": "^6.0.0",
     "socket.io-client": "^4.8.1",
     "sonner": "^1.5.0",
     "tailwind-merge": "^2.5.2",
@@ -78,6 +81,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/katex": "^0.16.7",
     "@types/react-syntax-highlighter": "^15.5.11",
     "bufferutil": "^4.0.9",
     "utf-8-validate": "^6.0.5"

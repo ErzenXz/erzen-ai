@@ -299,6 +299,8 @@ export function useChat() {
           content: "",
           role: "assistant",
           timestamp: new Date(),
+          thinking: false,
+          thinkingContent: "",
         };
 
         // Capture the thread ID early
@@ -387,6 +389,29 @@ export function useChat() {
             updatedMessages[updatedMessages.length - 1] = {
               ...updatedMessages[updatedMessages.length - 1],
               content: fullResponse,
+              thinking: false,
+            };
+            messageMapRef.current.set(activeThreadId, updatedMessages);
+            setThreads((prev) => [...prev]); // Force re-render
+          }
+        });
+
+        // Add handler for the chatThinking event
+        socketRef.current.on("chatThinking", (data) => {
+          const activeThreadId =
+            threadId === "new" ? newThreadId ?? "new" : threadId;
+          const currentMessages =
+            messageMapRef.current.get(activeThreadId) || [];
+
+          if (currentMessages.length > 0) {
+            const updatedMessages = [...currentMessages];
+            const lastMessage = updatedMessages[updatedMessages.length - 1];
+            updatedMessages[updatedMessages.length - 1] = {
+              ...lastMessage,
+              thinking: true,
+              thinkingContent:
+                (lastMessage.thinkingContent ?? "") + data.content ||
+                "thinking",
             };
             messageMapRef.current.set(activeThreadId, updatedMessages);
             setThreads((prev) => [...prev]); // Force re-render

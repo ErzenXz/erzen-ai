@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import remarkBreaks from "remark-breaks"
+import remarkMath from "remark-math"
+import rehypeKatex from "rehype-katex"
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter"
 import { oneDark, oneLight } from "react-syntax-highlighter/dist/cjs/styles/prism"
 import { useEffect, useRef, useState } from "react"
@@ -14,6 +16,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import dedent from "dedent"
+import "katex/dist/katex.min.css"
 
 interface ChatMessageProps {
   message: Message
@@ -73,7 +76,8 @@ export function ChatMessage({ message, isLast }: ChatMessageProps) {
       observer.observe(messageRef.current)
       return () => observer.disconnect()
     }
-  }, [isLast, message.content])
+  }, [isLast, message.content, message.thinking, message.thinkingContent])
+
 
   return (
     <TooltipProvider>
@@ -112,10 +116,21 @@ export function ChatMessage({ message, isLast }: ChatMessageProps) {
             </Button>
           </div>
           <div className="prose prose-sm dark:prose-invert max-w-full [&_p]:whitespace-pre-wrap [&_p]:mb-0">
+          {message.thinkingContent && (
+              <div className="relative">
+                {/* Thinking animation */}
+                <div className="bg-muted/50 border rounded-lg p-3 mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Thinking: {message.thinkingContent}</span>
+                  </div>
+                </div>
+              </div>
+            )}
             {message.content ? (
               <ReactMarkdown
-                remarkPlugins={[remarkGfm, remarkBreaks]}
-                className="whitespace-pre-wrap break-words"
+              remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
+              rehypePlugins={[rehypeKatex]}
+              className="whitespace-pre-wrap break-words"
                 components={{
                   code({ node: _node, className, children, ...props }) {
                     const match = /language-(\w+)/.exec(className || "")
