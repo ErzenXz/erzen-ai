@@ -518,3 +518,33 @@ export async function streamChat(
     cancel: () => reader.cancel(),
   };
 }
+
+export async function deleteThread(id: string): Promise<void> {
+  await fetchWithAuth(`${API_BASE_URL}/intelligence/chat/thread/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function duplicateThread(id: string): Promise<ChatThread> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/chat/thread/${id}/duplicate`,
+    {
+      method: "POST",
+    }
+  );
+  return response.json();
+}
+
+export async function renameThread(
+  id: string,
+  title: string
+): Promise<ChatThread> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/chat/thread/${id}/rename`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ name: title }),
+    }
+  );
+  return response.json();
+}
