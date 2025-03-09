@@ -30,7 +30,7 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
         setIsLoading(true)
         const availableModels = await fetchModels()
         const sortedModels = availableModels.sort((a, b) =>
-          a.description.localeCompare(b.description)
+          a.description.localeCompare(b.type)
         )
         setModels(sortedModels)
         if (!value && sortedModels.length > 0) {
@@ -84,7 +84,7 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
               <div className="flex flex-col gap-0.5">
                 <span>{model.description}</span>
                 <span className="text-xs text-muted-foreground">
-                  {model.name}
+                  {model.type}
                 </span>
               </div>
             </SelectItem>

@@ -23,6 +23,7 @@ export interface AIModel {
   name: string;
   description: string;
   model: string;
+  type: string;
 }
 
 export interface AuthResponse {
