@@ -3,14 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { nanoid } from "nanoid";
 import { Message, ChatThread } from "@/lib/types";
-import {
-  fetchThreads,
-  fetchThreadMessages,
-  refreshToken,
-  deleteThread as apiDeleteThread,
-  duplicateThread as apiDuplicateThread,
-  renameThread as apiRenameThread,
-} from "@/lib/api";
+import { fetchThreads, fetchThreadMessages, refreshToken } from "@/lib/api";
 import { io, Socket } from "socket.io-client";
 
 // Helper to check if code is running in browser environment
@@ -544,108 +537,6 @@ export function useChat() {
     await loadThreads(false);
   }, [hasMore, isLoading, searchQuery]);
 
-  const deleteThreadById = useCallback(
-    async (threadId: string) => {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        // Delete from API
-        await apiDeleteThread(threadId);
-
-        // Delete from local DB
-        await db.deleteThread(threadId);
-
-        // Delete from message map
-        messageMapRef.current.delete(threadId);
-
-        // Remove from threads state
-        setThreads((prevThreads) =>
-          prevThreads.filter((thread) => thread.id !== threadId)
-        );
-
-        // If the deleted thread was the current one, create a new thread
-        if (currentThreadId === threadId) {
-          createThread();
-        }
-      } catch (err) {
-        console.error(`Failed to delete thread ${threadId}:`, err);
-        setError("Failed to delete thread");
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [currentThreadId, createThread]
-  );
-
-  const duplicateThreadById = useCallback(async (threadId: string) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      // Duplicate on API
-      const newThread = await apiDuplicateThread(threadId);
-
-      // Save to local DB
-      await db.saveThread(newThread);
-
-      // Copy messages from the original thread to the new thread
-      const originalMessages = messageMapRef.current.get(threadId) || [];
-      const duplicatedMessages = originalMessages.map((msg) => ({
-        ...msg,
-        id: nanoid(),
-        chatId: newThread.id,
-      }));
-
-      // Save the duplicated messages
-      if (duplicatedMessages.length > 0) {
-        await db.saveMessages(duplicatedMessages);
-        messageMapRef.current.set(newThread.id, duplicatedMessages);
-      }
-
-      // Add new thread to state
-      setThreads((prevThreads) => [newThread, ...prevThreads]);
-
-      // Switch to the new thread
-      setCurrentThreadId(newThread.id);
-      currentThreadIdRef.current = newThread.id;
-    } catch (err) {
-      console.error(`Failed to duplicate thread ${threadId}:`, err);
-      setError("Failed to duplicate thread");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const renameThreadById = useCallback(
-    async (threadId: string, newTitle: string) => {
-      try {
-        setError(null);
-
-        // First update the UI optimistically for better user experience
-        setThreads((prevThreads) =>
-          prevThreads.map((thread) =>
-            thread.id === threadId ? { ...thread, title: newTitle } : thread
-          )
-        );
-
-        // Then make the API call
-        const updatedThread = await apiRenameThread(threadId, newTitle);
-
-        // Update in local DB once the API call completes
-        await db.saveThread(updatedThread);
-      } catch (err) {
-        console.error(`Failed to rename thread ${threadId}:`, err);
-        setError("Failed to rename thread");
-
-        // Revert the optimistic update if the API call failed
-        // This requires refetching threads to ensure data consistency
-        loadThreads(true);
-      }
-    },
-    []
-  );
-
   return {
     threads,
     currentThread: getCurrentThread(),
@@ -653,9 +544,6 @@ export function useChat() {
     error,
     sendMessage,
     createThread,
-    deleteThread: deleteThreadById,
-    duplicateThread: duplicateThreadById,
-    renameThread: renameThreadById,
     setCurrentThread: setCurrentThreadId,
     loadMoreThreads,
     hasMore,

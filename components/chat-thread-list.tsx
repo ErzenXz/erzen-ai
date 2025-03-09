@@ -12,8 +12,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Menu,
-  Check,
-  X,
 } from "lucide-react"
 import { format, isToday, isYesterday } from "date-fns"
 import { Button } from "@/components/ui/button"
@@ -26,7 +24,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { Skeleton } from "@/components/ui/skeleton"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
@@ -35,7 +33,7 @@ interface ChatThreadListProps {
   currentThreadId: string | null | undefined
   onThreadSelect: (threadId: string) => void
   onNewThread: () => void
-  onRenameThread: (threadId: string, newTitle: string) => void
+  onRenameThread: (threadId: string) => void
   onDuplicateThread: (threadId: string) => void
   onDeleteThread: (threadId: string) => void
   onLoadMore?: () => void
@@ -61,18 +59,6 @@ export function ChatThreadList({
   const [collapsed, setCollapsed] = useState(false)
   const isMobile = useIsMobile()
   const [mobileVisible, setMobileVisible] = useState(true)
-  const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
-  const [editingTitle, setEditingTitle] = useState<string>("");
-  const inputRef = useRef<HTMLInputElement>(null);
-  
-  // Focus the input when editing starts
-  useEffect(() => {
-    if (editingThreadId && inputRef.current) {
-      inputRef.current.focus();
-      // Select all text for easier editing
-      inputRef.current.select();
-    }
-  }, [editingThreadId]);
 
   // On mobile, sidebar should be collapsed by default
   useEffect(() => {
@@ -110,37 +96,6 @@ export function ChatThreadList({
       setMobileVisible(!mobileVisible)
     }
   }
-
-  const startRenaming = (threadId: string) => {
-    const thread = threads.find(t => t.id === threadId);
-    if (thread) {
-      setEditingThreadId(threadId);
-      setEditingTitle(thread.title || "");
-    }
-  };
-
-  const cancelRenaming = () => {
-    setEditingThreadId(null);
-    setEditingTitle("");
-  };
-
-  const saveRenaming = () => {
-    if (editingThreadId && editingTitle.trim()) {
-      onRenameThread(editingThreadId, editingTitle);
-      setEditingThreadId(null);
-      setEditingTitle("");
-    }
-  };
-
-  const handleRenameKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      saveRenaming();
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      cancelRenaming();
-    }
-  };
 
   if (isMobile && !mobileVisible) {
     return (
@@ -319,11 +274,7 @@ export function ChatThreadList({
                       currentThreadId === thread.id && "bg-primary/10",
                     )}
                   >
-                    <button 
-                      onClick={() => onThreadSelect(thread.id)}
-                      className="w-full text-left"
-                      style={{ display: editingThreadId === thread.id ? 'none' : 'block' }}
-                    >
+                    <button onClick={() => onThreadSelect(thread.id)} className="w-full text-left">
                       <div className={cn("flex items-start", collapsed ? "justify-center" : "gap-3")}>
                         <div className="relative mt-0.5">
                           <div
@@ -362,51 +313,8 @@ export function ChatThreadList({
                         )}
                       </div>
                     </button>
-                    
-                    {/* Inline editing input */}
-                    {!collapsed && editingThreadId === thread.id && (
-                      <div className="flex items-center gap-2">
-                        <div className="relative mt-0.5">
-                          <div
-                            className={cn(
-                              "w-8 h-8",
-                              "rounded-lg border flex items-center justify-center transition-all",
-                              "border-primary/30 bg-primary/10 text-primary"
-                            )}
-                          >
-                            <MessageSquare className="w-4 h-4" />
-                          </div>
-                        </div>
-                        
-                        <div className="flex-1 flex items-center gap-1">
-                          <Input
-                            ref={inputRef}
-                            value={editingTitle}
-                            onChange={(e) => setEditingTitle(e.target.value)}
-                            className="h-8 py-1 text-sm font-medium"
-                            onKeyDown={handleRenameKeyDown}
-                          />
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6" 
-                            onClick={saveRenaming}
-                          >
-                            <Check className="h-3 w-3" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6" 
-                            onClick={cancelRenaming}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
 
-                    {!collapsed && !editingThreadId && (
+                    {!collapsed && (
                       <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -415,7 +323,7 @@ export function ChatThreadList({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem onClick={() => startRenaming(thread.id)}>Rename</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onRenameThread(thread.id)}>Rename</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => onDuplicateThread(thread.id)}>Duplicate</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => onDeleteThread(thread.id)} className="text-destructive">
                               Delete
