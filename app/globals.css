@@ -124,3 +124,22 @@
   }
 }
 
+
+/* Modern text selection styling */
+::selection {
+  @apply bg-primary/30 text-foreground;
+}
+
+/* For Firefox */
+::-moz-selection {
+  @apply bg-primary/30 text-foreground;
+}
+
+/* Selection in dark mode */
+.dark ::selection {
+  @apply bg-primary/40 text-foreground;
+}
+
+.dark ::-moz-selection {
+  @apply bg-primary/40 text-foreground;
+}
