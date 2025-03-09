@@ -1,8 +1,7 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import { UserInfo } from "@/lib/types";
-import { fetchUserInfo } from "@/lib/api";
+import { userSync } from "@/lib/user-sync";
 
 export function useAuth() {
   const [user, setUser] = useState<UserInfo | null>(null);
@@ -12,15 +11,25 @@ export function useAuth() {
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const userInfo = await fetchUserInfo();
-        setUser(userInfo);
-        setError(null);
+        setIsLoading(true);
+
+        // This will automatically handle authentication, redirect to auth if needed,
+        // and synchronize user data between main API and local database
+        const localUser = await userSync.getCurrentUser();
+
+        if (localUser) {
+          setUser(localUser as unknown as UserInfo);
+          setError(null);
+        } else {
+          setUser(null);
+          setError("Failed to authenticate");
+
+          // Don't redirect here - the userSync.getCurrentUser already handles redirects
+        }
       } catch (err) {
-        // Clear tokens if authentication fails
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        const currentUrl = encodeURIComponent(window.location.href);
-        window.location.href = `https://auth.erzen.tk?return_to=${currentUrl}`;
+        console.error("Authentication error:", err);
+        setUser(null);
+        setError(err instanceof Error ? err.message : "Authentication failed");
       } finally {
         setIsLoading(false);
       }

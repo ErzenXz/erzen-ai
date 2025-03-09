@@ -1,15 +1,14 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useCallback, useEffect } from "react"
 import { useChat } from "@/hooks/use-chat"
 import { useAuth } from "@/hooks/use-auth"
-import { ChatMessage } from "@/components/chat-message"
-import { ChatThreadList } from "@/components/chat-thread-list"
-import { ModelSelector } from "@/components/model-selector"
-import { FileUpload } from "@/components/file-upload"
-import { ChatInput } from "@/components/chat-input"
+import { ChatMessage } from "@/components/page/main/chat-message"
+import { ChatThreadList } from "@/components/page/sidebar/chat-thread-list"
+import { ModelSelector } from "@/components/page/main/model-selector"
+import { FileUpload } from "@/components/page/main/chat-input/file-upload"
+import { ChatInput } from "@/components/page/main/chat-input/chat-input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Globe, Brain, Loader2 } from 'lucide-react'
 import {
@@ -260,39 +259,41 @@ export default function Home() {
       />
 
       <div className="flex-1 flex flex-col">
-        <header className="border-b p-4 flex items-center gap-4">
-          <ModelSelector value={selectedModel} onChange={setSelectedModel} />
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3">
-              <Globe className="w-5 h-5 text-muted-foreground" />
-              <div className="flex items-center gap-2">
-                <Label htmlFor="web-search" className="text-sm font-medium cursor-pointer">
-                  Web Search
-                </Label>
-                <Switch
-                  id="web-search"
-                  checked={browseMode}
-                  onCheckedChange={(checked) => {
-                    setBrowseMode(checked)
-                    if (!checked) {
-                      setReasoning(false)
-                    }
-                  }}
-                />
-              </div>
-            </div>
-
-            {browseMode && (
+        <header className="border-b p-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <ModelSelector value={selectedModel} onChange={setSelectedModel} />
+            <div className="flex items-center gap-6">
               <div className="flex items-center gap-3">
-                <Brain className="w-5 h-5 text-muted-foreground" />
+                <Globe className="w-5 h-5 text-muted-foreground" />
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="reasoning" className="text-sm font-medium cursor-pointer">
-                    Reasoning
+                  <Label htmlFor="web-search" className="text-sm font-medium cursor-pointer">
+                    Web Search
                   </Label>
-                  <Switch id="reasoning" checked={reasoning} onCheckedChange={setReasoning} />
+                  <Switch
+                    id="web-search"
+                    checked={browseMode}
+                    onCheckedChange={(checked) => {
+                      setBrowseMode(checked)
+                      if (!checked) {
+                        setReasoning(false)
+                      }
+                    }}
+                  />
                 </div>
               </div>
-            )}
+
+              {browseMode && (
+                <div className="flex items-center gap-3">
+                  <Brain className="w-5 h-5 text-muted-foreground" />
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="reasoning" className="text-sm font-medium cursor-pointer">
+                      Reasoning
+                    </Label>
+                    <Switch id="reasoning" checked={reasoning} onCheckedChange={setReasoning} />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 

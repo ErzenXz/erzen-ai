@@ -1,0 +1,91 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String?
+  username      String?   @unique
+  role          String?   @default("USER")
+  emailVerified Boolean?  @default(false)
+  image         String?
+  lastLogin     DateTime?
+  language      String?   @default("en-US")
+  timezone      String?   @default("UTC")
+  mainApiData   Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastSyncedAt  DateTime?
+
+  Settings Settings[]
+}
+
+model Settings {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  // Appearance
+  theme              String?  @default("system")
+  fontSize           String?  @default("medium")
+  messageStyle       String?  @default("bubbles")
+  animationsEnabled  Boolean? @default(true)
+  codeTheme          String?  @default("github")
+  syntaxHighlighting Boolean? @default(true)
+
+  // AI Model Settings
+  defaultModel       String?  @default("")
+  defaultSearch      Boolean? @default(false)
+  defaultReasoning   Boolean? @default(false)
+  codeExecution      Boolean? @default(true)
+  responseCreativity Int?     @default(70)
+  contextLength      String?  @default("medium")
+  streamingResponses Boolean? @default(true)
+
+  // Notifications
+  notificationsEnabled Boolean? @default(true)
+  soundEnabled         Boolean? @default(true)
+  desktopNotifications Boolean? @default(false)
+  notificationLevel    String?  @default("all")
+
+  // Accessibility
+  highContrastMode  Boolean? @default(false)
+  reducedMotion     Boolean? @default(false)
+  keyboardShortcuts Boolean? @default(true)
+  textToSpeechVoice String?  @default("default")
+
+  // Data Usage
+  autoDeleteMessages Boolean? @default(false)
+  autoDeletePeriod   String?  @default("30")
+  storageLimit       String?  @default("unlimited")
+  exportFormat       String?  @default("json")
+
+  // Web Search
+  safeSearch            Boolean? @default(true)
+  searchEngine          String?  @default("duckduckgo")
+  searchResultCount     Int?     @default(3)
+  contentFilterLevel    String?  @default("moderate")
+  blockUntrustedSources Boolean? @default(true)
+
+  // Security
+  ipRestriction          Boolean? @default(false)
+  allowedIps             String?  @default("")
+  dataCollection         Boolean? @default(true)
+  thirdPartyIntegrations Boolean? @default(false)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

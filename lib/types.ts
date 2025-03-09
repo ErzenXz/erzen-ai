@@ -46,6 +46,7 @@ export interface UserInfo {
   language: string;
   timezone: string;
   image: string;
+  mainApiData: any;
 }
 
 export interface ChatMemory {

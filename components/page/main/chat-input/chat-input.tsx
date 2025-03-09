@@ -8,9 +8,11 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import TextareaAutosize from "react-textarea-autosize"
-import { EmojiPicker } from "@/components/emoji-picker"
-import { FormatToolbar } from "@/components/format-toolbar"
-import { CommandMenu } from "@/components/command-menu"
+import { CommandMenu } from "./command-menu"
+import { EmojiPicker } from "./emoji-picker"
+import { FormatToolbar } from "./format-toolbar"
+
+
 
 interface ChatInputProps {
   message: string
@@ -260,7 +262,7 @@ export function ChatInput({
       try {
         // Start recording
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-        const recorder = new MediaRecorder(stream)
+        const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' })
         const audioChunks: BlobPart[] = []
 
         recorder.addEventListener("dataavailable", (event) => {
@@ -270,13 +272,38 @@ export function ChatInput({
         recorder.addEventListener("stop", async () => {
           const audioBlob = new Blob(audioChunks, { type: "audio/webm" })
 
-          // Here you would typically send this to a speech-to-text service
-          // For now, we'll just add a placeholder message
-          onMessageChange(message + " [Voice message transcription in progress...]")
+          try {
+            // Send the audio blob to our API endpoint
+            const formData = new FormData()
+            formData.append("audio", audioBlob)
 
-          // Clean up
-          stream.getTracks().forEach((track) => track.stop())
-          setMediaRecorder(null)
+            const response = await fetch("/api/transcribe/stt", {
+              method: "POST",
+              body: formData,
+            })
+
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
+            const data = await response.json()
+            if (data.error) {
+              throw new Error(data.error)
+            }
+
+            // Add transcription to message
+            const transcription = data.transcript.trim()
+            if (transcription) {
+              onMessageChange(message + (message ? " " : "") + transcription)
+            }
+          } catch (error) {
+            console.error("Transcription error:", error)
+            alert("Failed to transcribe audio. Please try again.")
+          } finally {
+            // Clean up
+            stream.getTracks().forEach(track => track.stop())
+            setMediaRecorder(null)
+          }
         })
 
         recorder.start()

@@ -223,9 +223,6 @@ class TokenManager {
       const response = await fetch(`${API_BASE_URL}/v1/auth/refresh`, {
         method: "POST",
         credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
       });
 
       if (!response.ok) {
@@ -547,4 +544,107 @@ export async function renameThread(
     }
   );
   return response.json();
+}
+
+// New local API methods for XenAI backend services
+const LOCAL_API_BASE = "/api";
+
+// Test API connection
+export async function testApiConnection() {
+  try {
+    const response = await fetch(`${LOCAL_API_BASE}/test`);
+    return await response.json();
+  } catch (error) {
+    console.error("API test error:", error);
+    throw new Error("Failed to connect to API");
+  }
+}
+
+// User API methods
+export async function fetchLocalUsers() {
+  try {
+    const response = await fetch(`${LOCAL_API_BASE}/users`);
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    throw new Error("Failed to fetch users");
+  }
+}
+
+export async function fetchLocalUser(id: string) {
+  try {
+    const response = await fetch(`${LOCAL_API_BASE}/users/${id}`);
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error(`Error fetching user ${id}:`, error);
+    throw error;
+  }
+}
+
+export async function createLocalUser(data: { email: string; name?: string }) {
+  try {
+    const response = await fetch(`${LOCAL_API_BASE}/users`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to create user");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error creating user:", error);
+    throw error;
+  }
+}
+
+export async function updateLocalUser(
+  id: string,
+  data: { email?: string; name?: string }
+) {
+  try {
+    const response = await fetch(`${LOCAL_API_BASE}/users/${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to update user");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(`Error updating user ${id}:`, error);
+    throw error;
+  }
+}
+
+export async function deleteLocalUser(id: string) {
+  try {
+    const response = await fetch(`${LOCAL_API_BASE}/users/${id}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok && response.status !== 204) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to delete user");
+    }
+
+    return true;
+  } catch (error) {
+    console.error(`Error deleting user ${id}:`, error);
+    throw error;
+  }
 }
