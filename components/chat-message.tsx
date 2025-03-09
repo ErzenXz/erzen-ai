@@ -8,9 +8,6 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import remarkBreaks from "remark-breaks"
 import remarkMath from "remark-math"
-import remarkToc from "remark-toc"
-import remarkEmoji from "remark-emoji"
-import remarkFrontmatter from "remark-frontmatter"
 import rehypeKatex from "rehype-katex"
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter"
 import { oneDark, oneLight } from "react-syntax-highlighter/dist/cjs/styles/prism"
@@ -32,9 +29,6 @@ const remarkPlugins = [
   remarkGfm,
   remarkBreaks,
   remarkMath,
-  remarkToc,
-  remarkEmoji,
-  remarkFrontmatter,
 ]
 
 
