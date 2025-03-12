@@ -77,3 +77,133 @@ export interface ChatResponse {
   };
   chatId: string;
 }
+
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  ownerId: string;
+  createdAt: string;
+  updatedAt: string;
+  _count?: {
+    files: number;
+    threads: number;
+    collaborators: number;
+  };
+}
+
+export interface SingleProject {
+  id: string;
+  name: string;
+  description: string;
+  ownerId: string;
+  createdAt: string;
+  updatedAt: string;
+  owner: SingleProjectOwner;
+  collaborators: any[];
+  files: SingleProjectFile[];
+  threads: SingleProjectThread[];
+}
+
+export interface SingleProjectOwner {
+  id: string;
+  username: string;
+  email: string;
+  profilePicture: string;
+}
+
+export interface SingleProjectFile {
+  id: string;
+  projectId: string;
+  name: string;
+  path: string;
+  currentVersionId: string;
+  createdAt: string;
+  updatedAt: string;
+  isDeleted: boolean;
+  currentVersion: SingleProjectCurrentVersion;
+}
+
+export interface SingleProjectCurrentVersion {
+  id: string;
+  fileId: string;
+  version: number;
+  content: string;
+  commitMsg: string;
+  authorId: string;
+  createdAt: string;
+  isDeleted: boolean;
+}
+
+export interface SingleProjectThread {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  userId: string;
+  projectId: string;
+}
+
+export interface ProjectFile {
+  id: string;
+  projectId: string;
+  name: string;
+  path: string;
+  currentVersionId: string;
+  createdAt: string;
+  updatedAt: string;
+  isDeleted: boolean;
+  currentVersion: CurrentVersion;
+  _count?: Count;
+}
+
+export interface Author {
+  id: string;
+  username: string;
+  email: string;
+  profilePicture: string;
+}
+
+export interface CurrentVersion {
+  id: string;
+  fileId: string;
+  version: number;
+  content: string;
+  commitMsg: string;
+  authorId: string;
+  createdAt: string;
+  isDeleted: boolean;
+  author?: Author;
+}
+
+export interface Count {
+  versions: number;
+}
+
+export interface ProjectFileCreateDto {
+  id: string;
+  projectId: string;
+  name: string;
+  path: string;
+  currentVersionId: string;
+  createdAt: string;
+  updatedAt: string;
+  isDeleted: boolean;
+  currentVersion: CurrentVersion;
+}
+
+export interface Collaborator {
+  id: string;
+  userId: string;
+  projectId: string;
+  role: "owner" | "editor" | "viewer";
+  joinedAt: string;
+}
+
+export interface AIInstruction {
+  id: string;
+  projectId: string;
+  instruction: string;
+  result: string;
+  createdAt: string;
+}

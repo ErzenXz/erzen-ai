@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import type { ChatThread } from "@/lib/types"
+import type { ChatThread, Project } from "@/lib/types"
 import {
   MessageSquarePlus,
   MessageSquare,
@@ -14,6 +14,9 @@ import {
   Menu,
   Check,
   X,
+  FolderPlus,
+  FolderRoot,
+  ChevronDown,
 } from "lucide-react"
 import { format, isToday, isYesterday } from "date-fns"
 import { Button } from "@/components/ui/button"
@@ -42,6 +45,8 @@ interface ChatThreadListProps {
   hasMore?: boolean
   searchQuery?: string
   onSearchChange?: (query: string) => void
+  projects: Project[]
+  onViewProjects?: () => void
 }
 
 export function ChatThreadList({
@@ -56,6 +61,8 @@ export function ChatThreadList({
   hasMore,
   searchQuery = "",
   onSearchChange,
+  projects,
+  onViewProjects,
 }: ChatThreadListProps) {
   const { user, isLoading } = useAuth()
   const [collapsed, setCollapsed] = useState(false)
@@ -154,6 +161,8 @@ export function ChatThreadList({
       </Button>
     )
   }
+
+  console.log('projects', projects);
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -288,10 +297,15 @@ export function ChatThreadList({
             </Tooltip>
           ) : (
             <>
-              <Button onClick={onNewThread} className="w-full" variant="default">
-                <MessageSquarePlus className="w-4 h-4 mr-2" />
-                New Chat
-              </Button>
+                <div className="flex gap-2 w-full">
+                <Button onClick={onNewThread} className="flex-[2]" variant="default">
+                  <MessageSquarePlus className="w-4 h-4 mr-2" />
+                  New Chat
+                </Button>
+                <Button onClick={() => {}} className="flex-[1]" variant="outline">
+                  <FolderPlus className="w-4 h-4" />
+                </Button>
+                </div>
 
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -308,6 +322,71 @@ export function ChatThreadList({
 
         <ScrollArea className="flex-1" onScroll={handleScroll}>
           <div className="space-y-1 p-2">
+            {/* Projects Section */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  className={cn(
+                    "w-full text-left rounded-lg transition-all duration-200 group relative",
+                    collapsed ? "p-2" : "p-3",
+                    "hover:bg-muted/80",
+                    "hover:shadow-sm",
+                  )}
+                  onClick={onViewProjects}
+                >
+                  <button 
+                    className="w-full text-left"
+                  >
+                    <div className={cn("flex items-start", collapsed ? "justify-center" : "gap-3")}>
+                      <div className="relative mt-0.5">
+                        <div
+                          className={cn(
+                            collapsed ? "w-10 h-10" : "w-8 h-8",
+                            "rounded-lg border flex items-center justify-center transition-all",
+                            "border-blue-300/30 bg-blue-500/10 text-blue-500 group-hover:scale-110 group-hover:bg-blue-500/15",
+                          )}
+                        >
+                          <FolderRoot className={cn(collapsed ? "w-5 h-5" : "w-4 h-4")} />
+                        </div>
+                      </div>
+
+                      {!collapsed && (
+                        <div className="flex-1 min-w-0 flex items-center justify-between">
+                          <div>
+                            <span className="font-medium text-sm">Projects</span>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span className="text-xs text-muted-foreground">
+                                {projects.length} {projects.length === 1 ? 'project' : 'projects'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="w-5 h-5 rounded-full bg-primary/5 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                            <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                </div>
+              </TooltipTrigger>
+              {collapsed && (
+                <TooltipContent side="right" className="max-w-[200px]">
+                  <p className="font-medium">Projects</p>
+                  <p className="text-xs text-muted-foreground mt-1">View all projects</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+            
+            {/* Recent Chats Header */}
+            {!collapsed && threads.length > 0 && (
+              <div className="px-3 pt-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-muted-foreground">Recent Chats</h3>
+                </div>
+              </div>
+            )}
+            
+            {/* Thread list */}
             {threads.map((thread) => (
               <Tooltip key={thread.id}>
                 <TooltipTrigger asChild>
@@ -434,6 +513,7 @@ export function ChatThreadList({
                 )}
               </Tooltip>
             ))}
+
             {hasMore && !collapsed && (
               <div className="py-2 text-center">
                 <Button variant="ghost" size="sm" onClick={onLoadMore}>

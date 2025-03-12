@@ -6,6 +6,11 @@ import {
   ChatMemory,
   UserInstruction,
   Message,
+  SingleProject,
+  Project,
+  ProjectFile,
+  ProjectFileCreateDto,
+  CurrentVersion,
 } from "./types";
 
 const API_BASE_URL = "https://apis.erzen.tk";
@@ -647,4 +652,153 @@ export async function deleteLocalUser(id: string) {
     console.error(`Error deleting user ${id}:`, error);
     throw error;
   }
+}
+
+export async function fetchProjects(): Promise<Project[]> {
+  const response = await fetchWithAuth(`${API_BASE_URL}/intelligence/projects`);
+  return response.json();
+}
+
+export async function fetchProject(projectId: string): Promise<SingleProject> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/projects/${projectId}`
+  );
+  return response.json();
+}
+
+export async function updateProject(
+  projectId: string,
+  data: { name?: string; description?: string }
+): Promise<any> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/projects/${projectId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to update project");
+  }
+  return response.json();
+}
+
+export async function deleteProject(
+  projectId: string,
+  data: { name?: string; description?: string }
+): Promise<any> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/projects/${projectId}`,
+    {
+      method: "DELETE",
+    }
+  );
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to update project");
+  }
+  return response.json();
+}
+
+export async function fetchProjectFiles(
+  projectId: string
+): Promise<ProjectFile> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/projects/${projectId}/files`
+  );
+  return response.json();
+}
+
+export async function createProjectFile(
+  projectId: string,
+  data: { name: string; path: string; content: string; commitMsg: string }
+): Promise<ProjectFileCreateDto> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/projects/${projectId}/files`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }
+  );
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to create project file");
+  }
+  return response.json();
+}
+
+export async function fetchProjectFile(
+  projectId: string,
+  fileId: string
+): Promise<ProjectFile> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/projects/${projectId}/files/${fileId}`
+  );
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to fetch project file");
+  }
+  return response.json();
+}
+
+export async function updateProjectFile(
+  projectId: string,
+  fileId: string,
+  data: { content?: string; commitMsg?: string }
+): Promise<ProjectFile> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/projects/${projectId}/files/${fileId}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }
+  );
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to update project file");
+  }
+  return response.json();
+}
+
+export async function fetchProjectFileVersions(
+  projectId: string,
+  fileId: string
+): Promise<CurrentVersion[]> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/projects/${projectId}/files/${fileId}/versions`
+  );
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to fetch project file versions");
+  }
+  return response.json() as Promise<CurrentVersion[]>;
+}
+
+export async function revertProjectFileVersion(
+  projectId: string,
+  fileId: string,
+  data: { version: number; commitMsg?: string }
+): Promise<ProjectFile> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/projects/${projectId}/files/${fileId}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }
+  );
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to update project file");
+  }
+  return response.json();
 }

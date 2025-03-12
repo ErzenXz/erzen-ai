@@ -1,8 +1,23 @@
 import { clsx, type ClassValue } from "clsx";
+import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+export function formatThreadDate(dateString: string): string {
+  const date = new Date(dateString);
+
+  if (isToday(date)) {
+    return `Today, ${format(date, "h:mm a")}`;
+  } else if (isYesterday(date)) {
+    return `Yesterday, ${format(date, "h:mm a")}`;
+  } else if (new Date().getFullYear() === date.getFullYear()) {
+    return format(date, "MMM d");
+  } else {
+    return format(date, "MMM d, yyyy");
+  }
 }
 
 export async function readFileAsText(file: File): Promise<string> {
