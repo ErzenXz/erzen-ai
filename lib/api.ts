@@ -802,3 +802,29 @@ export async function revertProjectFileVersion(
   }
   return response.json();
 }
+
+export async function processAgentInstruction(
+  projectId: string,
+  instruction: string,
+  threadId?: string
+): Promise<any> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/projects/process-agent`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        instruction,
+        projectId,
+        threadId: threadId || undefined,
+      }),
+    }
+  );
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to process agent instruction");
+  }
+  return response.json();
+}

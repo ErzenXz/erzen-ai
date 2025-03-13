@@ -1,7 +1,7 @@
 export interface Message {
   id: string;
   content: string;
-  role: "user" | "assistant" | "model";
+  role: "user" | "assistant" | "model" | "system";
   timestamp: Date;
   chatId?: string;
   createdAt?: string;
