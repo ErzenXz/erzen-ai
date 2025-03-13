@@ -3,10 +3,11 @@
 import * as React from "react"
 import { FileTree } from "@/components/project/file-tree"
 import { CodeEditor } from "@/components/project/code-editor"
+import { ProjectThreadsView } from "@/components/project/project-threads"
 import { 
   FileX, Save, Settings, UserPlus, GitBranch, MessageSquareText, 
   History, Plus, FolderPlus, Loader2, Copy, Download, 
-  FileCode, Code
+  FileCode, Code, MessageSquare, FileSymlink
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
@@ -24,27 +25,57 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuLabel, DropdownMenuItem, DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { TabsList, TabsTrigger, Tabs } from "@/components/ui/tabs"
 import { fetchProjectFileVersions, revertProjectFileVersion, createProjectFile, updateProjectFile } from "@/lib/api"
 import { CurrentVersion } from "@/lib/types"
 
 
 export function ProjectWorkspace() {
-  const { currentProject, projectFiles, saveFile, loadFile } = useProject()
+  const { currentProject, projectFiles, saveFile, loadFile, currentThread } = useProject()
   const [activeFilePath, setActiveFilePath] = React.useState<string | undefined>()
   const [fileContent, setFileContent] = React.useState("")
   const [agentInstruction, setAgentInstruction] = React.useState("")
   const [isProcessing, setIsProcessing] = React.useState(false)
   const [isSaving, setIsSaving] = React.useState(false)
-  const [selectedTab, setSelectedTab] = React.useState<string>("editor")
   
+  // Add a state for the active tab
+  const [activeTab, setActiveTab] = React.useState<"editor" | "threads">("editor")
+  
+  // State for new thread dialog
+  const [showNewThreadDialog, setShowNewThreadDialog] = React.useState(false)
+  const [newThreadTitle, setNewThreadTitle] = React.useState("")
+
+  // Handle creating a new thread
+  const handleCreateThread = async () => {
+    if (!newThreadTitle.trim() || !currentProject) {
+      return
+    }
+
+    try {
+      // In a real implementation, you would call an API to create a new thread
+      toast({
+        title: "Thread created",
+        description: `New thread "${newThreadTitle}" was created successfully.`,
+      })
+      setShowNewThreadDialog(false)
+      setNewThreadTitle("")
+    } catch (error) {
+      console.error("Error creating thread:", error)
+      toast({
+        title: "Error",
+        description: "Failed to create new thread.",
+        variant: "destructive",
+      })
+    }
+  }
+
   // File management dialogs
   const [showNewFileDialog, setShowNewFileDialog] = React.useState(false)
   const [showNewFolderDialog, setShowNewFolderDialog] = React.useState(false)
   const [showRenameDialog, setShowRenameDialog] = React.useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false)
   const [showVersionsDialog, setShowVersionsDialog] = React.useState(false)
-  
+
   // Form states
   const [newFileName, setNewFileName] = React.useState("")
   const [newFolderName, setNewFolderName] = React.useState("")
@@ -62,7 +93,7 @@ export function ProjectWorkspace() {
     const loadFileContent = async () => {
       if (activeFilePath) {
         const file = projectFiles.find((f) => f.path === activeFilePath)
-        if (file && file.content !== undefined) {
+        if (file?.content !== undefined) {
           setFileContent(file.content)
           setOriginalContent(file.content)
           setHasUnsavedChanges(false)
@@ -70,8 +101,8 @@ export function ProjectWorkspace() {
           try {
             const loadedFile = await loadFile(activeFilePath)
             if (loadedFile) {
-              setFileContent(loadedFile.content || "")
-              setOriginalContent(loadedFile.content || "")
+              setFileContent(loadedFile.content ?? "")
+              setOriginalContent(loadedFile.content ?? "")
               setHasUnsavedChanges(false)
             }
           } catch (error) {
@@ -394,6 +425,17 @@ export function ProjectWorkspace() {
     }
   };
 
+  const handleSwitchTab = (tab: "editor" | "threads") => {
+    setActiveTab(tab)
+    // If user has unsaved changes when switching tabs, show a warning
+    if (tab !== "editor" && hasUnsavedChanges) {
+      toast({
+        title: "Unsaved changes",
+        description: "You have unsaved changes in your editor.",
+      })
+    }
+  }
+
   if (!currentProject) {
     return (
       <div className="flex h-full w-full items-center justify-center">
@@ -405,208 +447,249 @@ export function ProjectWorkspace() {
     )
   }
 
+  // Get project stats for the tabs
+  const fileCount = projectFiles?.length || 0
+
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between border-b p-2">
-        <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold">{currentProject.name}</h2>
-          <Badge variant="outline" className="text-xs">
-            {projectFiles?.length || 0} files
-          </Badge>
-        </div>
-        <div className="flex items-center gap-1">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <UserPlus className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Add Collaborator</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <GitBranch className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Version Control</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Project Settings</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      </div>
-
-      <ResizablePanelGroup direction="horizontal" className="flex-1">
-        <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
-          <FileTree
-            files={projectFiles}
-            activeFile={activeFilePath}
-            onSelectFile={setActiveFilePath}
-            onCreateFile={handleShowNewFileDialog}
-            onCreateFolder={handleShowNewFolderDialog}
-            onDeleteFile={handleShowDeleteDialog}
-            onRenameFile={handleShowRenameDialog}
-          />
-        </ResizablePanel>
-
-        <ResizableHandle withHandle />
-
-        <ResizablePanel defaultSize={80}>
-          <div className="flex flex-col h-full">
-            {activeFilePath ? (
-              <>
-                <div className="flex items-center justify-between border-b p-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <FileCode className="w-4 h-4 text-muted-foreground" />
-                    <span className="font-medium">{activeFilePath}</span>
-                    {hasUnsavedChanges && (
-                      <Badge variant="outline" className="text-xs font-normal">Unsaved</Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="gap-1">
-                          <Code className="h-4 w-4" />
-                          <span>Actions</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>File Actions</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={handleFileSave} disabled={!hasUnsavedChanges || isSaving}>
-                          <Save className="h-4 w-4 mr-2" />
-                          {isSaving ? "Saving..." : "Save"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleShowVersionHistory}>
-                          <History className="h-4 w-4 mr-2" />
-                          Version History
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Copy className="h-4 w-4 mr-2" />
-                          Duplicate
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Download className="h-4 w-4 mr-2" />
-                          Download
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleShowRenameDialog(activeFilePath)}>
-                          <Settings className="h-4 w-4 mr-2" />
-                          Rename
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {hasUnsavedChanges && (
-                      <Button 
-                        variant={hasUnsavedChanges ? "default" : "ghost"}
-                        size="sm" 
-                        onClick={handleFileSave}
-                        disabled={isSaving}
-                      >
-                        {isSaving ? (
-                          <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                        ) : (
-                          <Save className="h-3.5 w-3.5 mr-2" />
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex-1 overflow-hidden">
-                  <Tabs value={selectedTab} onValueChange={setSelectedTab} className="h-full">
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="editor">Editor</TabsTrigger>
-                      <TabsTrigger value="preview">Preview</TabsTrigger>
-                    </TabsList>
-
-                    <div className="h-[calc(100%-40px)]"> {/* Adjust height to account for TabsList */}
-                      <TabsContent value="editor" className="h-full mt-0">
-                        <CodeEditor
-                          value={fileContent}
-                          language={getFileLanguage(activeFilePath)}
-                          onChange={setFileContent}
-                        />
-                      </TabsContent>
-                      <TabsContent value="preview" className="h-full mt-0">
-                        <div className="h-full bg-white dark:bg-gray-900 p-4 overflow-auto">
-                          <div className="rounded-md border p-4">
-                            {getFileLanguage(activeFilePath) === "markdown" ? (
-                              <div className="prose dark:prose-invert max-w-none">
-                                <p className="text-center text-muted-foreground">
-                                  Markdown preview would render here
-                                </p>
-                              </div>
-                            ) : getFileLanguage(activeFilePath).includes("html") ? (
-                              <div className="relative border rounded-md h-[calc(100vh-220px)] bg-white">
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <p className="text-center text-muted-foreground">
-                                    HTML preview would render here
-                                  </p>
-                                </div>
-                              </div>
-                            ) : (
-                              <p className="text-center text-muted-foreground">
-                                Preview not available for this file type
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </TabsContent>
-                    </div>
-                  </Tabs>
-                </div>
-              </>
-            ) : (
-              <div className="flex h-full w-full items-center justify-center">
-                <div className="text-center">
-                  <FileX className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium">No file selected</h3>
-                  <p className="text-muted-foreground mt-2">Select a file from the file tree or create a new one</p>
-                  <div className="flex justify-center gap-2 mt-6">
-                    <Button variant="outline" onClick={() => handleShowNewFileDialog("")}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      New File
-                    </Button>
-                    <Button variant="outline" onClick={() => handleShowNewFolderDialog("")}>
-                      <FolderPlus className="h-4 w-4 mr-2" />
-                      New Folder
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
+      <div className="border-b">
+        <div className="flex items-center justify-between px-4 py-2">
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold">{currentProject.name}</h2>
+            <Badge variant="outline" className="text-xs">
+              {fileCount} files
+            </Badge>
           </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
-
-      <div className="border-t p-3">
-        <form onSubmit={handleAgentSubmit} className="flex gap-2">
-          <Input
-            placeholder="Ask AI to help with your code... (e.g., 'Create a login form')"
-            value={agentInstruction}
-            onChange={(e) => setAgentInstruction(e.target.value)}
-            className="flex-1"
-          />
-          <Button type="submit" disabled={isProcessing || !agentInstruction.trim()}>
-            {isProcessing ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <MessageSquareText className="h-4 w-4 mr-2" />
+          
+          <Tabs 
+            value={activeTab}
+            onValueChange={(value) => handleSwitchTab(value as "editor" | "threads")}
+            className="mx-auto"
+          >
+            <TabsList>
+              <TabsTrigger value="editor" className="flex items-center gap-1">
+                <FileSymlink className="h-4 w-4" />
+                Editor
+              </TabsTrigger>
+              <TabsTrigger value="threads" className="flex items-center gap-1">
+                <MessageSquare className="h-4 w-4" />
+                Threads
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          
+          <div className="flex items-center gap-1">
+            {activeTab === "threads" && !currentThread && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mr-2"
+                onClick={() => setShowNewThreadDialog(true)}
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                New Thread
+              </Button>
             )}
-          </Button>
-        </form>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <UserPlus className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Add Collaborator</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <GitBranch className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Version Control</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Project Settings</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        </div>
       </div>
+
+      <div className="flex-1 overflow-hidden">
+        {activeTab === "editor" ? (
+          <ResizablePanelGroup direction="horizontal" className="flex-1">
+            <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
+              <FileTree
+                files={projectFiles}
+                activeFile={activeFilePath}
+                onSelectFile={setActiveFilePath}
+                onCreateFile={handleShowNewFileDialog}
+                onCreateFolder={handleShowNewFolderDialog}
+                onDeleteFile={handleShowDeleteDialog}
+                onRenameFile={handleShowRenameDialog}
+              />
+            </ResizablePanel>
+
+            <ResizableHandle withHandle />
+
+            <ResizablePanel defaultSize={80}>
+              <div className="flex flex-col h-full">
+                {activeFilePath ? (
+                  <>
+                    <div className="flex items-center justify-between border-b p-2">
+                      <div className="flex items-center gap-2 text-sm">
+                        <FileCode className="w-4 h-4 text-muted-foreground" />
+                        <span className="font-medium">{activeFilePath}</span>
+                        {hasUnsavedChanges && (
+                          <Badge variant="outline" className="text-xs font-normal">Unsaved</Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="gap-1">
+                              <Code className="h-4 w-4" />
+                              <span>Actions</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>File Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={handleFileSave} disabled={!hasUnsavedChanges || isSaving}>
+                              <Save className="h-4 w-4 mr-2" />
+                              {isSaving ? "Saving..." : "Save"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleShowVersionHistory}>
+                              <History className="h-4 w-4 mr-2" />
+                              Version History
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Copy className="h-4 w-4 mr-2" />
+                              Duplicate
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Download className="h-4 w-4 mr-2" />
+                              Download
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleShowRenameDialog(activeFilePath)}>
+                              <Settings className="h-4 w-4 mr-2" />
+                              Rename
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        {hasUnsavedChanges && (
+                          <Button 
+                            variant={hasUnsavedChanges ? "default" : "ghost"}
+                            size="sm" 
+                            onClick={handleFileSave}
+                            disabled={isSaving}
+                          >
+                            {isSaving ? (
+                              <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                            ) : (
+                              <Save className="h-3.5 w-3.5 mr-2" />
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex-1 overflow-hidden">
+                      <CodeEditor
+                        value={fileContent}
+                        language={getFileLanguage(activeFilePath)}
+                        onChange={setFileContent}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center">
+                    <div className="text-center">
+                      <FileX className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-medium">No file selected</h3>
+                      <p className="text-muted-foreground mt-2">Select a file from the file tree or create a new one</p>
+                      <div className="flex justify-center gap-2 mt-6">
+                        <Button variant="outline" onClick={() => handleShowNewFileDialog("")}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          New File
+                        </Button>
+                        <Button variant="outline" onClick={() => handleShowNewFolderDialog("")}>
+                          <FolderPlus className="h-4 w-4 mr-2" />
+                          New Folder
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        ) : (
+          <ProjectThreadsView />
+        )}
+      </div>
+
+      {/* Show the input box only in the editor view */}
+      {activeTab === "editor" && activeFilePath && (
+        <div className="border-t p-3 flex-shrink-0">
+          <form onSubmit={handleAgentSubmit} className="flex gap-2 w-full max-w-full">
+            <Input
+              placeholder="Ask AI to help with your code... (e.g., 'Create a login form')"
+              value={agentInstruction}
+              onChange={(e) => setAgentInstruction(e.target.value)}
+              className="flex-1 min-w-0 text-sm"
+            />
+            <Button 
+              type="submit" 
+              className="flex-shrink-0" 
+              disabled={isProcessing || !agentInstruction.trim()}
+            >
+              {isProcessing ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <MessageSquareText className="h-4 w-4 mr-2" />
+              )}
+              Send
+            </Button>
+          </form>
+        </div>
+      )}
+
+      {/* New Thread Dialog */}
+      <Dialog open={showNewThreadDialog} onOpenChange={setShowNewThreadDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Thread</DialogTitle>
+            <DialogDescription>
+              Enter a title for your new thread.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            placeholder="Thread title"
+            value={newThreadTitle}
+            onChange={(e) => setNewThreadTitle(e.target.value)}
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewThreadDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateThread} 
+              disabled={!newThreadTitle.trim()}
+            >
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* New File Dialog */}
       <Dialog open={showNewFileDialog} onOpenChange={setShowNewFileDialog}>

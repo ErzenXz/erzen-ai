@@ -8,7 +8,7 @@ import React, {
   createContext,
   useEffect,
 } from "react";
-import type { Project, ProjectFile } from "@/lib/types";
+import type { Project, ProjectFile, SingleProjectThread } from "@/lib/types";
 import { nanoid } from "nanoid";
 import { toast } from "@/hooks/use-toast";
 import { fetchProject, fetchProjectFiles } from "@/lib/api";
@@ -43,6 +43,10 @@ interface ProjectContextValue {
   ) => Promise<void>;
   deleteFile: (path: string) => Promise<void>;
   renameFile: (oldPath: string, newPath: string) => Promise<void>;
+  // Add thread-related functionality
+  currentThread: SingleProjectThread | null;
+  setCurrentThread: (thread: SingleProjectThread | null) => void;
+  loadThread: (threadId: string) => Promise<SingleProjectThread | null>;
 }
 
 const ProjectContext = createContext<ProjectContextValue | undefined>(
@@ -66,6 +70,9 @@ export function ProjectProvider({
     useState<ProjectWithFiles | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Add state for the current thread
+  const [currentThread, setCurrentThread] =
+    useState<SingleProjectThread | null>(null);
 
   const loadProjects = useCallback(async () => {
     try {
@@ -374,6 +381,42 @@ export function ProjectProvider({
     [currentProject]
   );
 
+  // Load a thread by ID
+  const loadThread = useCallback(
+    async (threadId: string): Promise<SingleProjectThread | null> => {
+      if (!currentProject) {
+        return null;
+      }
+
+      try {
+        setIsLoading(true);
+        // In a real app, this would be an API call
+        await new Promise((resolve) => setTimeout(resolve, 300));
+
+        // Simulate fetching thread data
+        // In a real implementation, you would fetch actual thread data from the API
+        const thread: SingleProjectThread = {
+          id: threadId,
+          title: `Thread ${threadId.substring(0, 5)}`,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          userId: "current-user",
+          projectId: currentProject.id,
+        };
+
+        setCurrentThread(thread);
+        return thread;
+      } catch (err) {
+        console.error("Failed to load thread:", err);
+        setError("Failed to load thread");
+        return null;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [currentProject]
+  );
+
   const value = useMemo<ProjectContextValue>(
     () => ({
       projects,
@@ -389,6 +432,10 @@ export function ProjectProvider({
       createFile,
       deleteFile,
       renameFile,
+      // Add thread-related functionality
+      currentThread,
+      setCurrentThread,
+      loadThread,
     }),
     [
       projects,
@@ -404,6 +451,10 @@ export function ProjectProvider({
       createFile,
       deleteFile,
       renameFile,
+      // Add thread-related functionality
+      currentThread,
+      setCurrentThread,
+      loadThread,
     ]
   );
 
