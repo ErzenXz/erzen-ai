@@ -365,6 +365,18 @@ export default function Home() {
                       />
                     </div>
                   </div>
+                  
+                  {browseMode && (
+                    <div className="flex items-center gap-3">
+                      <Brain className="w-5 h-5 text-muted-foreground" />
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="reasoning" className="text-sm font-medium cursor-pointer">
+                          Reasoning
+                        </Label>
+                        <Switch id="reasoning" checked={reasoning} onCheckedChange={setReasoning} />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -436,11 +448,8 @@ export default function Home() {
                 <div className="space-y-8">
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
                     {displayProjects.map((project) => (
-                      <Card 
-                        key={project.id} 
-                        className="hover:bg-accent/50 transition-colors hover:shadow-md cursor-pointer overflow-hidden border group"
-                        onClick={() => handleProjectSelect(project.id)}
-                      >
+                      <Card key={project.id} className="hover:bg-accent/50 transition-colors hover:shadow-md cursor-pointer overflow-hidden border group"
+                        onClick={() => handleProjectSelect(project.id)}>
                         <div className="bg-primary/5 h-2 group-hover:bg-primary/20 transition-colors"></div>
                         <div className="p-5 flex flex-col gap-2 h-full">
                           <div className="flex items-center gap-3">
@@ -472,10 +481,8 @@ export default function Home() {
                       </Card>
                     ))}
 
-                    <Card 
-                      className="hover:bg-accent/50 transition-colors cursor-pointer border-dashed border-2 hover:border-primary/30"
-                      onClick={() => {}}
-                    >
+                    <Card className="hover:bg-accent/50 transition-colors cursor-pointer border-dashed border-2 hover:border-primary/30"
+                      onClick={() => {}}>
                       <div className="flex items-center justify-center h-full p-6">
                         <div className="text-center">
                           <div className="bg-primary/10 h-12 w-12 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -540,11 +547,43 @@ export default function Home() {
                       onPlay={handlePlayMessage}
                     />
                   ))}
-
+                  
+                  {error && <div className="p-4 text-sm text-destructive bg-destructive/10 rounded-lg">{error}</div>}
                 </div>
               )} 
             </div>
           </ScrollArea>
+        )}
+        
+        {/* Chat input footer - only show when in chat mode */}
+        {!showProjectsGrid && (!currentProjectId || currentProjectThreadId) && (currentThread?.id || !currentProjectId) && (
+          <footer className="border-t p-4">
+            <div className="max-w-5xl mx-auto">
+              {showFileUpload && <FileUpload onFilesChange={handleFilesChange} />}
+
+              <ChatInput
+                message={message}
+                onMessageChange={setMessage}
+                onSubmit={handleSubmit}
+                onToggleFileUpload={() => setShowFileUpload(!showFileUpload)}
+                isLoading={isLoading}
+                isDisabled={!user || !selectedModel}
+                isProcessingFiles={isProcessingFiles}
+                uploadedFilesCount={uploadedFiles.length}
+                showFileUpload={showFileUpload}
+                onClearFiles={() => {
+                  setUploadedFiles([])
+                  setShowFileUpload(false)
+                }}
+                placeholder={
+                  isEditingMessage
+                    ? "Edit your message..."
+                    : getInputPlaceholder()
+                }
+                onCommandExecute={handleCommandExecute}
+              />
+            </div>
+          </footer>
         )}
       </div>
 
