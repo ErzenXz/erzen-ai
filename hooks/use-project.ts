@@ -47,6 +47,9 @@ interface ProjectContextValue {
   currentThread: SingleProjectThread | null;
   setCurrentThread: (thread: SingleProjectThread | null) => void;
   loadThread: (threadId: string) => Promise<SingleProjectThread | null>;
+  threads: SingleProjectThread[];
+  projectThreads: SingleProjectThread[];
+  selectProjectThread: (threadId: string | null) => void;
 }
 
 const ProjectContext = createContext<ProjectContextValue | undefined>(
@@ -70,7 +73,11 @@ export function ProjectProvider({
     useState<ProjectWithFiles | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Add state for the current thread
+  // Add state for threads
+  const [threads, setThreads] = useState<SingleProjectThread[]>([]);
+  const [projectThreads, setProjectThreads] = useState<SingleProjectThread[]>(
+    []
+  );
   const [currentThread, setCurrentThread] =
     useState<SingleProjectThread | null>(null);
 
@@ -114,6 +121,11 @@ export function ProjectProvider({
             }))
           );
 
+          // Set project threads from the project data
+          if (project.threads) {
+            setProjectThreads(project.threads);
+          }
+
           setError(null);
         } catch (err) {
           setError("Failed to load project");
@@ -126,6 +138,39 @@ export function ProjectProvider({
       loadInitialProject();
     }
   }, [initialProjectId]);
+
+  // Add demo threads for testing
+  useEffect(() => {
+    if (currentProject && projectThreads.length === 0) {
+      const demoThreads: SingleProjectThread[] = [
+        {
+          id: "1",
+          title: "Getting Started",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          userId: "user-1",
+          projectId: currentProject.id,
+        },
+        {
+          id: "2",
+          title: "Bug Fixes",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          userId: "user-1",
+          projectId: currentProject.id,
+        },
+        {
+          id: "3",
+          title: "Feature Discussion",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          userId: "user-1",
+          projectId: currentProject.id,
+        },
+      ];
+      setProjectThreads(demoThreads);
+    }
+  }, [currentProject, projectThreads.length]);
 
   const createProject = useCallback(
     async (name: string, description: string) => {
@@ -417,6 +462,18 @@ export function ProjectProvider({
     [currentProject]
   );
 
+  const selectProjectThread = useCallback(
+    (threadId: string | null) => {
+      if (threadId) {
+        const thread = projectThreads.find((t) => t.id === threadId);
+        setCurrentThread(thread || null);
+      } else {
+        setCurrentThread(null);
+      }
+    },
+    [projectThreads]
+  );
+
   const value = useMemo<ProjectContextValue>(
     () => ({
       projects,
@@ -436,6 +493,9 @@ export function ProjectProvider({
       currentThread,
       setCurrentThread,
       loadThread,
+      threads,
+      projectThreads,
+      selectProjectThread,
     }),
     [
       projects,
@@ -455,6 +515,9 @@ export function ProjectProvider({
       currentThread,
       setCurrentThread,
       loadThread,
+      threads,
+      projectThreads,
+      selectProjectThread,
     ]
   );
 

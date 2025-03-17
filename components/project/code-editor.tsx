@@ -45,6 +45,28 @@ export function CodeEditor({ value, language = "javascript", onChange, readOnly 
       yml: "yaml",
       yaml: "yaml",
       sql: "sql",
+      // Additional mappings
+      vue: "vue",
+      svelte: "svelte",
+      dart: "dart",
+      kt: "kotlin",
+      scala: "scala",
+      lua: "lua",
+      pl: "perl",
+      r: "r",
+      xml: "xml",
+      scss: "scss",
+      sass: "sass",
+      less: "less",
+      graphql: "graphql",
+      dockerfile: "dockerfile",
+      tf: "terraform",
+      hcl: "hcl",
+      toml: "toml",
+      ini: "ini",
+      bat: "bat",
+      ps1: "powershell",
+      tex: "latex"
     }
 
     return mapping[ext.toLowerCase()] || "plaintext"
@@ -86,6 +108,8 @@ export function CodeEditor({ value, language = "javascript", onChange, readOnly 
           tabSize: 2,
           wordWrap: "on",
           wrappingStrategy: "advanced",
+          wrappingIndent: "same",
+          formatOnPaste: true,
           scrollbar: {
             vertical: "visible",
             horizontal: "visible",

@@ -71,9 +71,9 @@ const tokenEventManager = new TokenEventManager();
 class TokenManager {
   private refreshPromise: Promise<boolean> | null = null;
   private tokenExpiration: number = 0;
-  private refreshBuffer = 2 * 60 * 1000; // 2 minutes in milliseconds
+  private readonly refreshBuffer = 2 * 60 * 1000; // 2 minutes in milliseconds
   private lastRefreshAttempt: number = 0;
-  private minRefreshInterval = 10 * 1000; // Minimum 10 seconds between refresh attempts
+  private readonly minRefreshInterval = 10 * 1000; // Minimum 10 seconds between refresh attempts
 
   constructor() {
     if (isBrowser) {
@@ -818,7 +818,7 @@ export async function processAgentInstruction(
       body: JSON.stringify({
         instruction,
         projectId,
-        threadId: threadId || undefined,
+        threadId: threadId ?? undefined,
       }),
     }
   );

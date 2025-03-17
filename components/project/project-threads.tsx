@@ -4,406 +4,402 @@ import * as React from "react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  MessageSquareText,
-  Plus,
-  Loader2,
-  Search,
-  CalendarDays,
-  ChevronLeft
-} from "lucide-react"
-import { SingleProjectThread } from "@/lib/types"
+import { MessageSquareText, Plus, Loader2, Search, CalendarDays, ChevronLeft, Clock, User, ArrowLeft, FileCode, CheckCircle2, Brain, Sparkles } from "lucide-react"
+import type { SingleProjectThread, Message } from "@/lib/types"
 import { useProject } from "@/hooks/use-project"
 import { toast } from "@/hooks/use-toast"
-import { 
-  Dialog, DialogContent, DialogHeader, DialogTitle, 
-  DialogFooter, DialogDescription
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog"
-import { Separator } from "@/components/ui/separator"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { useEffect, useState } from "react"
+import { fetchThreadMessages, processAgentInstruction } from "@/lib/api"
+
+interface AgentAction {
+  type: string
+  filePath: string
+  content: string
+  fileType: string
+  commitMsg?: string
+}
+
+// Helper function to parse agent messages
+const parseAgentMessage = (content: string) => {
+  try {
+    const data = JSON.parse(content)
+    if (data.agent === "execution-agent" && data.response?.actions) {
+      return data.response.actions.map((action: AgentAction) => ({
+        type: action.type,
+        filePath: action.filePath,
+        content: action.content,
+        fileType: action.fileType,
+        commitMsg: action.commitMsg
+      }))
+    }
+    return null
+  } catch {
+    return null
+  }
+}
 
 export function ProjectThreadsView() {
-  const { currentProject, currentThread, loadThread, setCurrentThread } = useProject()
-  const [threads, setThreads] = React.useState<SingleProjectThread[]>([])
-  const [isLoading, setIsLoading] = React.useState(false)
-  const [isLoadingThread, setIsLoadingThread] = React.useState(false)
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [showNewThreadDialog, setShowNewThreadDialog] = React.useState(false)
-  const [newThreadTitle, setNewThreadTitle] = React.useState("")
-  const [threadMessages, setThreadMessages] = React.useState<any[]>([])
-  const [agentInstruction, setAgentInstruction] = React.useState("")
-  const [isProcessing, setIsProcessing] = React.useState(false)
+  const { projectThreads, selectProjectThread, currentThread, currentProject } = useProject()
+  const [messages, setMessages] = useState<Message[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [inputValue, setInputValue] = useState("")
+  const [isCreatingThread, setIsCreatingThread] = useState(false)
 
-  const fetchProjectThreads = React.useCallback(async () => {
-    setIsLoading(true)
-    try {
-      // In a real implementation, you would fetch threads from the API
-      // For now, we're just simulating it
-      if (currentProject && 'threads' in currentProject) {
-        // @ts-ignore - We know the shape might not match exactly
-        setThreads(currentProject.threads || [])
-      } else {
-        // Create mock threads for demo purposes if none exist
-        const mockThreads = [
-          {
-            id: "thread_1",
-            title: "Getting started with the project",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            userId: "user_1",
-            projectId: currentProject?.id || "",
-          },
-          {
-            id: "thread_2",
-            title: "API integration questions",
-            createdAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-            updatedAt: new Date(Date.now() - 86400000).toISOString(),
-            userId: "user_1",
-            projectId: currentProject?.id || "",
-          },
-          {
-            id: "thread_3",
-            title: "UI design feedback",
-            createdAt: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
-            updatedAt: new Date(Date.now() - 172800000).toISOString(),
-            userId: "user_1",
-            projectId: currentProject?.id || "",
-          }
-        ]
-        setThreads(mockThreads)
-      }
-    } catch (error) {
-      console.error("Error fetching project threads:", error)
-      toast({
-        title: "Failed to load threads",
-        description: "Could not load threads for this project.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }, [currentProject])
-
-  // Fetch threads when component mounts or project changes
-  React.useEffect(() => {
-    if (currentProject?.id) {
-      fetchProjectThreads()
-    }
-  }, [currentProject?.id, fetchProjectThreads])
-
-  const handleCreateThread = async () => {
-    if (!newThreadTitle.trim() || !currentProject) {
-      return
-    }
-
-    try {
-      // In a real implementation, you would call an API to create a new thread
-      const newThread: SingleProjectThread = {
-        id: `thread_${Date.now()}`,
-        title: newThreadTitle,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        userId: "current-user-id", // This would come from auth context
-        projectId: currentProject.id,
-      }
-
-      setThreads((prevThreads) => [newThread, ...prevThreads])
-      setShowNewThreadDialog(false)
-      setNewThreadTitle("")
-
-      toast({
-        title: "Thread created",
-        description: "New thread was created successfully.",
-      })
-
-    } catch (error) {
-      console.error("Error creating thread:", error)
-      toast({
-        title: "Error",
-        description: "Failed to create new thread.",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const handleOpenThread = async (threadId: string) => {
-    setIsLoadingThread(true)
-    try {
-      const thread = await loadThread(threadId)
-      if (thread) {
-        // In a real implementation, you would fetch messages for this thread
-        // Simulate fetching messages
-        await new Promise((resolve) => setTimeout(resolve, 300))
-        
-        // Create mock messages for demo purposes
-        const mockMessages = [
-          {
-            id: `msg_${Date.now()}_1`,
-            content: "Hello! How can I help with the project today?",
-            role: "assistant",
-            timestamp: new Date(Date.now() - 3600000), // 1 hour ago
-            chatId: threadId
-          },
-          {
-            id: `msg_${Date.now()}_2`,
-            content: "I need help understanding how the authentication system works.",
-            role: "user",
-            timestamp: new Date(Date.now() - 3500000), // 58 minutes ago
-            chatId: threadId
-          },
-          {
-            id: `msg_${Date.now()}_3`,
-            content: "The authentication system uses JWT tokens for authorization. When a user logs in, the server creates a token that contains their user ID and role, which is then sent back to the client. The client includes this token in the Authorization header for all subsequent requests.\n\nHere's a simplified example of how it works:\n\n```javascript\n// Login request\nasync function login(username, password) {\n  const response = await fetch('/api/auth/login', {\n    method: 'POST',\n    body: JSON.stringify({ username, password })\n  });\n  const { token } = await response.json();\n  localStorage.setItem('authToken', token);\n}\n\n// Authenticated request\nasync function fetchProtectedData() {\n  const token = localStorage.getItem('authToken');\n  const response = await fetch('/api/protected', {\n    headers: {\n      Authorization: `Bearer ${token}`\n    }\n  });\n  return response.json();\n}\n```\n\nDoes this help clarify how the authentication works?",
-            role: "assistant",
-            timestamp: new Date(Date.now() - 3400000), // 56 minutes ago
-            chatId: threadId
-          }
-        ]
-        
-        setThreadMessages(mockMessages)
-      }
-    } catch (error) {
-      console.error("Error opening thread:", error)
-      toast({
-        title: "Error",
-        description: "Failed to load thread.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoadingThread(false)
-    }
-  }
-
-  const handleBackToThreads = () => {
-    setCurrentThread(null)
-    setThreadMessages([])
-  }
-
-  const handleAgentSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!agentInstruction.trim()) {
-      return;
-    }
-
-    setIsProcessing(true)
-
-    // Simulate AI processing
-    setTimeout(() => {
-      // Add the user message to the thread
-      const userMessage = {
-        id: `msg_${Date.now()}_user`,
-        content: agentInstruction,
-        role: "user",
-        timestamp: new Date(),
-        chatId: currentThread?.id
-      }
-      
-      setThreadMessages(prev => [...prev, userMessage])
-      
-      // Clear the input
-      setAgentInstruction("")
-      
-      // Simulate AI response after a delay
-      setTimeout(() => {
-        const aiMessage = {
-          id: `msg_${Date.now()}_ai`,
-          content: `I'm processing your query about: "${agentInstruction}"`,
-          role: "assistant",
-          timestamp: new Date(),
-          chatId: currentThread?.id
+  // Load thread messages when a thread is selected
+  useEffect(() => {
+    const loadThreadMessages = async () => {
+      if (currentThread) {
+        setIsLoading(true)
+        try {
+          const threadMessages = await fetchThreadMessages(currentThread.id)
+          setMessages(threadMessages)
+        } catch (error) {
+          console.error("Failed to load thread messages:", error)
+        } finally {
+          setIsLoading(false)
         }
+      } else {
+        setMessages([])
+      }
+    }
+
+    loadThreadMessages()
+  }, [currentThread])
+
+  const handleCreateThread = async (instruction: string) => {
+    if (!currentProject?.id) return
+
+    setIsCreatingThread(true)
+    try {
+      const response = await processAgentInstruction(currentProject.id, instruction)
+      
+      // If the response contains a threadId, it means a new thread was created
+      if (response.threadId) {
+        // Select the new thread
+        selectProjectThread(response.threadId)
         
-        setThreadMessages(prev => [...prev, aiMessage])
-        setIsProcessing(false)
-      }, 1000)
-    }, 500)
+        // If there are messages in the response, add them to our messages state
+        if (response.messages) {
+          setMessages(response.messages)
+        }
+
+        toast({
+          title: "New Thread Created",
+          description: "Your conversation has started",
+        })
+      }
+    } catch (error) {
+      console.error("Failed to create thread:", error)
+      toast({
+        title: "Error",
+        description: "Failed to create new thread. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsCreatingThread(false)
+      setInputValue("")
+    }
   }
 
-  const filteredThreads = threads
-    .filter(thread => thread.title.toLowerCase().includes(searchQuery.toLowerCase()))
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!inputValue.trim()) return
+    handleCreateThread(inputValue.trim())
+  }
 
-  // If a thread is selected, show the thread view
+  const renderMessage = (message: Message) => {
+    const agentActions = parseAgentMessage(message.content)
+    
+    if (message.role === "system" && agentActions) {
+      return (
+        <div className="space-y-3">
+          {agentActions.map((action: AgentAction, index: number) => (
+            <div key={index} className="bg-primary/5 rounded-lg p-4 text-sm border border-primary/10">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle2 className="h-4 w-4 text-primary" />
+                <span className="font-medium">{action.type.charAt(0).toUpperCase() + action.type.slice(1)}</span>
+                <span className="text-muted-foreground">-</span>
+                <span className="font-mono text-xs bg-primary/10 px-2 py-0.5 rounded">{action.filePath}</span>
+              </div>
+              {action.commitMsg && (
+                <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary/20"></span>
+                  {action.commitMsg}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )
+    }
+
+    return (
+      <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+    )
+  }
+
+  // Filter messages to only show user and execution agent messages
+  const filteredMessages = messages.filter(message => 
+    message.role === "user" || 
+    (message.role === "system" && parseAgentMessage(message.content))
+  )
+
   if (currentThread) {
     return (
-      <div className="flex flex-col h-full">
-        <div className="p-4 border-b flex items-center">
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="mr-2"
-            onClick={handleBackToThreads}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h3 className="font-medium">{currentThread.title}</h3>
-            <p className="text-xs text-muted-foreground">
-              {new Date(currentThread.updatedAt).toLocaleDateString()} 
-              {' '}
-              {new Date(currentThread.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </p>
+      <div className="h-full flex flex-col">
+        <div className="border-b p-4">
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => selectProjectThread(null)}
+              className="hover:bg-primary/5 transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Threads
+            </Button>
+            <h2 className="text-lg font-semibold">{currentThread.title}</h2>
           </div>
         </div>
-        
-        <div className="flex-1 overflow-hidden flex flex-col">
-          {isLoadingThread ? (
-            <div className="flex flex-1 items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-6 pb-4">
-                {threadMessages.map((message) => (
-                  <div 
-                    key={message.id}
-                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div 
-                      className={`max-w-[80%] rounded-lg p-4 ${
-                        message.role === 'user' 
-                          ? 'bg-primary text-primary-foreground' 
-                          : 'bg-muted'
-                      }`}
-                    >
-                      <div className="prose dark:prose-invert" 
-                        dangerouslySetInnerHTML={{ __html: message.content.replace(/\n/g, '<br/>') }} 
-                      />
-                      <div className="mt-2 text-xs opacity-70">
-                        {new Date(message.timestamp).toLocaleTimeString([], { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
-                        })}
+
+        <ScrollArea className="flex-1">
+          <div className="p-6 space-y-6 max-w-4xl mx-auto">
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : filteredMessages.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No messages in this thread yet
+              </div>
+            ) : (
+              filteredMessages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex items-start gap-3 ${
+                    message.role === "user" ? "justify-end" : "justify-start"
+                  }`}
+                >
+                  {message.role !== "user" && (
+                    <div className="flex-shrink-0 mt-1">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center ring-1 ring-primary/20">
+                        <Brain className="h-4 w-4 text-primary" />
                       </div>
                     </div>
+                  )}
+                  
+                  <div
+                    className={`relative flex flex-col max-w-[85%] rounded-2xl px-4 py-3 ${
+                      message.role === "user"
+                        ? "bg-primary text-primary-foreground ml-12"
+                        : "bg-gradient-to-br from-muted/50 to-muted/30 border border-border/50 mr-12 shadow-sm"
+                    }`}
+                  >
+                    <div className="text-sm font-medium mb-1 flex items-center gap-2">
+                      {message.role === "user" ? (
+                        <>
+                          <User className="h-3.5 w-3.5" />
+                          You
+                        </>
+                      ) : (
+                        <>
+                          <Brain className="h-3.5 w-3.5 text-primary" />
+                          Agent
+                        </>
+                      )}
+                    </div>
+                    {renderMessage(message)}
                   </div>
-                ))}
-              </div>
-            </ScrollArea>
-          )}
 
-          {/* Add the input box inside the thread view */}
-          <div className="border-t p-3 flex-shrink-0">
-            <form onSubmit={handleAgentSubmit} className="flex gap-2 w-full max-w-full">
-              <Input
-                placeholder="Ask AI about this project..."
-                value={agentInstruction}
-                onChange={(e) => setAgentInstruction(e.target.value)}
-                className="flex-1 min-w-0 text-sm"
-                disabled={isProcessing}
-              />
-              <Button 
-                type="submit" 
-                className="flex-shrink-0" 
-                disabled={isProcessing || !agentInstruction.trim()}
-              >
-                {isProcessing ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <MessageSquareText className="h-4 w-4 mr-2" />
-                )}
-                Send
-              </Button>
-            </form>
+                  {message.role === "user" && (
+                    <div className="flex-shrink-0 mt-1">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/90 flex items-center justify-center ring-1 ring-primary/20">
+                        <User className="h-4 w-4 text-primary-foreground" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </div>
+        </ScrollArea>
+
+        {/* AI Assistant Input */}
+        <div className="border-t p-4 bg-muted/20">
+          <form onSubmit={handleSubmit} className="flex gap-2 w-full max-w-4xl mx-auto">
+            <div className="flex-1 min-w-0">
+              <Input
+                type="text"
+                placeholder="Ask AI to help with your code... (e.g., 'Create a login form')"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                className="w-full text-sm"
+              />
+            </div>
+            <Button type="submit" className="flex-shrink-0" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <MessageSquareText className="h-4 w-4 mr-2" />
+                  Send
+                </>
+              )}
+            </Button>
+          </form>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="p-4 border-b">
-        <div className="relative">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search threads..."
-            className="pl-8"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-      </div>
-      
-      {isLoading ? (
-        <div className="flex flex-1 items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      ) : filteredThreads.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center">
-          <div className="text-center">
-            <MessageSquareText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium">No threads found</h3>
-            <p className="text-muted-foreground mt-2">
-              {searchQuery 
-                ? "Try a different search term" 
-                : "Create a new thread to start a conversation"}
-            </p>
-            <Button 
-              variant="outline" 
-              className="mt-6"
-              onClick={() => setShowNewThreadDialog(true)}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Create Thread
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <ScrollArea className="flex-1">
-          <div className="p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {filteredThreads.map((thread) => (
-                <div
-                  key={thread.id}
-                  className="border rounded-lg hover:bg-accent cursor-pointer transition-colors flex flex-col"
-                  onClick={() => handleOpenThread(thread.id)}
-                >
-                  <div className="p-4 border-b flex-1">
-                    <h4 className="font-medium line-clamp-2">{thread.title}</h4>
+    <div className="h-full flex flex-col">
+      <ScrollArea className="flex-1">
+        <div className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-[1400px] mx-auto">
+            {projectThreads.map((thread) => (
+              <Card
+                key={thread.id}
+                className="hover:bg-accent/50 transition-colors cursor-pointer group"
+                onClick={() => selectProjectThread(thread.id)}
+              >
+                <CardHeader className="p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-base truncate">{thread.title}</CardTitle>
+                      <CardDescription className="text-xs mt-1 flex items-center gap-1.5">
+                        <CalendarDays className="h-3 w-3" />
+                        {new Date(thread.createdAt).toLocaleDateString()}
+                      </CardDescription>
+                    </div>
+                    <div className="flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                        <MessageSquareText className="h-4 w-4 text-primary" />
+                      </div>
+                    </div>
                   </div>
-                  <div className="p-3 flex items-center text-xs text-muted-foreground bg-muted/30">
-                    <div className="flex items-center gap-1">
-                      <CalendarDays className="h-3.5 w-3.5" />
-                      <span>
-                        {new Date(thread.updatedAt).toLocaleDateString()}
-                      </span>
+                </CardHeader>
+              </Card>
+            ))}
+
+            {/* New Thread Card */}
+            <Card
+              className="hover:bg-accent/50 transition-colors cursor-pointer border-dashed group"
+              onClick={() => {
+                // Open dialog for new thread
+                setInputValue("")
+                setIsCreatingThread(true)
+              }}
+            >
+              <CardHeader className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Plus className="h-4 w-4" />
+                      New Thread
+                    </CardTitle>
+                    <CardDescription className="text-xs mt-1">Start a new conversation</CardDescription>
+                  </div>
+                  <div className="flex-shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                      <Plus className="h-4 w-4 text-primary" />
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
+              </CardHeader>
+            </Card>
           </div>
-        </ScrollArea>
-      )}
+        </div>
+      </ScrollArea>
 
       {/* New Thread Dialog */}
-      <Dialog open={showNewThreadDialog} onOpenChange={setShowNewThreadDialog}>
-        <DialogContent>
+      <Dialog open={isCreatingThread} onOpenChange={setIsCreatingThread}>
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Create New Thread</DialogTitle>
+            <DialogTitle>New Thread</DialogTitle>
             <DialogDescription>
-              Enter a title for your new thread.
+              What would you like help with? The AI will assist you with your request.
             </DialogDescription>
           </DialogHeader>
-          <Input
-            placeholder="Thread title"
-            value={newThreadTitle}
-            onChange={(e) => setNewThreadTitle(e.target.value)}
-            autoFocus
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNewThreadDialog(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleCreateThread} 
-              disabled={!newThreadTitle.trim()}
-            >
-              Create
-            </Button>
-          </DialogFooter>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Input
+                type="text"
+                placeholder="e.g., Create a login form, Fix a bug in my code..."
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                className="w-full"
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsCreatingThread(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={!inputValue.trim() || isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Thread
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
+
+      {/* AI Assistant Input */}
+      <div className="border-t p-4 bg-muted/20">
+        <form onSubmit={handleSubmit} className="flex gap-2 w-full max-w-4xl mx-auto">
+          <div className="flex-1 min-w-0">
+            <Input
+              type="text"
+              placeholder="Ask AI to help with your code... (e.g., 'Create a login form')"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              className="w-full text-sm"
+            />
+          </div>
+          <Button type="submit" className="flex-shrink-0" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              <>
+                <MessageSquareText className="h-4 w-4 mr-2" />
+                Send
+              </>
+            )}
+          </Button>
+        </form>
+      </div>
     </div>
   )
 }
+

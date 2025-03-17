@@ -12,6 +12,11 @@ import {
   Trash,
   Edit,
   Download,
+  FileJson,
+  FileText,
+  FileCode,
+  FileImage,
+  FileCog,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -65,11 +70,11 @@ export function FileTree({
         id: file.id,
         name: name,
         path: file.path,
-        isFolder: file.isFolder,
+        isFolder: file.path.endsWith("/"),
         children: [],
         parent: parentPath || null,
-        language: file.language,
-        content: file.content,
+        language: file.name.split(".").pop(),
+        content: "",
       }
     })
 
@@ -132,6 +137,29 @@ export function FileTree({
   const treeData = React.useMemo(() => buildFileTree(files), [files, buildFileTree])
 
   const [expandedFolders, setExpandedFolders] = React.useState<Set<string>>(new Set())
+  const [autoExpandedPaths, setAutoExpandedPaths] = React.useState<Set<string>>(new Set())
+
+  // Auto-expand parent folders of active file
+  React.useEffect(() => {
+    if (activeFile && !autoExpandedPaths.has(activeFile)) {
+      const parts = activeFile.split("/")
+      const toExpand = new Set<string>(expandedFolders)
+
+      // Build parent paths and add them to expanded set
+      let currentPath = ""
+      for (let i = 0; i < parts.length - 1; i++) {
+        currentPath = currentPath ? `${currentPath}/${parts[i]}` : parts[i]
+        toExpand.add(currentPath)
+      }
+
+      if (toExpand.size !== expandedFolders.size) {
+        setExpandedFolders(toExpand)
+      }
+
+      // Track that we've auto-expanded for this path
+      setAutoExpandedPaths((prev) => new Set(prev).add(activeFile))
+    }
+  }, [activeFile, expandedFolders, autoExpandedPaths])
 
   const toggleFolder = (path: string) => {
     setExpandedFolders((prev) => {
@@ -145,7 +173,7 @@ export function FileTree({
     })
   }
 
-  const renderFileIcon = (file: TreeNode) => {
+  const getFileIcon = (file: TreeNode) => {
     if (file.isFolder) {
       return expandedFolders.has(file.path) ? (
         <FolderOpenIcon className="h-4 w-4 text-yellow-400" />
@@ -154,8 +182,31 @@ export function FileTree({
       )
     }
 
-    // Specific file type icons could be added here based on extension
-    return <FileIcon className="h-4 w-4 text-blue-400" />
+    // Get file extension
+    const ext = file.name.split(".").pop()?.toLowerCase()
+
+    switch (ext) {
+      case "json":
+        return <FileJson className="h-4 w-4 text-orange-400" />
+      case "md":
+      case "txt":
+        return <FileText className="h-4 w-4 text-blue-300" />
+      case "js":
+      case "jsx":
+      case "ts":
+      case "tsx":
+        return <FileCode className="h-4 w-4 text-blue-500" />
+      case "css":
+      case "scss":
+        return <FileCog className="h-4 w-4 text-purple-400" />
+      case "png":
+      case "jpg":
+      case "jpeg":
+      case "svg":
+        return <FileImage className="h-4 w-4 text-green-400" />
+      default:
+        return <FileIcon className="h-4 w-4 text-blue-400" />
+    }
   }
 
   const renderTree = (nodes: TreeNode[], level = 0) => {
@@ -163,8 +214,8 @@ export function FileTree({
       <React.Fragment key={node.path}>
         <div
           className={cn(
-            "flex items-center py-1 px-2 hover:bg-secondary/40 rounded-sm group",
-            activeFile === node.path && "bg-secondary text-secondary-foreground",
+            "flex items-center py-1.5 px-2 hover:bg-accent/40 rounded-sm group transition-colors",
+            activeFile === node.path && "bg-primary/10 text-primary font-medium",
             !node.isFolder && "cursor-pointer",
           )}
           style={{ paddingLeft: `${level * 12 + 4}px` }}
@@ -185,7 +236,7 @@ export function FileTree({
             className="flex items-center gap-2 flex-1 min-w-0"
             onClick={() => !node.isFolder && onSelectFile(node.path)}
           >
-            {renderFileIcon(node)}
+            {getFileIcon(node)}
             <span className="truncate text-sm">{node.name}</span>
           </div>
 
@@ -260,9 +311,9 @@ export function FileTree({
   }
 
   return (
-    <div className="flex flex-col h-full border-r">
-      <div className="flex items-center justify-between p-2 border-b">
-        <h3 className="text-sm font-medium">Files</h3>
+    <div className="flex flex-col h-full bg-background">
+      <div className="flex items-center justify-between p-2 border-b bg-muted/30">
+        <h3 className="text-sm font-semibold">Files</h3>
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -277,12 +328,15 @@ export function FileTree({
       <ScrollArea className="flex-1">
         <div className="p-2">
           {treeData.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-              <FileIcon className="h-8 w-8 text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">No files yet</p>
-              <Button variant="outline" size="sm" className="mt-4" onClick={() => onCreateFile?.("")}>
+            <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+              <div className="h-16 w-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+                <FileIcon className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium mb-2">No files yet</p>
+              <p className="text-xs text-muted-foreground mb-6 max-w-[200px]">Create your first file to start coding</p>
+              <Button onClick={() => onCreateFile?.("")}>
                 <Plus className="h-4 w-4 mr-2" />
-                Create First File
+                Create File
               </Button>
             </div>
           ) : (
