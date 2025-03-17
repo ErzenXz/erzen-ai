@@ -162,8 +162,6 @@ export function ChatThreadList({
     )
   }
 
-  console.log('projects', projects);
-
   return (
     <TooltipProvider delayDuration={300}>
       <div
@@ -353,7 +351,12 @@ export function ChatThreadList({
                       {!collapsed && (
                         <div className="flex-1 min-w-0 flex items-center justify-between">
                           <div>
-                            <span className="font-medium text-sm">Projects</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-medium text-sm">Projects</span> 
+                              <span className="px-1.5 py-0.5 text-[10px] leading-none font-medium rounded-full bg-blue-500/20 text-blue-600 border border-blue-500/20">
+                              BETA
+                              </span>
+                            </div>
                             <div className="flex items-center gap-1.5 mt-1">
                               <span className="text-xs text-muted-foreground">
                                 {projects.length} {projects.length === 1 ? 'project' : 'projects'}
@@ -421,14 +424,15 @@ export function ChatThreadList({
                         {!collapsed && (
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
-                              <span
+                                <span
                                 className={cn(
-                                  "font-medium text-sm truncate",
+                                  "font-medium text-sm truncate max-w-[170px] block overflow-hidden text-ellipsis whitespace-nowrap",
                                   currentThreadId === thread.id && "text-primary",
                                 )}
-                              >
+                                title={thread.title ?? "New Chat"}
+                                >
                                 {thread.title ?? "New Chat"}
-                              </span>
+                                </span>
                             </div>
 
                             <div className="flex items-center gap-1.5 mt-1">
