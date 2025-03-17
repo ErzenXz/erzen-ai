@@ -187,25 +187,47 @@ export function FileTree({
 
     switch (ext) {
       case "json":
-        return <FileJson className="h-4 w-4 text-orange-400" />
+      return <FileJson className="h-4 w-4 text-orange-400" />
       case "md":
       case "txt":
-        return <FileText className="h-4 w-4 text-blue-300" />
+      return <FileText className="h-4 w-4 text-blue-300" />
       case "js":
       case "jsx":
       case "ts":
       case "tsx":
-        return <FileCode className="h-4 w-4 text-blue-500" />
+      return <FileCode className="h-4 w-4 text-blue-500" />
+      case "html":
+      case "htm":
+      return <FileCode className="h-4 w-4 text-red-500" />
       case "css":
       case "scss":
-        return <FileCog className="h-4 w-4 text-purple-400" />
+      case "sass":
+      return <FileCog className="h-4 w-4 text-purple-400" />
       case "png":
       case "jpg":
       case "jpeg":
+      case "gif":
+      case "webp":
       case "svg":
-        return <FileImage className="h-4 w-4 text-green-400" />
+      return <FileImage className="h-4 w-4 text-green-400" />
+      case "pdf":
+      return <FileText className="h-4 w-4 text-red-400" />
+      case "py":
+      return <FileCode className="h-4 w-4 text-yellow-600" />
+      case "rb":
+      return <FileCode className="h-4 w-4 text-red-600" />
+      case "php":
+      return <FileCode className="h-4 w-4 text-purple-600" />
+      case "go":
+      return <FileCode className="h-4 w-4 text-cyan-500" />
+      case "yaml":
+      case "yml":
+      return <FileCog className="h-4 w-4 text-green-600" />
+      case "sh":
+      case "bash":
+      return <FileText className="h-4 w-4 text-green-500" />
       default:
-        return <FileIcon className="h-4 w-4 text-blue-400" />
+      return <FileIcon className="h-4 w-4 text-blue-400" />
     }
   }
 

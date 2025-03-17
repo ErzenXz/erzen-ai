@@ -4,8 +4,8 @@ import * as React from "react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { MessageSquareText, Plus, Loader2, Search, CalendarDays, ChevronLeft, Clock, User, ArrowLeft, FileCode, CheckCircle2, Brain, Sparkles } from "lucide-react"
-import type { SingleProjectThread, Message } from "@/lib/types"
+import { MessageSquareText, Plus, Loader2,  CalendarDays, User, ArrowLeft, CheckCircle2, Brain, InfinityIcon } from "lucide-react"
+import type { Message } from "@/lib/types"
 import { useProject } from "@/hooks/use-project"
 import { toast } from "@/hooks/use-toast"
 import {
@@ -16,8 +16,6 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { useEffect, useState } from "react"
 import { fetchThreadMessages, processAgentInstruction } from "@/lib/api"
@@ -63,7 +61,13 @@ export function ProjectThreadsView() {
         setIsLoading(true)
         try {
           const threadMessages = await fetchThreadMessages(currentThread.id)
-          setMessages(threadMessages)
+          // Sort messages by createdAt timestamp, oldest first
+          const sortedMessages = [...threadMessages].sort((a, b) => {
+            const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return timeA - timeB;
+          })
+          setMessages(sortedMessages)
         } catch (error) {
           console.error("Failed to load thread messages:", error)
         } finally {
@@ -194,7 +198,7 @@ export function ProjectThreadsView() {
                   {message.role !== "user" && (
                     <div className="flex-shrink-0 mt-1">
                       <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center ring-1 ring-primary/20">
-                        <Brain className="h-4 w-4 text-primary" />
+                        <InfinityIcon className="h-4 w-4 text-primary" />
                       </div>
                     </div>
                   )}
@@ -214,7 +218,6 @@ export function ProjectThreadsView() {
                         </>
                       ) : (
                         <>
-                          <Brain className="h-3.5 w-3.5 text-primary" />
                           Agent
                         </>
                       )}

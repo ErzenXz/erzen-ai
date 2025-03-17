@@ -22,6 +22,11 @@ import {
   MessageSquare,
   FileSymlink,
   Check,
+  ChevronDown,
+  MoreHorizontal,
+  Sparkles,
+  Trash,
+  Undo2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
@@ -46,6 +51,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
 } from "@/components/ui/dropdown-menu"
 import { TabsList, TabsTrigger, Tabs } from "@/components/ui/tabs"
 import { fetchProjectFileVersions, revertProjectFileVersion, createProjectFile, updateProjectFile } from "@/lib/api"
@@ -467,7 +473,7 @@ export function ProjectWorkspace() {
 
   return (
     <div className="h-full flex flex-col bg-background">
-      <div className="border-b">
+      <div className="border-b bg-muted/20">
         <div className="flex items-center justify-between px-4 py-2.5">
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-semibold truncate max-w-[200px]">{currentProject.name}</h2>
@@ -565,6 +571,7 @@ export function ProjectWorkspace() {
                           <Button variant="ghost" size="sm" className="gap-1.5 h-8 text-xs">
                             <Code className="h-3.5 w-3.5" />
                             <span>Actions</span>
+                            <ChevronDown className="h-3 w-3 opacity-50" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-52">
@@ -583,6 +590,7 @@ export function ProjectWorkspace() {
                               <Check className="h-4 w-4 mr-2" />
                             )}
                             {isSaving ? "Saving..." : hasUnsavedChanges ? "Save" : "Saved"}
+                            <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={handleShowVersionHistory}>
                             <History className="h-4 w-4 mr-2" />
@@ -600,6 +608,13 @@ export function ProjectWorkspace() {
                           <DropdownMenuItem onClick={() => handleShowRenameDialog(activeFilePath)}>
                             <Settings className="h-4 w-4 mr-2" />
                             Rename
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleShowDeleteDialog(activeFilePath)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash className="h-4 w-4 mr-2" />
+                            Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -634,13 +649,20 @@ export function ProjectWorkspace() {
                   {/* AI Assistant Input */}
                   <div className="border-t p-3 px-4 bg-muted/20">
                     <form onSubmit={handleAgentSubmit} className="flex gap-2 w-full max-w-5xl mx-auto">
-                      <Input
-                        placeholder="Ask AI to help with your code... (e.g., 'Create a login form')"
-                        value={agentInstruction}
-                        onChange={(e) => setAgentInstruction(e.target.value)}
-                        className="flex-1 min-w-0 text-sm border-primary/20 focus-visible:ring-primary/30"
-                      />
-                      <Button type="submit" className="flex-shrink-0" disabled={isProcessing || !agentInstruction.trim()}>
+                      <div className="relative flex-1 min-w-0">
+                        <Input
+                          placeholder="Ask AI to help with your code... (e.g., 'Create a login form')"
+                          value={agentInstruction}
+                          onChange={(e) => setAgentInstruction(e.target.value)}
+                          className="flex-1 min-w-0 text-sm border-primary/20 focus-visible:ring-primary/30 pl-9 pr-4 py-2 h-10"
+                        />
+                        <Sparkles className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-primary/60" />
+                      </div>
+                      <Button
+                        type="submit"
+                        className="flex-shrink-0 bg-primary/90 hover:bg-primary transition-colors"
+                        disabled={isProcessing || !agentInstruction.trim()}
+                      >
                         {isProcessing ? (
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         ) : (
@@ -654,16 +676,21 @@ export function ProjectWorkspace() {
               ) : (
                 <div className="flex h-full w-full items-center justify-center">
                   <div className="text-center max-w-md px-6">
-                    <div className="relative">
-                      <div className="absolute inset-0 -z-10 bg-primary/5 blur-3xl rounded-full opacity-50"></div>
-                      <FileX className="h-16 w-16 mx-auto text-muted-foreground mb-6" />
+                    <div className="relative mb-6">
+                      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/5 to-primary/10 blur-3xl rounded-full opacity-50"></div>
+                      <div className="bg-muted/50 w-20 h-20 rounded-full flex items-center justify-center mx-auto">
+                        <FileX className="h-10 w-10 text-muted-foreground" />
+                      </div>
                     </div>
                     <h3 className="text-xl font-medium mb-3">No file selected</h3>
                     <p className="text-muted-foreground mb-6">
                       Select a file from the file tree or create a new one to start coding in this project
                     </p>
                     <div className="flex justify-center gap-3">
-                      <Button onClick={() => handleShowNewFileDialog("")}>
+                      <Button
+                        onClick={() => handleShowNewFileDialog("")}
+                        className="bg-primary/90 hover:bg-primary transition-colors"
+                      >
                         <Plus className="h-4 w-4 mr-2" />
                         New File
                       </Button>
@@ -831,7 +858,7 @@ export function ProjectWorkspace() {
                 {fileVersions.map((version) => (
                   <div
                     key={version.id}
-                    className="flex items-center justify-between p-3 rounded-md hover:bg-accent group"
+                    className="flex items-center justify-between p-3 rounded-md hover:bg-accent/70 group transition-colors"
                   >
                     <div className="flex flex-col gap-1">
                       <p className="text-sm font-medium">{new Date(version.createdAt).toLocaleString()}</p>
@@ -839,15 +866,24 @@ export function ProjectWorkspace() {
                         {version.authorId ? `By ${version.authorId}` : "Automatic save"}
                       </p>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleRevertVersion(version.id)}
-                      className="opacity-70 group-hover:opacity-100"
-                    >
-                      <History className="h-3.5 w-3.5 mr-2" />
-                      Restore
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRevertVersion(version.id)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Undo2 className="h-3.5 w-3.5 mr-2" />
+                        Restore
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
