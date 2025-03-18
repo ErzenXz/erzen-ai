@@ -8,10 +8,26 @@ import React, {
   createContext,
   useEffect,
 } from "react";
-import type { Project, ProjectFile, SingleProjectThread } from "@/lib/types";
+import type {
+  Project,
+  ProjectFile,
+  SingleProjectThread,
+  CurrentVersion,
+} from "@/lib/types";
 import { nanoid } from "nanoid";
 import { toast } from "@/hooks/use-toast";
-import { fetchProject, fetchProjectFiles } from "@/lib/api";
+import {
+  fetchProject,
+  fetchProjectFiles,
+  createProjectFile,
+  updateProjectFile,
+  fetchProjectFileVersions,
+  revertProjectFileVersion,
+  updateProject,
+  deleteProject,
+  processAgentInstruction,
+  fetchProjectFile,
+} from "@/lib/api";
 
 // Extend the Project type to include files array
 interface ProjectWithFiles extends Project {
@@ -50,6 +66,13 @@ interface ProjectContextValue {
   threads: SingleProjectThread[];
   projectThreads: SingleProjectThread[];
   selectProjectThread: (threadId: string | null) => void;
+  // Add new methods
+  fetchFileVersions: (filePath: string) => Promise<CurrentVersion[]>;
+  revertToVersion: (filePath: string, versionNumber: number) => Promise<void>;
+  processAIInstruction: (
+    instruction: string,
+    threadId?: string
+  ) => Promise<any>;
 }
 
 const ProjectContext = createContext<ProjectContextValue | undefined>(
@@ -177,6 +200,7 @@ export function ProjectProvider({
       setIsLoading(true);
       try {
         // In a real app, this would be an API call
+        // TODO: Replace with actual API call when available
         await new Promise((resolve) => setTimeout(resolve, 500));
 
         const newProject: ProjectWithFiles = {
@@ -199,40 +223,28 @@ export function ProjectProvider({
         setError(null);
 
         // Create initial files
-        const initialFiles: ProjectFileWithContent[] = [
-          {
-            id: nanoid(),
-            projectId: newProject.id,
-            path: "README.md",
+        const readmeContent = `# ${name}\n\n${description}\n\nCreated on ${new Date().toLocaleDateString()}`;
+
+        try {
+          await createProjectFile(newProject.id, {
             name: "README.md",
-            currentVersionId: nanoid(),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            isDeleted: false,
-            content: `# ${name}\n\n${description}\n\nCreated on ${new Date().toLocaleDateString()}`,
-            currentVersion: {
-              id: nanoid(),
-              fileId: nanoid(),
-              version: 1,
-              content: `# ${name}\n\n${description}\n\nCreated on ${new Date().toLocaleDateString()}`,
-              commitMsg: "Initial commit",
-              authorId: "",
-              createdAt: new Date().toISOString(),
-              isDeleted: false,
-            },
-          },
-        ];
+            path: "README.md",
+            content: readmeContent,
+            commitMsg: "Initial commit",
+          });
 
-        setProjectFiles((prev) => [...prev, ...initialFiles]);
-
-        // Update project with file references
-        setProjects((prev) =>
-          prev.map((p) =>
-            p.id === newProject.id
-              ? { ...p, files: initialFiles.map((f) => f.id) }
-              : p
-          )
-        );
+          // Refresh file list
+          const files = await fetchProjectFiles(newProject.id);
+          const filesWithContent = Array.isArray(files) ? files : [files];
+          setProjectFiles(
+            filesWithContent.map((f) => ({
+              ...f,
+              content: f.currentVersion?.content,
+            }))
+          );
+        } catch (err) {
+          console.error("Failed to create initial files:", err);
+        }
       } catch (err) {
         setError("Failed to create project");
         console.error(err);
@@ -256,45 +268,101 @@ export function ProjectProvider({
 
   const saveFile = useCallback(
     async (path: string, content: string) => {
-      try {
-        // In a real app, this would be an API call
-        await new Promise((resolve) => setTimeout(resolve, 300));
+      if (!currentProject) {
+        toast({
+          title: "Error",
+          description: "No project selected",
+          variant: "destructive",
+        });
+        return;
+      }
 
+      try {
+        const fileToSave = projectFiles.find((file) => file.path === path);
+        if (!fileToSave) {
+          throw new Error("File not found");
+        }
+
+        // Use the real API to update the file
+        await updateProjectFile(currentProject.id, fileToSave.id, {
+          content: content,
+          commitMsg: `Updated ${path}`,
+        });
+
+        // Update local state
         setProjectFiles((prev) =>
           prev.map((file) => (file.path === path ? { ...file, content } : file))
         );
 
         // Update project's updatedAt
-        if (currentProject) {
-          setProjects((prev) =>
-            prev.map((p) =>
-              p.id === currentProject.id
-                ? { ...p, updatedAt: new Date().toISOString() }
-                : p
-            )
-          );
-        }
+        setProjects((prev) =>
+          prev.map((p) =>
+            p.id === currentProject.id
+              ? { ...p, updatedAt: new Date().toISOString() }
+              : p
+          )
+        );
       } catch (err) {
         console.error("Failed to save file:", err);
+        toast({
+          title: "Error saving file",
+          description: "Failed to save file. Please try again.",
+          variant: "destructive",
+        });
         throw err;
       }
     },
-    [currentProject]
+    [currentProject, projectFiles]
   );
 
   const loadFile = useCallback(
     async (path: string) => {
-      try {
-        // In a real app, this would be an API call
-        await new Promise((resolve) => setTimeout(resolve, 100));
+      if (!currentProject) {
+        toast({
+          title: "Error",
+          description: "No project selected",
+          variant: "destructive",
+        });
+        return undefined;
+      }
 
-        return projectFiles.find((file) => file.path === path);
+      try {
+        // First check if file is already in local state
+        const existingFile = projectFiles.find((file) => file.path === path);
+        if (existingFile && existingFile.content !== undefined) {
+          return existingFile;
+        }
+
+        // If not found or content not loaded, fetch from API
+        const fileId = projectFiles.find((file) => file.path === path)?.id;
+        if (!fileId) {
+          throw new Error("File not found");
+        }
+
+        const fileData = await fetchProjectFile(currentProject.id, fileId);
+
+        // Update local state with fetched file
+        const updatedFile = {
+          ...fileData,
+          content: fileData.currentVersion?.content,
+        };
+
+        setProjectFiles((prev) =>
+          prev.map((file) => (file.id === fileId ? updatedFile : file))
+        );
+
+        return updatedFile;
       } catch (err) {
         console.error("Failed to load file:", err);
+        toast({
+          title: "Error loading file",
+          description: "Failed to load file. Please try again.",
+          variant: "destructive",
+        });
         throw err;
       }
     },
-    [projectFiles]
+    [currentProject, projectFiles]
   );
 
   const createFile = useCallback(
@@ -309,48 +377,50 @@ export function ProjectProvider({
       }
 
       try {
-        // In a real app, this would be an API call
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        const filename = path.split("/").pop() || path;
 
-        const newFile: ProjectFileWithContent = {
-          id: nanoid(),
-          projectId: currentProject.id,
-          name: path.split("/").pop() || path,
-          path,
-          currentVersionId: nanoid(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          isDeleted: false,
-          content,
-          language,
-          currentVersion: {
-            id: nanoid(),
-            fileId: nanoid(),
-            version: 1,
-            content,
-            commitMsg: "Initial commit",
-            authorId: "",
-            createdAt: new Date().toISOString(),
-            isDeleted: false,
-          },
-        };
+        // Use the real API to create the file
+        await createProjectFile(currentProject.id, {
+          name: filename,
+          path: path,
+          content: content,
+          commitMsg: `Created ${filename}`,
+        });
 
-        setProjectFiles((prev) => [...prev, newFile]);
+        // Refresh file list to get the created file with its ID
+        const files = await fetchProjectFiles(currentProject.id);
+        const filesWithContent = Array.isArray(files) ? files : [files];
+        setProjectFiles(
+          filesWithContent.map((f) => ({
+            ...f,
+            content: f.currentVersion?.content,
+            language: language,
+          }))
+        );
 
-        // Update project's files and updatedAt
+        // Update project's updatedAt
         setProjects((prev) =>
           prev.map((p) =>
             p.id === currentProject.id
               ? {
                   ...p,
-                  files: [...p.files, newFile.id],
                   updatedAt: new Date().toISOString(),
+                  _count: {
+                    files: p._count ? p._count.files + 1 : 1,
+                    threads: p._count?.threads || 0,
+                    collaborators: p._count?.collaborators || 0,
+                  },
                 }
               : p
           )
         );
       } catch (err) {
         console.error("Failed to create file:", err);
+        toast({
+          title: "Error creating file",
+          description: "Failed to create file. Please try again.",
+          variant: "destructive",
+        });
         throw err;
       }
     },
@@ -360,36 +430,51 @@ export function ProjectProvider({
   const deleteFile = useCallback(
     async (path: string) => {
       if (!currentProject) {
+        toast({
+          title: "Error",
+          description: "No project selected",
+          variant: "destructive",
+        });
         return;
       }
 
       try {
-        // In a real app, this would be an API call
-        await new Promise((resolve) => setTimeout(resolve, 300));
-
         const fileToDelete = projectFiles.find((file) => file.path === path);
         if (!fileToDelete) {
-          return;
+          throw new Error("File not found");
         }
 
+        // Use the updateProjectFile API with isDeleted flag
+        await updateProjectFile(currentProject.id, fileToDelete.id, {
+          commitMsg: `Deleted ${path}`,
+        });
+
+        // Remove file from local state
         setProjectFiles((prev) => prev.filter((file) => file.path !== path));
 
-        // Update project's files and updatedAt
+        // Update project's updatedAt and file count
         setProjects((prev) =>
           prev.map((p) =>
             p.id === currentProject.id
               ? {
                   ...p,
-                  files: p.files.filter(
-                    (fileId: string) => fileId !== fileToDelete.id
-                  ),
                   updatedAt: new Date().toISOString(),
+                  _count: {
+                    files: p._count ? Math.max(0, p._count.files - 1) : 0,
+                    threads: p._count?.threads || 0,
+                    collaborators: p._count?.collaborators || 0,
+                  },
                 }
               : p
           )
         );
       } catch (err) {
         console.error("Failed to delete file:", err);
+        toast({
+          title: "Error deleting file",
+          description: "Failed to delete file. Please try again.",
+          variant: "destructive",
+        });
         throw err;
       }
     },
@@ -398,28 +483,180 @@ export function ProjectProvider({
 
   const renameFile = useCallback(
     async (oldPath: string, newPath: string) => {
-      try {
-        // In a real app, this would be an API call
-        await new Promise((resolve) => setTimeout(resolve, 300));
+      if (!currentProject) {
+        toast({
+          title: "Error",
+          description: "No project selected",
+          variant: "destructive",
+        });
+        return;
+      }
 
-        setProjectFiles((prev) =>
-          prev.map((file) =>
-            file.path === oldPath ? { ...file, path: newPath } : file
-          )
-        );
+      try {
+        const fileToRename = projectFiles.find((file) => file.path === oldPath);
+        if (!fileToRename) {
+          throw new Error("File not found");
+        }
+
+        const oldName = oldPath.split("/").pop() || oldPath;
+        const newName = newPath.split("/").pop() || newPath;
+
+        // Use the updateProjectFile API for rename
+        await updateProjectFile(currentProject.id, fileToRename.id, {
+          commitMsg: `Renamed ${oldName} to ${newName}`,
+        });
+
+        // Create a new file with the new path
+        const content = fileToRename.content || "";
+        await createFile(newPath, content, fileToRename.language);
+
+        // Delete the old file (update local state only, server already handled the rename)
+        setProjectFiles((prev) => prev.filter((file) => file.path !== oldPath));
 
         // Update project's updatedAt
-        if (currentProject) {
-          setProjects((prev) =>
-            prev.map((p) =>
-              p.id === currentProject.id
-                ? { ...p, updatedAt: new Date().toISOString() }
-                : p
-            )
-          );
-        }
+        setProjects((prev) =>
+          prev.map((p) =>
+            p.id === currentProject.id
+              ? { ...p, updatedAt: new Date().toISOString() }
+              : p
+          )
+        );
       } catch (err) {
         console.error("Failed to rename file:", err);
+        toast({
+          title: "Error renaming file",
+          description: "Failed to rename file. Please try again.",
+          variant: "destructive",
+        });
+        throw err;
+      }
+    },
+    [currentProject, projectFiles, createFile]
+  );
+
+  // Add method for fetching file versions
+  const fetchFileVersions = useCallback(
+    async (filePath: string): Promise<CurrentVersion[]> => {
+      if (!currentProject) {
+        toast({
+          title: "Error",
+          description: "No project selected",
+          variant: "destructive",
+        });
+        return [];
+      }
+
+      try {
+        const file = projectFiles.find((f) => f.path === filePath);
+        if (!file) {
+          throw new Error("File not found");
+        }
+
+        const versions = await fetchProjectFileVersions(
+          currentProject.id,
+          file.id
+        );
+        return versions;
+      } catch (err) {
+        console.error("Failed to fetch file versions:", err);
+        toast({
+          title: "Error fetching versions",
+          description: "Failed to load file version history.",
+          variant: "destructive",
+        });
+        throw err;
+      }
+    },
+    [currentProject, projectFiles]
+  );
+
+  // Add method for reverting to a specific version
+  const revertToVersion = useCallback(
+    async (filePath: string, versionNumber: number): Promise<void> => {
+      if (!currentProject) {
+        toast({
+          title: "Error",
+          description: "No project selected",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      try {
+        const file = projectFiles.find((f) => f.path === filePath);
+        if (!file) {
+          throw new Error("File not found");
+        }
+
+        // Use the API to revert the file
+        await revertProjectFileVersion(currentProject.id, file.id, {
+          version: versionNumber,
+          commitMsg: `Reverted to version ${versionNumber}`,
+        });
+
+        // Reload the file to get the reverted content
+        const updatedFile = await loadFile(filePath);
+        if (updatedFile) {
+          // Update file in local state
+          setProjectFiles((prev) =>
+            prev.map((f) => (f.id === file.id ? updatedFile : f))
+          );
+        }
+
+        toast({
+          title: "Version restored",
+          description: `File reverted to version ${versionNumber}.`,
+        });
+      } catch (err) {
+        console.error("Failed to revert version:", err);
+        toast({
+          title: "Error reverting version",
+          description: "Failed to revert to the selected version.",
+          variant: "destructive",
+        });
+        throw err;
+      }
+    },
+    [currentProject, projectFiles, loadFile]
+  );
+
+  // Add method for processing AI agent instructions
+  const processAIInstruction = useCallback(
+    async (instruction: string, threadId?: string): Promise<any> => {
+      if (!currentProject) {
+        toast({
+          title: "Error",
+          description: "No project selected",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      try {
+        const result = await processAgentInstruction(
+          currentProject.id,
+          instruction,
+          threadId
+        );
+
+        // Refresh files after AI makes changes
+        const files = await fetchProjectFiles(currentProject.id);
+        const filesWithContent = Array.isArray(files) ? files : [files];
+        setProjectFiles(
+          filesWithContent.map((f) => ({
+            ...f,
+            content: f.currentVersion?.content,
+          }))
+        );
+
+        return result;
+      } catch (err) {
+        console.error("Failed to process AI instruction:", err);
+        toast({
+          title: "Error",
+          description: "Failed to process your instruction. Please try again.",
+          variant: "destructive",
+        });
         throw err;
       }
     },
@@ -489,7 +726,11 @@ export function ProjectProvider({
       createFile,
       deleteFile,
       renameFile,
-      // Add thread-related functionality
+      // Add new methods
+      fetchFileVersions,
+      revertToVersion,
+      processAIInstruction,
+      // Thread-related functionality
       currentThread,
       setCurrentThread,
       loadThread,
@@ -511,7 +752,11 @@ export function ProjectProvider({
       createFile,
       deleteFile,
       renameFile,
-      // Add thread-related functionality
+      // Add new methods
+      fetchFileVersions,
+      revertToVersion,
+      processAIInstruction,
+      // Thread-related functionality
       currentThread,
       setCurrentThread,
       loadThread,

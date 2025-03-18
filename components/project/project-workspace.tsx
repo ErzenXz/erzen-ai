@@ -27,6 +27,14 @@ import {
   Sparkles,
   Trash,
   Undo2,
+  Command,
+  ArrowRight,
+  Github,
+  ZoomIn,
+  Eye,
+  EyeOff,
+  Terminal,
+  Cpu,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
@@ -58,12 +66,26 @@ import { fetchProjectFileVersions, revertProjectFileVersion, createProjectFile, 
 import type { CurrentVersion } from "@/lib/types"
 
 export function ProjectWorkspace() {
-  const { currentProject, projectFiles, saveFile, loadFile, currentThread } = useProject()
+  const { 
+    currentProject, 
+    projectFiles, 
+    saveFile, 
+    loadFile, 
+    currentThread, 
+    fetchFileVersions, 
+    revertToVersion, 
+    processAIInstruction, 
+    createFile, 
+    renameFile, 
+    deleteFile,
+    isLoading: projectIsLoading 
+  } = useProject()
   const [activeFilePath, setActiveFilePath] = React.useState<string | undefined>()
   const [fileContent, setFileContent] = React.useState("")
   const [agentInstruction, setAgentInstruction] = React.useState("")
   const [isProcessing, setIsProcessing] = React.useState(false)
   const [isSaving, setIsSaving] = React.useState(false)
+  const [isLoading, setIsLoading] = React.useState(true)
 
   // Add a state for the active tab
   const [activeTab, setActiveTab] = React.useState<"editor" | "threads">("editor")
@@ -71,30 +93,6 @@ export function ProjectWorkspace() {
   // State for new thread dialog
   const [showNewThreadDialog, setShowNewThreadDialog] = React.useState(false)
   const [newThreadTitle, setNewThreadTitle] = React.useState("")
-
-  // Handle creating a new thread
-  const handleCreateThread = async () => {
-    if (!newThreadTitle.trim() || !currentProject) {
-      return
-    }
-
-    try {
-      // In a real implementation, you would call an API to create a new thread
-      toast({
-        title: "Thread created",
-        description: `New thread "${newThreadTitle}" was created successfully.`,
-      })
-      setShowNewThreadDialog(false)
-      setNewThreadTitle("")
-    } catch (error) {
-      console.error("Error creating thread:", error)
-      toast({
-        title: "Error",
-        description: "Failed to create new thread.",
-        variant: "destructive",
-      })
-    }
-  }
 
   // File management dialogs
   const [showNewFileDialog, setShowNewFileDialog] = React.useState(false)
@@ -193,12 +191,8 @@ export function ProjectWorkspace() {
     try {
       const path = currentParentPath ? `${currentParentPath}/${newFileName}` : newFileName
 
-      await createProjectFile(currentProject?.id ?? "", {
-        name: newFileName,
-        path,
-        content: "",
-        commitMsg: `Created ${newFileName}`,
-      })
+      // Use the createFile function from useProject
+      await createFile(path, "", getFileLanguage(path));
 
       toast({
         title: "File created",
@@ -250,16 +244,16 @@ export function ProjectWorkspace() {
     }
 
     try {
+      // Get parent directory from current path
       const pathParts = activeFilePath.split("/")
-      const oldName = pathParts.pop() ?? ""
+      pathParts.pop() // Remove the filename
       const parentPath = pathParts.join("/")
-
+      
+      // Construct new path
       const newFilePath = parentPath ? `${parentPath}/${newPath}` : newPath
-
-      // Use updateProjectFile since there's no direct rename API
-      await updateProjectFile(currentProject?.id ?? "", activeFilePath, {
-        commitMsg: `Renamed ${oldName} to ${newPath}`,
-      })
+      
+      // Use renameFile from useProject
+      await renameFile(activeFilePath, newFilePath)
 
       toast({
         title: "File renamed",
@@ -283,10 +277,8 @@ export function ProjectWorkspace() {
     }
 
     try {
-      // Mark the file as deleted using updateProjectFile since there's no direct delete API
-      await updateProjectFile(currentProject?.id ?? "", activeFilePath, {
-        commitMsg: `Deleted ${activeFilePath}`,
-      })
+      // Use deleteFile from useProject
+      await deleteFile(activeFilePath)
 
       toast({
         title: "File deleted",
@@ -295,7 +287,6 @@ export function ProjectWorkspace() {
 
       setActiveFilePath(undefined)
       setFileContent("")
-
       setShowDeleteDialog(false)
     } catch (error) {
       toast({
@@ -315,12 +306,9 @@ export function ProjectWorkspace() {
     setShowVersionsDialog(true)
 
     try {
-      const file = projectFiles.find((f) => f.path === activeFilePath)
-      if (!file) {
-        throw new Error("File not found")
-      }
-      const versions = await fetchProjectFileVersions(currentProject?.id ?? "", file.id)
-      setFileVersions(versions)
+      // Use the new fetchFileVersions function from useProject hook
+      const versions = await fetchFileVersions(activeFilePath);
+      setFileVersions(versions);
     } catch (error) {
       toast({
         title: "Error loading versions",
@@ -336,16 +324,15 @@ export function ProjectWorkspace() {
     if (!activeFilePath) return
 
     try {
-      await revertProjectFileVersion(currentProject?.id ?? "", activeFilePath, {
-        version: Number.parseInt(versionId),
-        commitMsg: `Reverted to version ${versionId}`,
-      })
-
-      // Reload the file content
-      const loadedFile = await loadFile(activeFilePath)
-      if (loadedFile) {
-        setFileContent(loadedFile.content ?? "")
-        setOriginalContent(loadedFile.content ?? "")
+      // Use the new revertToVersion function from useProject hook
+      await revertToVersion(activeFilePath, Number.parseInt(versionId));
+      
+      // Refresh the file content (will be handled by revertToVersion)
+      const file = projectFiles.find((f) => f.path === activeFilePath);
+      if (file) {
+        setFileContent(file.content ?? "");
+        setOriginalContent(file.content ?? "");
+        setHasUnsavedChanges(false);
       }
 
       toast({
@@ -371,16 +358,26 @@ export function ProjectWorkspace() {
 
     setIsProcessing(true)
 
-    // Simulate AI processing
-    setTimeout(() => {
-      toast({
-        title: "AI agent processing",
-        description: "Your instruction is being processed.",
+    // Use the processAIInstruction function from useProject
+    processAIInstruction(agentInstruction, currentThread?.id)
+      .then(() => {
+        toast({
+          title: "AI processing complete",
+          description: "Your instruction has been processed.",
+        })
       })
-      setIsProcessing(false)
-      // Clear instruction after processing
-      setAgentInstruction("")
-    }, 2000)
+      .catch((error) => {
+        console.error("Error processing AI instruction:", error)
+        toast({
+          title: "Error",
+          description: "Failed to process your instruction. Please try again.",
+          variant: "destructive",
+        })
+      })
+      .finally(() => {
+        setIsProcessing(false)
+        setAgentInstruction("")
+      });
   }
 
   // Get file language based on file extension
@@ -424,12 +421,7 @@ export function ProjectWorkspace() {
       const path = currentParentPath ? `${currentParentPath}/${newFolderName}` : newFolderName
 
       // Create a .gitkeep file in the folder to ensure it exists
-      await createProjectFile(currentProject?.id ?? "", {
-        name: ".gitkeep",
-        path: `${path}/.gitkeep`,
-        content: "",
-        commitMsg: `Created folder ${newFolderName}`,
-      })
+      await createFile(`${path}/.gitkeep`, "", "plaintext");
 
       toast({
         title: "Folder created",
@@ -457,6 +449,35 @@ export function ProjectWorkspace() {
     }
   }
 
+  // Handle creating a new thread
+  const handleCreateThread = async () => {
+    if (!newThreadTitle.trim() || !currentProject) {
+      return
+    }
+
+    try {
+      // In a real implementation, you would call an API to create a new thread
+      toast({
+        title: "Thread created",
+        description: `New thread "${newThreadTitle}" was created successfully.`,
+      })
+      setShowNewThreadDialog(false)
+      setNewThreadTitle("")
+    } catch (error) {
+      console.error("Error creating thread:", error)
+      toast({
+        title: "Error",
+        description: "Failed to create new thread.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Connect the component loading state to the project loading state
+  React.useEffect(() => {
+    setIsLoading(projectIsLoading);
+  }, [projectIsLoading]);
+
   if (!currentProject) {
     return (
       <div className="flex h-full w-full items-center justify-center">
@@ -468,16 +489,39 @@ export function ProjectWorkspace() {
     )
   }
 
+  // Show loading state while project data is being prepared
+  if (isLoading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-background/60 backdrop-blur-sm">
+        <div className="text-center flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="absolute -inset-10 bg-primary/5 blur-xl rounded-full"></div>
+            <div className="relative flex items-center justify-center w-20 h-20 rounded-xl bg-primary/10 backdrop-blur-sm">
+              <Loader2 className="h-10 w-10 text-primary animate-spin" />
+            </div>
+          </div>
+          <div>
+            <h3 className="text-xl font-medium mb-1">Loading {currentProject.name}</h3>
+            <p className="text-muted-foreground text-sm">Preparing your workspace...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Get project stats for the tabs
   const fileCount = projectFiles?.length || 0
 
   return (
     <div className="h-full flex flex-col bg-background">
-      <div className="border-b bg-muted/20">
+      <div className="border-b bg-muted/10 backdrop-blur-sm">
         <div className="flex items-center justify-between px-4 py-2.5">
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold truncate max-w-[200px]">{currentProject.name}</h2>
-            <Badge variant="outline" className="text-xs bg-primary/5 text-primary">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-primary"></div>
+              <h2 className="text-lg font-semibold truncate max-w-[200px]">{currentProject.name}</h2>
+            </div>
+            <Badge variant="outline" className="text-xs bg-primary/5 text-primary border-primary/20">
               {fileCount} files
             </Badge>
           </div>
@@ -487,14 +531,14 @@ export function ProjectWorkspace() {
             onValueChange={(value) => handleSwitchTab(value as "editor" | "threads")}
             className="mx-auto"
           >
-            <TabsList className="grid w-[220px] grid-cols-2">
-              <TabsTrigger value="editor" className="flex items-center gap-1.5 px-3">
+            <TabsList className="grid w-[320px] grid-cols-2 p-1 bg-muted/20 backdrop-blur-sm">
+              <TabsTrigger value="editor" className="flex items-center gap-1.5 px-3 rounded-md data-[state=active]:bg-background/80">
                 <FileSymlink className="h-3.5 w-3.5" />
-                Editor
+                Code Editor
               </TabsTrigger>
-              <TabsTrigger value="threads" className="flex items-center gap-1.5 px-3">
+              <TabsTrigger value="threads" className="flex items-center gap-1.5 px-3 rounded-md data-[state=active]:bg-background/80">
                 <MessageSquare className="h-3.5 w-3.5" />
-                Threads
+                AI Threads
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -503,23 +547,32 @@ export function ProjectWorkspace() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                    <Terminal className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Terminal</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                    <Github className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>GitHub Repository</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
                     <UserPlus className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Add Collaborator</TooltipContent>
               </Tooltip>
+              <div className="h-4 w-px bg-border/50 mx-1"></div>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <GitBranch className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Version Control</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
                     <Settings className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
@@ -533,7 +586,32 @@ export function ProjectWorkspace() {
       <div className="flex-1 overflow-hidden">
         {activeTab === "editor" ? (
           <ResizablePanelGroup direction="horizontal" className="h-full">
-            <ResizablePanel defaultSize={20} minSize={15} maxSize={30} className="border-r">
+            <ResizablePanel defaultSize={20} minSize={15} maxSize={30} className="border-r bg-background">
+              <div className="p-2 border-b bg-muted/10 flex items-center justify-between">
+                <div className="text-xs font-medium text-muted-foreground">Project Files</div>
+                <div className="flex items-center gap-1">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md">
+                          <Plus className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">New File</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md">
+                          <FolderPlus className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">New Folder</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              </div>
               <FileTree
                 files={projectFiles}
                 activeFile={activeFilePath}
@@ -545,14 +623,16 @@ export function ProjectWorkspace() {
               />
             </ResizablePanel>
 
-            <ResizableHandle withHandle className="bg-border" />
+            <ResizableHandle withHandle className="bg-transparent before:bg-border" />
 
             <ResizablePanel defaultSize={80} className="flex flex-col">
               {activeFilePath ? (
                 <div className="flex flex-col h-full">
-                  <div className="flex items-center justify-between border-b p-2 bg-muted/30">
+                  <div className="flex items-center justify-between border-b p-2 bg-muted/10 backdrop-blur-sm">
                     <div className="flex items-center gap-2 text-sm">
-                      <FileCode className="w-4 h-4 text-blue-500" />
+                      <div className="flex items-center justify-center h-5 w-5 rounded-md bg-blue-500/10">
+                        <FileCode className="w-3.5 h-3.5 text-blue-500" />
+                      </div>
                       <span className="font-medium truncate max-w-[260px] md:max-w-[400px] lg:max-w-[500px]">
                         {activeFilePath}
                       </span>
@@ -565,10 +645,15 @@ export function ProjectWorkspace() {
                         </Badge>
                       )}
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 rounded-md">
+                        <Eye className="h-3.5 w-3.5" />
+                        <span>Preview</span>
+                      </Button>
+
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="gap-1.5 h-8 text-xs">
+                          <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs rounded-md">
                             <Code className="h-3.5 w-3.5" />
                             <span>Actions</span>
                             <ChevronDown className="h-3 w-3 opacity-50" />
@@ -625,7 +710,7 @@ export function ProjectWorkspace() {
                           size="sm"
                           onClick={handleFileSave}
                           disabled={isSaving}
-                          className="h-8"
+                          className="h-7 px-3 rounded-md bg-primary/80 hover:bg-primary"
                         >
                           {isSaving ? (
                             <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
@@ -647,26 +732,34 @@ export function ProjectWorkspace() {
                   </div>
 
                   {/* AI Assistant Input */}
-                  <div className="border-t p-3 px-4 bg-muted/20">
+                  <div className="border-t p-3 px-4 bg-muted/5 backdrop-blur-sm">
                     <form onSubmit={handleAgentSubmit} className="flex gap-2 w-full max-w-5xl mx-auto">
                       <div className="relative flex-1 min-w-0">
+                        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 flex items-center justify-center w-5 h-5 rounded-md bg-primary/10">
+                          <Cpu className="h-3 w-3 text-primary" />
+                        </div>
                         <Input
                           placeholder="Ask AI to help with your code... (e.g., 'Create a login form')"
                           value={agentInstruction}
                           onChange={(e) => setAgentInstruction(e.target.value)}
-                          className="flex-1 min-w-0 text-sm border-primary/20 focus-visible:ring-primary/30 pl-9 pr-4 py-2 h-10"
+                          className="flex-1 min-w-0 text-sm border-primary/10 focus-visible:ring-primary/20 pl-9 pr-16 py-2 h-10 rounded-xl shadow-sm"
                         />
-                        <Sparkles className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-primary/60" />
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                          <kbd className="hidden md:inline-flex items-center gap-1 px-2 border rounded text-xs font-mono text-muted-foreground bg-muted/30">
+                            <Command className="h-3 w-3" />
+                            <span>Enter</span>
+                          </kbd>
+                        </div>
                       </div>
                       <Button
                         type="submit"
-                        className="flex-shrink-0 bg-primary/90 hover:bg-primary transition-colors"
+                        className="flex-shrink-0 bg-primary/80 hover:bg-primary transition-colors shadow-md rounded-xl"
                         disabled={isProcessing || !agentInstruction.trim()}
                       >
                         {isProcessing ? (
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         ) : (
-                          <MessageSquareText className="h-4 w-4 mr-2" />
+                          <ArrowRight className="h-4 w-4 mr-2" />
                         )}
                         {isProcessing ? "Processing..." : "Send"}
                       </Button>
@@ -677,9 +770,9 @@ export function ProjectWorkspace() {
                 <div className="flex h-full w-full items-center justify-center">
                   <div className="text-center max-w-md px-6">
                     <div className="relative mb-6">
-                      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/5 to-primary/10 blur-3xl rounded-full opacity-50"></div>
-                      <div className="bg-muted/50 w-20 h-20 rounded-full flex items-center justify-center mx-auto">
-                        <FileX className="h-10 w-10 text-muted-foreground" />
+                      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/10 to-primary/20 blur-3xl rounded-full opacity-50"></div>
+                      <div className="bg-gradient-to-br from-muted/20 to-muted/40 backdrop-blur-md w-20 h-20 rounded-2xl flex items-center justify-center mx-auto shadow-xl shadow-primary/5">
+                        <FileX className="h-10 w-10 text-primary/70" />
                       </div>
                     </div>
                     <h3 className="text-xl font-medium mb-3">No file selected</h3>
@@ -689,12 +782,12 @@ export function ProjectWorkspace() {
                     <div className="flex justify-center gap-3">
                       <Button
                         onClick={() => handleShowNewFileDialog("")}
-                        className="bg-primary/90 hover:bg-primary transition-colors"
+                        className="rounded-xl bg-primary/80 hover:bg-primary transition-colors shadow-md"
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         New File
                       </Button>
-                      <Button variant="outline" onClick={() => handleShowNewFolderDialog("")}>
+                      <Button variant="outline" onClick={() => handleShowNewFolderDialog("")} className="rounded-xl">
                         <FolderPlus className="h-4 w-4 mr-2" />
                         New Folder
                       </Button>
@@ -713,7 +806,7 @@ export function ProjectWorkspace() {
 
       {/* New Thread Dialog */}
       <Dialog open={showNewThreadDialog} onOpenChange={setShowNewThreadDialog}>
-        <DialogContent className="sm:max-w-[450px]">
+        <DialogContent className="sm:max-w-[450px] rounded-xl border-muted/30 shadow-lg">
           <DialogHeader>
             <DialogTitle>Create New Thread</DialogTitle>
             <DialogDescription>Enter a title for your new thread.</DialogDescription>
@@ -723,13 +816,13 @@ export function ProjectWorkspace() {
             value={newThreadTitle}
             onChange={(e) => setNewThreadTitle(e.target.value)}
             autoFocus
-            className="mt-2"
+            className="mt-2 rounded-lg"
           />
           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setShowNewThreadDialog(false)}>
+            <Button variant="outline" onClick={() => setShowNewThreadDialog(false)} className="rounded-lg">
               Cancel
             </Button>
-            <Button onClick={handleCreateThread} disabled={!newThreadTitle.trim()}>
+            <Button onClick={handleCreateThread} disabled={!newThreadTitle.trim()} className="rounded-lg">
               Create Thread
             </Button>
           </DialogFooter>
@@ -738,7 +831,7 @@ export function ProjectWorkspace() {
 
       {/* New File Dialog */}
       <Dialog open={showNewFileDialog} onOpenChange={setShowNewFileDialog}>
-        <DialogContent className="sm:max-w-[450px]">
+        <DialogContent className="sm:max-w-[450px] rounded-xl border-muted/30 shadow-lg">
           <DialogHeader>
             <DialogTitle>Create New File</DialogTitle>
             <DialogDescription>
@@ -750,13 +843,13 @@ export function ProjectWorkspace() {
             value={newFileName}
             onChange={(e) => setNewFileName(e.target.value)}
             autoFocus
-            className="mt-2"
+            className="mt-2 rounded-lg"
           />
           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setShowNewFileDialog(false)}>
+            <Button variant="outline" onClick={() => setShowNewFileDialog(false)} className="rounded-lg">
               Cancel
             </Button>
-            <Button onClick={handleCreateFile} disabled={!newFileName.trim()}>
+            <Button onClick={handleCreateFile} disabled={!newFileName.trim()} className="rounded-lg">
               Create File
             </Button>
           </DialogFooter>
@@ -765,7 +858,7 @@ export function ProjectWorkspace() {
 
       {/* New Folder Dialog */}
       <Dialog open={showNewFolderDialog} onOpenChange={setShowNewFolderDialog}>
-        <DialogContent className="sm:max-w-[450px]">
+        <DialogContent className="sm:max-w-[450px] rounded-xl border-muted/30 shadow-lg">
           <DialogHeader>
             <DialogTitle>Create New Folder</DialogTitle>
             <DialogDescription>
@@ -777,13 +870,13 @@ export function ProjectWorkspace() {
             value={newFolderName}
             onChange={(e) => setNewFolderName(e.target.value)}
             autoFocus
-            className="mt-2"
+            className="mt-2 rounded-lg"
           />
           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setShowNewFolderDialog(false)}>
+            <Button variant="outline" onClick={() => setShowNewFolderDialog(false)} className="rounded-lg">
               Cancel
             </Button>
-            <Button onClick={handleCreateFolder} disabled={!newFolderName.trim()}>
+            <Button onClick={handleCreateFolder} disabled={!newFolderName.trim()} className="rounded-lg">
               Create Folder
             </Button>
           </DialogFooter>
@@ -792,7 +885,7 @@ export function ProjectWorkspace() {
 
       {/* Rename Dialog */}
       <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
-        <DialogContent className="sm:max-w-[450px]">
+        <DialogContent className="sm:max-w-[450px] rounded-xl border-muted/30 shadow-lg">
           <DialogHeader>
             <DialogTitle>Rename File</DialogTitle>
             <DialogDescription>Enter a new name for this file</DialogDescription>
@@ -802,13 +895,13 @@ export function ProjectWorkspace() {
             value={newPath}
             onChange={(e) => setNewPath(e.target.value)}
             autoFocus
-            className="mt-2"
+            className="mt-2 rounded-lg"
           />
           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setShowRenameDialog(false)}>
+            <Button variant="outline" onClick={() => setShowRenameDialog(false)} className="rounded-lg">
               Cancel
             </Button>
-            <Button onClick={handleRenameFile} disabled={!newPath.trim()}>
+            <Button onClick={handleRenameFile} disabled={!newPath.trim()} className="rounded-lg">
               Rename
             </Button>
           </DialogFooter>
@@ -817,7 +910,7 @@ export function ProjectWorkspace() {
 
       {/* Delete Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="sm:max-w-[450px]">
+        <DialogContent className="sm:max-w-[450px] rounded-xl border-muted/30 shadow-lg">
           <DialogHeader>
             <DialogTitle>Delete File</DialogTitle>
             <DialogDescription>
@@ -826,10 +919,10 @@ export function ProjectWorkspace() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)} className="rounded-lg">
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDeleteFile}>
+            <Button variant="destructive" onClick={handleDeleteFile} className="rounded-lg">
               Delete
             </Button>
           </DialogFooter>
@@ -838,7 +931,7 @@ export function ProjectWorkspace() {
 
       {/* Version History Dialog */}
       <Dialog open={showVersionsDialog} onOpenChange={setShowVersionsDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl rounded-xl border-muted/30 shadow-lg">
           <DialogHeader>
             <DialogTitle>Version History</DialogTitle>
             <DialogDescription>Select a version to view or restore</DialogDescription>
@@ -846,19 +939,19 @@ export function ProjectWorkspace() {
 
           {isLoadingVersions ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : fileVersions.length === 0 ? (
             <div className="py-8 text-center">
               <p className="text-muted-foreground">No version history available for this file</p>
             </div>
           ) : (
-            <ScrollArea className="h-[400px] border rounded-md">
+            <ScrollArea className="h-[400px] border rounded-lg bg-muted/5">
               <div className="space-y-0.5 p-1">
                 {fileVersions.map((version) => (
                   <div
                     key={version.id}
-                    className="flex items-center justify-between p-3 rounded-md hover:bg-accent/70 group transition-colors"
+                    className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/50 group transition-colors"
                   >
                     <div className="flex flex-col gap-1">
                       <p className="text-sm font-medium">{new Date(version.createdAt).toLocaleString()}</p>
@@ -871,7 +964,7 @@ export function ProjectWorkspace() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleRevertVersion(version.id)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity rounded-lg"
                       >
                         <Undo2 className="h-3.5 w-3.5 mr-2" />
                         Restore
@@ -879,7 +972,7 @@ export function ProjectWorkspace() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity rounded-full"
                       >
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
@@ -891,7 +984,7 @@ export function ProjectWorkspace() {
           )}
 
           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setShowVersionsDialog(false)}>
+            <Button variant="outline" onClick={() => setShowVersionsDialog(false)} className="rounded-lg">
               Close
             </Button>
           </DialogFooter>

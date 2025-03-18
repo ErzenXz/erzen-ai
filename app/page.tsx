@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ProjectWorkspace } from "@/components/project/project-workspace"
+import { ProjectGrid } from "@/components/project/project-grid"
 import { ProjectProvider } from "@/hooks/use-project"
 import { useChat } from "@/hooks/use-chat"
 import { useAuth } from "@/hooks/use-auth"
@@ -66,7 +67,6 @@ export default function Home() {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
   const [isProcessingFiles, setIsProcessingFiles] = useState(false)
   const [isEditingMessage, setIsEditingMessage] = useState<string | null>(null)
-  const [showAllProjects, setShowAllProjects] = useState(false)
   const [showProjectsGrid, setShowProjectsGrid] = useState(false)
 
   // Dialog states
@@ -289,9 +289,6 @@ export default function Home() {
     }
   }
 
-  // Show limited number of projects in grid view
-  const displayProjects = showAllProjects ? projects : projects.slice(0, 7);
-
   // Helper to get placeholder text
   const getInputPlaceholder = (): string => {
     if (!selectedModel) {
@@ -385,10 +382,6 @@ export default function Home() {
           {showProjectsGrid && (
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Projects</h2>
-              <Button variant="outline" onClick={() => setShowAllProjects(!showAllProjects)}>
-                {showAllProjects ? 'Show Less' : 'Show All'} 
-                {!showAllProjects && projects.length > 7 && <span className="ml-1 opacity-60">({projects.length - 7} more)</span>}
-              </Button>
             </div>
           )}
 
@@ -445,54 +438,24 @@ export default function Home() {
               {/* Show projects grid if requested */}
               {showProjectsGrid && (
                 <div className="space-y-8">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-                    {displayProjects.map((project) => (
-                      <Card key={project.id} className="hover:bg-accent/50 transition-colors hover:shadow-md cursor-pointer overflow-hidden border group"
-                        onClick={() => handleProjectSelect(project.id)}>
-                        <div className="bg-primary/5 h-2 group-hover:bg-primary/20 transition-colors"></div>
-                        <div className="p-5 flex flex-col gap-2 h-full">
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center transition-all group-hover:scale-110 group-hover:bg-primary/15">
-                              <FolderRoot className="text-primary w-6 h-6" />
-                            </div>
-                            <div className="font-medium text-lg truncate">{project.name}</div>
-                          </div>
-                          
-                          <p className="text-sm text-muted-foreground line-clamp-2 mt-2 min-h-[2.5rem]">
-                            {project.description || "No description provided for this project"}
-                          </p>
-                          
-                          <div className="mt-auto pt-4 flex flex-col gap-3">
-                            <div className="flex gap-2">
-                              <Badge variant="outline" className="bg-primary/5 text-primary text-xs hover:bg-primary/10">
-                                {project._count?.threads ?? 0} threads
-                              </Badge>
-                              <Badge variant="outline" className="bg-muted/50 text-xs">
-                                {project._count?.files ?? 0} files
-                              </Badge>
-                            </div>
-                            <div className="text-xs text-muted-foreground flex items-center gap-2">
-                              <Clock className="h-3 w-3" />
-                              Updated {new Date(project.updatedAt).toLocaleDateString()}
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-
-                    <Card className="hover:bg-accent/50 transition-colors cursor-pointer border-dashed border-2 hover:border-primary/30"
-                      onClick={() => {}}>
-                      <div className="flex items-center justify-center h-full p-6">
-                        <div className="text-center">
-                          <div className="bg-primary/10 h-12 w-12 rounded-full flex items-center justify-center mx-auto mb-3">
-                            <FolderPlus className="h-6 w-6 text-primary" />
-                          </div>
-                          <p className="font-medium mb-1">Create New Project</p>
-                          <p className="text-sm text-muted-foreground">Start a new AI-assisted project</p>
-                        </div>
-                      </div>
-                    </Card>
-                  </div>
+                  <ProjectGrid 
+                    projects={projects}
+                    onProjectSelect={handleProjectSelect}
+                    onCreateProject={() => {
+                      // Handle creating a new project
+                      toast({
+                        title: "Create Project",
+                        description: "Project creation feature coming soon",
+                      })
+                    }}
+                    onToggleStar={(projectId, starred) => {
+                      // Handle starring projects
+                      toast({
+                        title: starred ? "Project Starred" : "Project Unstarred",
+                        description: `Project has been ${starred ? "starred" : "unstarred"}`,
+                      })
+                    }}
+                  />
                 </div>
               )}
               

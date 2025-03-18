@@ -249,7 +249,7 @@ export function ProjectGrid({
                           : "Create your first project to get started"}
                   </p>
                   <Button onClick={onCreateProject}>
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="mr-2 h-4 w-4" />
                     Create Project
                   </Button>
                 </motion.div>
@@ -260,154 +260,133 @@ export function ProjectGrid({
                   exit={{ opacity: 0 }}
                   className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
                 >
-                  {filteredProjects.map((project) => (
+                  {filteredProjects.map((project, index) => (
                     <motion.div
                       key={project.id}
                       initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 20 }}
-                      transition={{ duration: 0.2 }}
-                      layout
+                      animate={{ 
+                        opacity: 1, 
+                        y: 0,
+                        transition: { delay: index * 0.05 } 
+                      }}
                     >
-                      <Card
+                      <Card 
                         className={cn(
-                          "group overflow-hidden border hover:shadow-md transition-all duration-300 cursor-pointer relative",
-                          isLoadingProject === project.id && "pointer-events-none",
+                          "h-full overflow-hidden border group cursor-pointer transition-all duration-200",
+                          "hover:shadow-md hover:border-primary/10 hover:bg-accent/30",
+                          "dark:hover:shadow-none dark:hover:bg-accent/10",
+                          isLoadingProject === project.id && "pointer-events-none opacity-80"
                         )}
                         onClick={() => handleProjectClick(project.id)}
                       >
-                        {/* Loading overlay */}
-                        {isLoadingProject === project.id && (
-                          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
-                            <div className="flex flex-col items-center gap-3">
-                              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                              <p className="text-sm font-medium">Loading project...</p>
+                        <div 
+                          className="h-1.5 w-full bg-primary/10"
+                          style={{ 
+                            background: project.thumbnail 
+                              ? `url(${project.thumbnail})` 
+                              : getProjectGradient(project.name)
+                          }}
+                        />
+                        <CardContent className="p-5 flex flex-col gap-2 h-full relative">
+                          {isLoadingProject === project.id && (
+                            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
+                              <Loader2 className="h-6 w-6 animate-spin text-primary" />
                             </div>
-                          </div>
-                        )}
-
-                        {/* Project thumbnail/header */}
-                        {project.thumbnail ? (
-                          <div
-                            className="h-32 bg-cover bg-center"
-                            style={{ backgroundImage: `url(${project.thumbnail})` }}
-                          >
-                            <div className="h-full w-full bg-black/20 backdrop-blur-sm p-3 flex justify-end">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 rounded-full bg-black/30 text-white hover:bg-black/50 hover:text-white"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  onToggleStar?.(project.id, !project.starred)
+                          )}
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div 
+                                className="w-12 h-12 rounded-lg flex items-center justify-center"
+                                style={{ 
+                                  background: getProjectGradient(project.name),
+                                  boxShadow: "0 4px 12px -2px rgba(0,0,0,0.1)"
                                 }}
                               >
-                                {project.starred ? (
-                                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                                ) : (
-                                  <StarOff className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div
-                            className="h-24 relative overflow-hidden group-hover:h-28 transition-all duration-300"
-                            style={{ background: getProjectGradient(project.name) }}
-                          >
-                            <div className="absolute inset-0 bg-black/10"></div>
-                            <div className="absolute top-3 right-3">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 rounded-full bg-black/30 text-white hover:bg-black/50 hover:text-white"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  onToggleStar?.(project.id, !project.starred)
-                                }}
-                              >
-                                {project.starred ? (
-                                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                                ) : (
-                                  <StarOff className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-
-                        <CardContent className="p-5 flex flex-col gap-2">
-                          <div className="flex items-start gap-4">
-                            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center transition-all group-hover:scale-110 group-hover:from-primary/30 group-hover:to-primary/10 shrink-0">
-                              <FolderRoot className="text-primary w-6 h-6" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <h3 className="font-medium text-lg truncate group-hover:text-primary transition-colors">
-                                {project.name}
-                              </h3>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                                <Clock className="h-3 w-3" />
-                                <span>Updated {new Date(project.updatedAt).toLocaleDateString()}</span>
+                                <FolderRoot className="text-white w-6 h-6 drop-shadow-sm" />
                               </div>
+                              <div className="font-medium text-lg truncate">{project.name}</div>
                             </div>
+
+                            {onToggleStar && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onToggleStar(project.id, !project.starred)
+                                }}
+                                className="text-muted-foreground hover:text-amber-400 transition-colors focus:outline-none"
+                              >
+                                {project.starred ? (
+                                  <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+                                ) : (
+                                  <StarOff className="h-5 w-5" />
+                                )}
+                              </button>
+                            )}
                           </div>
 
                           <p className="text-sm text-muted-foreground line-clamp-2 mt-2 min-h-[2.5rem]">
                             {project.description || "No description provided for this project"}
                           </p>
 
-                          <div className="mt-4 pt-4 border-t flex items-center justify-between">
-                            <div className="flex gap-3">
-                              <div className="flex items-center gap-1.5 text-xs">
-                                <FileCode className="h-3.5 w-3.5 text-blue-500" />
-                                <span>{project._count?.files ?? 0}</span>
+                          <div className="mt-auto pt-4 flex flex-col gap-3">
+                            <div className="flex flex-wrap gap-2">
+                              <div className="rounded-full px-2.5 py-0.5 text-xs bg-primary/10 text-primary flex items-center gap-1.5">
+                                <MessageSquare className="h-3 w-3" />
+                                {project._count?.threads ?? 0} threads
                               </div>
-                              <div className="flex items-center gap-1.5 text-xs">
-                                <MessageSquare className="h-3.5 w-3.5 text-green-500" />
-                                <span>{project._count?.threads ?? 0}</span>
+                              <div className="rounded-full px-2.5 py-0.5 text-xs bg-muted flex items-center gap-1.5">
+                                <FileCode className="h-3 w-3" />
+                                {project._count?.files ?? 0} files
                               </div>
-                              {project.collaborators && (
-                                <div className="flex items-center gap-1.5 text-xs">
-                                  <Users className="h-3.5 w-3.5 text-purple-500" />
-                                  <span>{project.collaborators}</span>
+                              {project.collaborators && project.collaborators > 0 && (
+                                <div className="rounded-full px-2.5 py-0.5 text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+                                  <Users className="h-3 w-3" />
+                                  {project.collaborators} collaborator{project.collaborators > 1 ? "s" : ""}
                                 </div>
                               )}
                             </div>
-
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <ArrowUpRight className="h-4 w-4" />
-                            </Button>
+                            <div className="text-xs text-muted-foreground flex items-center gap-2">
+                              <Clock className="h-3 w-3" />
+                              Updated {new Date(project.updatedAt).toLocaleDateString()}
+                            </div>
+                          </div>
+                          
+                          <div className="absolute right-2 bottom-2 opacity-0 group-hover:opacity-60 transition-opacity duration-200">
+                            <ArrowUpRight className="h-4 w-4 text-primary/70" />
                           </div>
                         </CardContent>
                       </Card>
                     </motion.div>
                   ))}
 
-                  {/* Create new project card */}
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2, delay: 0.1 * filteredProjects.length }}
+                    animate={{ 
+                      opacity: 1, 
+                      y: 0,
+                      transition: { delay: filteredProjects.length * 0.05 } 
+                    }}
                   >
                     <Card
-                      className="border-dashed border-2 hover:border-primary/30 transition-colors cursor-pointer h-full group"
+                      className="h-full overflow-hidden border-dashed border-2 hover:border-primary/20 cursor-pointer transition-all hover:shadow-sm group"
                       onClick={onCreateProject}
                     >
                       <div className="flex items-center justify-center h-full p-8">
                         <div className="text-center">
-                          <div className="bg-gradient-to-br from-primary/20 to-primary/5 h-16 w-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                            <Sparkles className="h-8 w-8 text-primary" />
+                          <div className="bg-gradient-to-br from-primary/20 to-primary/5 h-16 w-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Plus className="h-8 w-8 text-primary" />
                           </div>
-                          <h3 className="text-lg font-medium mb-2 group-hover:text-primary transition-colors">
-                            Create New Project
-                          </h3>
+                          <h3 className="text-lg font-medium mb-2">Create New Project</h3>
                           <p className="text-sm text-muted-foreground">
-                            Start a new AI-assisted project with powerful collaboration tools
+                            Start a new AI-assisted project
                           </p>
+                          <div className="mt-4 opacity-0 group-hover:opacity-60 transition-opacity duration-200">
+                            <div className="inline-flex items-center text-sm text-primary/80 gap-1.5">
+                              <span>Get started</span>
+                              <ArrowUpRight className="h-3.5 w-3.5" />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </Card>
