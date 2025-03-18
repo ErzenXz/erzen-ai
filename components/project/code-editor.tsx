@@ -16,28 +16,34 @@ interface CodeEditorProps {
   onChange?: (value: string) => void
   readOnly?: boolean
   className?: string
+  theme?: string
 }
 
 // Define available themes
-type ThemeOption = {
+export type ThemeOption = {
   value: string
   label: string
   monacoTheme: string
 }
 
-const themes: ThemeOption[] = [
+export const editorThemes: ThemeOption[] = [
   { value: "system", label: "System", monacoTheme: "system" },
   { value: "light", label: "Light", monacoTheme: "light" },
   { value: "dark", label: "Dark", monacoTheme: "vs-dark" },
+  { value: "black", label: "Black", monacoTheme: "v0" },
   { value: "github-light", label: "GitHub Light", monacoTheme: "github-light" },
   { value: "github-dark", label: "GitHub Dark", monacoTheme: "github-dark" },
-  { value: "v0", label: "V0", monacoTheme: "v0" },
+  { value: "monokai", label: "Monokai", monacoTheme: "monokai" },
+  { value: "dracula", label: "Dracula", monacoTheme: "dracula" },
+  { value: "nord", label: "Nord", monacoTheme: "nord" },
+  { value: "solarized-dark", label: "Solarized Dark", monacoTheme: "solarized-dark" },
+  { value: "solarized-light", label: "Solarized Light", monacoTheme: "solarized-light" },
 ]
 
-export function CodeEditor({ value, language = "javascript", onChange, readOnly = false, className }: CodeEditorProps) {
+export function CodeEditor({ value, language = "javascript", onChange, readOnly = false, className, theme }: CodeEditorProps) {
   const { resolvedTheme, setTheme } = useTheme()
   const [selectedTheme, setSelectedTheme] = React.useState<ThemeOption>(
-    themes.find(t => t.value === "system") || themes[0]
+    editorThemes.find(t => t.value === "black") || editorThemes[0]
   )
   const [monacoInstance, setMonacoInstance] = React.useState<Monaco | null>(null)
   const [open, setOpen] = React.useState(false)
@@ -116,79 +122,110 @@ export function CodeEditor({ value, language = "javascript", onChange, readOnly 
   const handleEditorDidMount = (editor: monaco.editor.IStandaloneCodeEditor, monaco: Monaco) => {
     setMonacoInstance(monaco)
 
-    // Define GitHub Light theme
+    // Register custom themes
     monaco.editor.defineTheme('github-light', {
       base: 'vs',
       inherit: true,
-      rules: [
-        { token: 'comment', foreground: '6a737d' },
-        { token: 'keyword', foreground: 'd73a49' },
-        { token: 'string', foreground: '032f62' },
-        { token: 'number', foreground: '005cc5' },
-        { token: 'type', foreground: '6f42c1' },
-      ],
+      rules: [],
       colors: {
-        'editor.foreground': '#24292e',
         'editor.background': '#ffffff',
+        'editor.foreground': '#24292e',
         'editor.lineHighlightBackground': '#f1f8ff',
         'editorLineNumber.foreground': '#1b1f234d',
         'editorLineNumber.activeForeground': '#24292e',
-        'editor.selectionBackground': '#0366d625',
-        'editor.inactiveSelectionBackground': '#0366d610',
-        'editorCursor.foreground': '#24292e',
       }
     });
 
-    // Define GitHub Dark theme
     monaco.editor.defineTheme('github-dark', {
       base: 'vs-dark',
       inherit: true,
-      rules: [
-        { token: 'comment', foreground: '8b949e' },
-        { token: 'keyword', foreground: 'ff7b72' },
-        { token: 'string', foreground: 'a5d6ff' },
-        { token: 'number', foreground: '79c0ff' },
-        { token: 'type', foreground: 'd2a8ff' },
-      ],
+      rules: [],
       colors: {
-        'editor.foreground': '#c9d1d9',
         'editor.background': '#0d1117',
+        'editor.foreground': '#c9d1d9',
         'editor.lineHighlightBackground': '#161b22',
         'editorLineNumber.foreground': '#8b949e',
         'editorLineNumber.activeForeground': '#c9d1d9',
-        'editor.selectionBackground': '#3392FF44',
-        'editor.inactiveSelectionBackground': '#3392FF22',
-        'editorCursor.foreground': '#c9d1d9',
       }
     });
 
-    // Define V0 theme (inspired by Vercel's design)
-    monaco.editor.defineTheme('v0', {
+    monaco.editor.defineTheme('monokai', {
       base: 'vs-dark',
       inherit: true,
       rules: [
-        { token: 'comment', foreground: '6c7380' },
-        { token: 'keyword', foreground: 'ff5d5b' },
-        { token: 'string', foreground: '8db7fe' },
-        { token: 'number', foreground: 'c192ff' },
-        { token: 'type', foreground: '00d2fc' },
+        { token: 'keyword', foreground: '#f92672' },
+        { token: 'string', foreground: '#e6db74' },
+        { token: 'comment', foreground: '#75715e' },
       ],
       colors: {
-        'editor.foreground': '#e4e4e4',
+        'editor.background': '#272822',
+        'editor.foreground': '#f8f8f2',
+      }
+    });
+
+    monaco.editor.defineTheme('dracula', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: 'keyword', foreground: '#ff79c6' },
+        { token: 'string', foreground: '#f1fa8c' },
+        { token: 'comment', foreground: '#6272a4' },
+      ],
+      colors: {
+        'editor.background': '#282a36',
+        'editor.foreground': '#f8f8f2',
+      }
+    });
+
+    monaco.editor.defineTheme('nord', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [],
+      colors: {
+        'editor.background': '#2e3440',
+        'editor.foreground': '#d8dee9',
+        'editor.lineHighlightBackground': '#3b4252',
+      }
+    });
+
+    monaco.editor.defineTheme('solarized-dark', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [],
+      colors: {
+        'editor.background': '#002b36',
+        'editor.foreground': '#839496',
+        'editor.lineHighlightBackground': '#073642',
+      }
+    });
+
+    monaco.editor.defineTheme('solarized-light', {
+      base: 'vs',
+      inherit: true,
+      rules: [],
+      colors: {
+        'editor.background': '#fdf6e3',
+        'editor.foreground': '#657b83',
+        'editor.lineHighlightBackground': '#eee8d5',
+      }
+    });
+
+    // Original v0 theme with a black background
+    monaco.editor.defineTheme('v0', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [],
+      colors: {
         'editor.background': '#000000',
-        'editor.lineHighlightBackground': '#101010',
-        'editorLineNumber.foreground': '#515161',
-        'editorLineNumber.activeForeground': '#c7c7c7',
-        'editor.selectionBackground': '#303347',
-        'editor.inactiveSelectionBackground': '#20212e',
-        'editorCursor.foreground': '#ffffff',
+        'editor.foreground': '#ffffff',
       }
     });
 
     // Set the selected theme
-    const themeToUse = selectedTheme.value === 'system'
-      ? resolvedTheme === 'dark' ? 'github-dark' : 'github-light'
-      : selectedTheme.monacoTheme;
+    const themeToUse = theme ? theme :
+      selectedTheme.value === 'system'
+        ? resolvedTheme === 'dark' ? 'vs-dark' : 'light'
+        : selectedTheme.monacoTheme;
     
     monaco.editor.setTheme(themeToUse);
 
@@ -203,13 +240,15 @@ export function CodeEditor({ value, language = "javascript", onChange, readOnly 
   // Update theme when it changes
   React.useEffect(() => {
     if (monacoInstance) {
-      const themeToUse = selectedTheme.value === 'system'
-        ? resolvedTheme === 'dark' ? 'github-dark' : 'github-light'
-        : selectedTheme.monacoTheme;
+      // Set the selected theme
+      const themeToUse = theme ? theme :
+        selectedTheme.value === 'system'
+          ? resolvedTheme === 'dark' ? 'vs-dark' : 'light'
+          : selectedTheme.monacoTheme;
       
       monacoInstance.editor.setTheme(themeToUse);
     }
-  }, [selectedTheme, resolvedTheme, monacoInstance]);
+  }, [monacoInstance, selectedTheme, resolvedTheme, theme]);
 
   const handleSelectTheme = (theme: ThemeOption) => {
     setSelectedTheme(theme)
@@ -222,96 +261,59 @@ export function CodeEditor({ value, language = "javascript", onChange, readOnly 
   }
 
   return (
-    <div className="flex flex-col h-full w-full">
-      <div className="flex justify-end items-center p-2 border-b">
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button variant="outline" role="combobox" aria-expanded={open} className="w-48 justify-between">
-              {selectedTheme.label}
-              <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-48 p-0">
-            <Command>
-              <CommandInput placeholder="Search theme..." />
-              <CommandList>
-                <CommandEmpty>No theme found.</CommandEmpty>
-                <CommandGroup>
-                  {themes.map((theme) => (
-                    <CommandItem
-                      key={theme.value}
-                      value={theme.value}
-                      onSelect={() => handleSelectTheme(theme)}
-                    >
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          selectedTheme.value === theme.value ? "opacity-100" : "opacity-0"
-                        )}
-                      />
-                      {theme.label}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
-      </div>
-      <div className={cn("flex-1 overflow-hidden", className)}>
-        <Editor
-          value={value}
-          language={editorLanguage}
-          onChange={handleEditorChange}
-          onMount={handleEditorDidMount}
-          options={{
-            readOnly,
-            minimap: { enabled: true },
-            scrollBeyondLastLine: false,
-            lineNumbers: "on",
-            glyphMargin: true,
-            folding: true,
-            foldingHighlight: true,
-            foldingStrategy: "auto",
-            showFoldingControls: "always",
-            lineDecorationsWidth: 10,
-            lineNumbersMinChars: 3,
-            automaticLayout: true,
-            tabSize: 2,
-            wordWrap: "on",
-            wrappingStrategy: "advanced",
-            wrappingIndent: "same",
-            formatOnPaste: true,
-            formatOnType: true,
-            cursorBlinking: "smooth",
-            cursorSmoothCaretAnimation: "on",
-            smoothScrolling: true,
-            mouseWheelZoom: true,
-            bracketPairColorization: {
-              enabled: true,
-            },
-            guides: {
-              bracketPairs: true,
-              indentation: true,
-              highlightActiveIndentation: true,
-            },
-            renderLineHighlight: "all",
-            contextmenu: true,
-            scrollbar: {
-              vertical: "visible", 
-              horizontal: "visible",
-              verticalScrollbarSize: 10,
-              horizontalScrollbarSize: 10,
-              useShadows: true,
-            },
-          }}
-          loading={
-            <div className="flex h-full w-full items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          }
-        />
-      </div>
+    <div className={cn("h-full w-full overflow-hidden", className)}>
+      <Editor
+        value={value}
+        language={editorLanguage}
+        onChange={handleEditorChange}
+        onMount={handleEditorDidMount}
+        options={{
+          readOnly,
+          minimap: { enabled: true },
+          scrollBeyondLastLine: false,
+          lineNumbers: "on",
+          glyphMargin: true,
+          folding: true,
+          foldingHighlight: true,
+          foldingStrategy: "auto",
+          showFoldingControls: "always",
+          lineDecorationsWidth: 10,
+          lineNumbersMinChars: 3,
+          automaticLayout: true,
+          tabSize: 2,
+          wordWrap: "on",
+          wrappingStrategy: "advanced",
+          wrappingIndent: "same",
+          formatOnPaste: true,
+          formatOnType: true,
+          cursorBlinking: "smooth",
+          cursorSmoothCaretAnimation: "on",
+          smoothScrolling: true,
+          mouseWheelZoom: true,
+          bracketPairColorization: {
+            enabled: true,
+          },
+          guides: {
+            bracketPairs: true,
+            indentation: true,
+            highlightActiveIndentation: true,
+          },
+          renderLineHighlight: "all",
+          contextmenu: true,
+          scrollbar: {
+            vertical: "visible", 
+            horizontal: "visible",
+            verticalScrollbarSize: 10,
+            horizontalScrollbarSize: 10,
+            useShadows: true,
+          },
+        }}
+        loading={
+          <div className="flex h-full w-full items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        }
+      />
     </div>
   )
 }

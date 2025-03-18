@@ -10,6 +10,7 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@codesandbox/sandpack-react": "^2.20.0",
     "@deepgram/sdk": "^3.11.2",
     "@hookform/resolvers": "^3.9.0",
     "@monaco-editor/react": "^4.7.0",

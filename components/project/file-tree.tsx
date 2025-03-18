@@ -236,37 +236,36 @@ export function FileTree({
       <React.Fragment key={node.path}>
         <div
           className={cn(
-            "flex items-center py-1.5 px-2 hover:bg-accent/40 rounded-sm group transition-colors",
-            activeFile === node.path && "bg-primary/10 text-primary font-medium",
-            !node.isFolder && "cursor-pointer",
+            "flex items-center py-1.5 px-2 hover:bg-accent/50 rounded-md cursor-pointer group transition-colors my-0.5",
+            activeFile === node.path && "bg-primary/15 text-primary font-medium",
           )}
-          style={{ paddingLeft: `${level * 12 + 4}px` }}
+          style={{ paddingLeft: `${level * 12 + 8}px` }}
+          onClick={() => node.isFolder ? toggleFolder(node.path) : onSelectFile(node.path)}
         >
-          <button
-            className={cn("mr-1 w-4 h-4 flex items-center justify-center", node.isFolder ? "visible" : "invisible")}
-            onClick={() => node.isFolder && toggleFolder(node.path)}
-          >
-            {node.isFolder &&
-              (expandedFolders.has(node.path) ? (
-                <ChevronDown className="h-3 w-3" />
-              ) : (
-                <ChevronRight className="h-3 w-3" />
-              ))}
-          </button>
-
-          <div
-            className="flex items-center gap-2 flex-1 min-w-0"
-            onClick={() => !node.isFolder && onSelectFile(node.path)}
-          >
-            {getFileIcon(node)}
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            {node.isFolder && (
+              <div className="w-4 h-4 flex items-center justify-center text-muted-foreground">
+                {expandedFolders.has(node.path) ? (
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5 transition-transform" />
+                )}
+              </div>
+            )}
+            
+            <div className={cn("flex items-center justify-center w-5 h-5", 
+                              node.isFolder ? "text-[#E9B872]" : "")}>
+              {getFileIcon(node)}
+            </div>
+            
             <span className="truncate text-sm">{node.name}</span>
           </div>
 
           <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
             {node.isFolder ? (
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full">
                     <MoreVertical className="h-3.5 w-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -298,8 +297,8 @@ export function FileTree({
               </DropdownMenu>
             ) : (
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full">
                     <MoreVertical className="h-3.5 w-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -326,8 +325,12 @@ export function FileTree({
         </div>
         {node.isFolder &&
           expandedFolders.has(node.path) &&
-          node.children.length > 0 &&
-          renderTree(node.children, level + 1)}
+          node.children.length > 0 && (
+            <div className={cn("transition-all duration-200", 
+                               expandedFolders.has(node.path) ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0")}>
+              {renderTree(node.children, level + 1)}
+            </div>
+          )}
       </React.Fragment>
     ))
   }
@@ -339,7 +342,7 @@ export function FileTree({
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onCreateFile?.("")}>
+              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-accent/50" onClick={() => onCreateFile?.("")}>
                 <Plus className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
@@ -356,7 +359,7 @@ export function FileTree({
               </div>
               <p className="text-sm font-medium mb-2">No files yet</p>
               <p className="text-xs text-muted-foreground mb-6 max-w-[200px]">Create your first file to start coding</p>
-              <Button onClick={() => onCreateFile?.("")}>
+              <Button onClick={() => onCreateFile?.("")} className="rounded-lg">
                 <Plus className="h-4 w-4 mr-2" />
                 Create File
               </Button>

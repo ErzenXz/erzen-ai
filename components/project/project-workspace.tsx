@@ -2,8 +2,10 @@
 
 import * as React from "react"
 import { FileTree } from "@/components/project/file-tree"
-import { CodeEditor } from "@/components/project/code-editor"
+import { CodeEditor, ThemeOption, editorThemes } from "@/components/project/code-editor"
 import { ProjectThreadsView } from "@/components/project/project-threads"
+import { FilePreview } from "@/components/project/file-preview"
+import { ProjectPreview } from "@/components/project/project-preview"
 import {
   FileX,
   Save,
@@ -27,7 +29,7 @@ import {
   Sparkles,
   Trash,
   Undo2,
-  Command,
+  Command as LucideCommand,
   ArrowRight,
   Github,
   ZoomIn,
@@ -35,6 +37,10 @@ import {
   EyeOff,
   Terminal,
   Cpu,
+  Palette,
+  Sun,
+  Moon,
+  Play,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
@@ -64,6 +70,21 @@ import {
 import { TabsList, TabsTrigger, Tabs } from "@/components/ui/tabs"
 import { fetchProjectFileVersions, revertProjectFileVersion, createProjectFile, updateProjectFile } from "@/lib/api"
 import type { CurrentVersion } from "@/lib/types"
+import { useTheme } from "next-themes"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  Command as CommandUI,
+} from "@/components/ui/command"
+import { cn } from "@/lib/utils"
 
 export function ProjectWorkspace() {
   const { 
@@ -80,6 +101,7 @@ export function ProjectWorkspace() {
     deleteFile,
     isLoading: projectIsLoading 
   } = useProject()
+  const { theme, setTheme } = useTheme()
   const [activeFilePath, setActiveFilePath] = React.useState<string | undefined>()
   const [fileContent, setFileContent] = React.useState("")
   const [agentInstruction, setAgentInstruction] = React.useState("")
@@ -89,6 +111,9 @@ export function ProjectWorkspace() {
 
   // Add a state for the active tab
   const [activeTab, setActiveTab] = React.useState<"editor" | "threads">("editor")
+
+  // Create a new boolean state for preview mode
+  const [isPreviewMode, setIsPreviewMode] = React.useState(false)
 
   // State for new thread dialog
   const [showNewThreadDialog, setShowNewThreadDialog] = React.useState(false)
@@ -112,6 +137,12 @@ export function ProjectWorkspace() {
   // Unsaved changes tracking
   const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false)
   const [originalContent, setOriginalContent] = React.useState("")
+  
+  // Theme state
+  const [selectedEditorTheme, setSelectedEditorTheme] = React.useState<ThemeOption>(
+    editorThemes.find(t => t.value === "black") || editorThemes[0]
+  )
+  const [showThemeMenu, setShowThemeMenu] = React.useState(false)
 
   // Load file content when active file changes
   React.useEffect(() => {
@@ -350,7 +381,7 @@ export function ProjectWorkspace() {
     }
   }
 
-  const handleAgentSubmit = (e: React.FormEvent) => {
+  const handleAgentSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!agentInstruction.trim()) {
       return
@@ -358,26 +389,33 @@ export function ProjectWorkspace() {
 
     setIsProcessing(true)
 
-    // Use the processAIInstruction function from useProject
-    processAIInstruction(agentInstruction, currentThread?.id)
-      .then(() => {
-        toast({
-          title: "AI processing complete",
-          description: "Your instruction has been processed.",
-        })
+    try {
+      const response = await processAIInstruction(agentInstruction, currentThread?.id)
+
+      if (response.threadId && !currentThread) {
+        // If a new thread was created, select it and switch to the threads tab
+        // selectProjectThread(response.threadId)
+        setActiveTab("threads")
+      } else if (currentThread) {
+        // If we're in an existing thread, reload the thread to get new messages
+        // reloadThread(currentThread.id)
+      }
+
+      toast({
+        title: "AI processing complete",
+        description: "Your instruction has been processed.",
       })
-      .catch((error) => {
-        console.error("Error processing AI instruction:", error)
-        toast({
-          title: "Error",
-          description: "Failed to process your instruction. Please try again.",
-          variant: "destructive",
-        })
+    } catch (error) {
+      console.error("Error processing AI instruction:", error)
+      toast({
+        title: "Error",
+        description: "Failed to process your instruction. Please try again.",
+        variant: "destructive",
       })
-      .finally(() => {
-        setIsProcessing(false)
-        setAgentInstruction("")
-      });
+    } finally {
+      setIsProcessing(false)
+      setAgentInstruction("")
+    }
   }
 
   // Get file language based on file extension
@@ -410,6 +448,18 @@ export function ProjectWorkspace() {
     }
 
     return mapping[ext] ?? "plaintext"
+  }
+
+  // Get file extension from path
+  const getFileExtension = (filePath = ""): string => {
+    return filePath.split(".").pop()?.toLowerCase() ?? ""
+  }
+
+  // Check if the file type can be rendered in the project preview
+  const canUseProjectPreview = (filePath = ""): boolean => {
+    const ext = getFileExtension(filePath)
+    // These file types work well in the ProjectPreview
+    return ['html', 'htm', 'js', 'jsx', 'ts', 'tsx'].includes(ext)
   }
 
   const handleCreateFolder = async () => {
@@ -471,6 +521,22 @@ export function ProjectWorkspace() {
         variant: "destructive",
       })
     }
+  }
+
+  // Handle theme selection
+  const handleSelectTheme = (theme: ThemeOption) => {
+    setSelectedEditorTheme(theme)
+    setShowThemeMenu(false)
+    if (theme.value !== 'system' && theme.value !== 'light' && theme.value !== 'dark') {
+      // Only set the theme in next-themes if it's a basic theme
+      return
+    }
+    setTheme(theme.value)
+  }
+
+  // Toggle preview mode on/off
+  const togglePreviewMode = () => {
+    setIsPreviewMode(prev => !prev)
   }
 
   // Connect the component loading state to the project loading state
@@ -545,6 +611,64 @@ export function ProjectWorkspace() {
 
           <div className="flex items-center gap-2">
             <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Popover open={showThemeMenu} onOpenChange={setShowThemeMenu}>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                        <Palette className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="p-0 w-48" side="bottom" align="center">
+                      <CommandUI>
+                        <CommandInput placeholder="Search themes..." />
+                        <CommandList>
+                          <CommandEmpty>No theme found.</CommandEmpty>
+                          <CommandGroup>
+                            {editorThemes.map((theme) => (
+                              <CommandItem
+                                key={theme.value}
+                                value={theme.value}
+                                onSelect={() => handleSelectTheme(theme)}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    selectedEditorTheme.value === theme.value ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {theme.label}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </CommandUI>
+                    </PopoverContent>
+                  </Popover>
+                </TooltipTrigger>
+                <TooltipContent>Editor Theme</TooltipContent>
+              </Tooltip>
+
+              {activeFilePath && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant={isPreviewMode ? "default" : "ghost"}
+                      size="icon" 
+                      className="h-8 w-8 rounded-full"
+                      onClick={togglePreviewMode}
+                    >
+                      {isPreviewMode ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Play className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{isPreviewMode ? "Exit Preview" : "Preview"}</TooltipContent>
+                </Tooltip>
+              )}
+
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
@@ -646,11 +770,6 @@ export function ProjectWorkspace() {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 rounded-md">
-                        <Eye className="h-3.5 w-3.5" />
-                        <span>Preview</span>
-                      </Button>
-
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs rounded-md">
@@ -724,11 +843,26 @@ export function ProjectWorkspace() {
                   </div>
 
                   <div className="flex-1 min-h-0 relative">
-                    <CodeEditor
-                      value={fileContent}
-                      language={getFileLanguage(activeFilePath)}
-                      onChange={setFileContent}
-                    />
+                    {isPreviewMode ? (
+                      canUseProjectPreview(activeFilePath || '') ? (
+                        <ProjectPreview
+                          projectFiles={projectFiles}
+                          activeFilePath={activeFilePath}
+                        />
+                      ) : (
+                        <FilePreview
+                          content={fileContent}
+                          fileType={getFileExtension(activeFilePath || '')}
+                        />
+                      )
+                    ) : (
+                      <CodeEditor
+                        value={fileContent}
+                        language={getFileLanguage(activeFilePath)}
+                        onChange={setFileContent}
+                        theme={selectedEditorTheme.monacoTheme}
+                      />
+                    )}
                   </div>
 
                   {/* AI Assistant Input */}
@@ -746,7 +880,7 @@ export function ProjectWorkspace() {
                         />
                         <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                           <kbd className="hidden md:inline-flex items-center gap-1 px-2 border rounded text-xs font-mono text-muted-foreground bg-muted/30">
-                            <Command className="h-3 w-3" />
+                            <LucideCommand className="h-3 w-3" />
                             <span>Enter</span>
                           </kbd>
                         </div>
