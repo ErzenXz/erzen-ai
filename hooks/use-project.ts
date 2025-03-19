@@ -27,6 +27,7 @@ import {
   deleteProject,
   processAgentInstruction,
   fetchProjectFile,
+  createProject as apiCreateProject,
 } from "@/lib/api";
 
 // Extend the Project type to include files array
@@ -199,34 +200,27 @@ export function ProjectProvider({
     async (name: string, description: string) => {
       setIsLoading(true);
       try {
-        // In a real app, this would be an API call
-        // TODO: Replace with actual API call when available
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        const newProject: ProjectWithFiles = {
-          id: nanoid(),
+        // Call the real API to create a project
+        const newProject = await apiCreateProject({
           name,
           description,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          ownerId: "", // Required by Project type
+        });
+
+        // Convert to ProjectWithFiles format
+        const projectWithFiles: ProjectWithFiles = {
+          ...newProject,
           files: [],
-          _count: {
-            files: 0,
-            threads: 0,
-            collaborators: 0,
-          },
         };
 
-        setProjects((prev) => [...prev, newProject]);
-        setCurrentProjectState(newProject);
+        setProjects((prev) => [...prev, projectWithFiles]);
+        setCurrentProjectState(projectWithFiles);
         setError(null);
 
         // Create initial files
         const readmeContent = `# ${name}\n\n${description}\n\nCreated on ${new Date().toLocaleDateString()}`;
 
         try {
-          await createProjectFile(newProject.id, {
+          await createProjectFile(projectWithFiles.id, {
             name: "README.md",
             path: "README.md",
             content: readmeContent,
@@ -234,7 +228,7 @@ export function ProjectProvider({
           });
 
           // Refresh file list
-          const files = await fetchProjectFiles(newProject.id);
+          const files = await fetchProjectFiles(projectWithFiles.id);
           const filesWithContent = Array.isArray(files) ? files : [files];
           setProjectFiles(
             filesWithContent.map((f) => ({

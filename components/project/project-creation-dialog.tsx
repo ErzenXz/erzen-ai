@@ -29,10 +29,11 @@ const formSchema = z.object({
 interface ProjectCreationDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onProjectCreated?: (projectId: string) => void
 }
 
-export function ProjectCreationDialog({ open, onOpenChange }: ProjectCreationDialogProps) {
-  const { createProject } = useProject()
+export function ProjectCreationDialog({ open, onOpenChange, onProjectCreated }: ProjectCreationDialogProps) {
+  const { createProject, currentProject, loadProjects } = useProject()
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -51,11 +52,20 @@ export function ProjectCreationDialog({ open, onOpenChange }: ProjectCreationDia
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       await createProject(values.name, values.description || "")
+      
+      // Refresh the projects list
+      await loadProjects()
+      
       toast({
         title: "Project created",
         description: `"${values.name}" has been created successfully.`,
       })
       onOpenChange(false)
+      
+      // Navigate to the newly created project if a callback was provided
+      if (onProjectCreated && currentProject) {
+        onProjectCreated(currentProject.id)
+      }
     } catch (error) {
       toast({
         title: "Error",

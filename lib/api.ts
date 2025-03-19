@@ -666,6 +666,24 @@ export async function fetchProject(projectId: string): Promise<SingleProject> {
   return response.json();
 }
 
+export async function createProject(data: {
+  name: string;
+  description?: string;
+}): Promise<Project> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/projects`,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to create project");
+  }
+  return response.json();
+}
+
 export async function updateProject(
   projectId: string,
   data: { name?: string; description?: string }

@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { ProjectWorkspace } from "@/components/project/project-workspace"
 import { ProjectGrid } from "@/components/project/project-grid"
 import { ProjectProvider } from "@/hooks/use-project"
+import { ProjectCreationDialog } from "@/components/project/project-creation-dialog"
 import { useChat } from "@/hooks/use-chat"
 import { useAuth } from "@/hooks/use-auth"
 import { ChatMessage } from "@/components/page/main/chat-message"
@@ -68,6 +69,7 @@ export default function Home() {
   const [isProcessingFiles, setIsProcessingFiles] = useState(false)
   const [isEditingMessage, setIsEditingMessage] = useState<string | null>(null)
   const [showProjectsGrid, setShowProjectsGrid] = useState(false)
+  const [showProjectDialog, setShowProjectDialog] = useState(false)
 
   // Dialog states
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -259,9 +261,20 @@ export default function Home() {
     }
   }
 
-  const handleProjectSelect = (projectId: string) => {
+  const handleProjectSelect = async (projectId: string) => {
+    // Hide the projects grid and select the project
     setShowProjectsGrid(false);
-    selectProject(projectId);
+    await selectProject(projectId);
+    
+    // Any messages or threads should also be cleared
+    if (currentThread?.id) {
+      setCurrentThread(null);
+    }
+    
+    // Make sure we're showing the project workspace view
+    if (currentProjectThreadId) {
+      selectProjectThread(null);
+    }
   }
   
   const handleProjectThreadSelect = (threadId: string) => {
@@ -312,278 +325,302 @@ export default function Home() {
   }
 
   return (
-    <div className="flex h-screen bg-background">
-      <ChatThreadList
-        threads={threads}
-        currentThreadId={currentThread?.id ?? null}
-        onThreadSelect={(id) => {
-          setShowProjectsGrid(false);
-          setCurrentThread(id);
-        }}
-        onNewThread={() => {
-          setShowProjectsGrid(false);
-          createThread();
-        }}
-        onRenameThread={handleRenameThread}
-        onDuplicateThread={handleDuplicateThread}
-        onDeleteThread={handleDeleteThread}
-        onLoadMore={loadMoreThreads}
-        hasMore={hasMore}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        projects={projects}
-        onViewProjects={handleViewProjects}
-      />
+    <>
+      <div className="flex h-screen bg-background">
+        <ChatThreadList
+          threads={threads}
+          currentThreadId={currentThread?.id ?? null}
+          onThreadSelect={(id) => {
+            setShowProjectsGrid(false);
+            setCurrentThread(id);
+          }}
+          onNewThread={() => {
+            setShowProjectsGrid(false);
+            createThread();
+          }}
+          onRenameThread={handleRenameThread}
+          onDuplicateThread={handleDuplicateThread}
+          onDeleteThread={handleDeleteThread}
+          onLoadMore={loadMoreThreads}
+          hasMore={hasMore}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          projects={projects}
+          onViewProjects={handleViewProjects}
+          onProjectSelect={handleProjectSelect}
+          onNewProject={() => setShowProjectDialog(true)}
+        />
 
-      <div className="flex-1 flex flex-col">
-        <header className="border-b p-4">
-          {/* Chat mode header with model selector */}
-          {!showProjectsGrid && !currentProjectId && (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <ModelSelector value={selectedModel} onChange={setSelectedModel} />
-                <div className="flex items-center gap-6">
-                  <div className="flex items-center gap-3">
-                    <Globe className="w-5 h-5 text-muted-foreground" />
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="web-search" className="text-sm font-medium cursor-pointer">
-                        Web Search
-                      </Label>
-                      <Switch
-                        id="web-search"
-                        checked={browseMode}
-                        onCheckedChange={(checked) => {
-                          setBrowseMode(checked);
-                          if (!checked) {
-                            setReasoning(false);
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
-                  
-                  {browseMode && (
+        <div className="flex-1 flex flex-col">
+          <header className="border-b p-4">
+            {/* Chat mode header with model selector */}
+            {!showProjectsGrid && !currentProjectId && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <ModelSelector value={selectedModel} onChange={setSelectedModel} />
+                  <div className="flex items-center gap-6">
                     <div className="flex items-center gap-3">
-                      <Brain className="w-5 h-5 text-muted-foreground" />
+                      <Globe className="w-5 h-5 text-muted-foreground" />
                       <div className="flex items-center gap-2">
-                        <Label htmlFor="reasoning" className="text-sm font-medium cursor-pointer">
-                          Reasoning
+                        <Label htmlFor="web-search" className="text-sm font-medium cursor-pointer">
+                          Web Search
                         </Label>
-                        <Switch id="reasoning" checked={reasoning} onCheckedChange={setReasoning} />
+                        <Switch
+                          id="web-search"
+                          checked={browseMode}
+                          onCheckedChange={(checked) => {
+                            setBrowseMode(checked);
+                            if (!checked) {
+                              setReasoning(false);
+                            }
+                          }}
+                        />
                       </div>
                     </div>
-                  )}
+                    
+                    {browseMode && (
+                      <div className="flex items-center gap-3">
+                        <Brain className="w-5 h-5 text-muted-foreground" />
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="reasoning" className="text-sm font-medium cursor-pointer">
+                            Reasoning
+                          </Label>
+                          <Switch id="reasoning" checked={reasoning} onCheckedChange={setReasoning} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-          
-          {/* Projects view header - simple title */}
-          {showProjectsGrid && (
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Projects</h2>
-            </div>
-          )}
-
-          {/* Project threads view header - just back button and title */}
-          {currentProjectId && !currentProjectThreadId && !showProjectsGrid && (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Button variant="ghost" size="sm" onClick={handleBackToProjects} 
-                  className="hover:bg-primary/5 transition-colors">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Projects
-                </Button>
-                <h2 className="text-lg font-semibold">
-                  {projects.find(p => p.id === currentProjectId)?.name}
-                </h2>
+            )}
+            
+            {/* Projects view header - simple title */}
+            {showProjectsGrid && (
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Projects</h2>
               </div>
-              <Button size="sm" onClick={() => {}} className="bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary">
-                <MessageSquarePlus className="h-4 w-4 mr-2" />
-                New Thread
-              </Button>
-            </div>
-          )}
+            )}
 
-          {/* Project workspace header */}
-          {currentProjectId && currentProjectThreadId && (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => selectProjectThread(null)} 
-                  className="hover:bg-primary/5 transition-colors"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Threads
-                </Button>
-                <h2 className="text-lg font-semibold">
-                  {projectThreads.find(t => t.id === currentProjectThreadId)?.title ?? "Untitled Thread"}
-                </h2>
-              </div>
-              <ModelSelector value={selectedModel} onChange={setSelectedModel} />
-            </div>
-          )}
-        </header>
-
-        {/* Show project workspace when a project is selected */}
-        {currentProjectId && !currentProjectThreadId && !showProjectsGrid ? (
-          <ProjectProvider initialProjectId={currentProjectId}>
-            <ProjectWorkspace />
-          </ProjectProvider>
-        ) : (
-          <ScrollArea className="flex-1 p-4">
-            <div className="max-w-5xl mx-auto">
-              {/* Show projects grid if requested */}
-              {showProjectsGrid && (
-                <div className="space-y-8">
-                  <ProjectGrid 
-                    projects={projects}
-                    onProjectSelect={handleProjectSelect}
-                    onCreateProject={() => {
-                      // Handle creating a new project
-                      toast({
-                        title: "Create Project",
-                        description: "Project creation feature coming soon",
-                      })
-                    }}
-                    onToggleStar={(projectId, starred) => {
-                      // Handle starring projects
-                      toast({
-                        title: starred ? "Project Starred" : "Project Unstarred",
-                        description: `Project has been ${starred ? "starred" : "unstarred"}`,
-                      })
-                    }}
-                  />
+            {/* Project threads view header - just back button and title */}
+            {currentProjectId && !currentProjectThreadId && !showProjectsGrid && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Button variant="ghost" size="sm" onClick={handleBackToProjects} 
+                    className="hover:bg-primary/5 transition-colors">
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back to Projects
+                  </Button>
+                  <h2 className="text-lg font-semibold">
+                    {projects.find(p => p.id === currentProjectId)?.name}
+                  </h2>
                 </div>
-              )}
-              
-              {/* Empty state with welcome message when no content is selected */}
-              {!showProjectsGrid && !currentProjectId && !currentThread?.id && (
-                <div className="flex flex-col items-center justify-center h-full py-20">
-                  <div className="relative">
-                    <div className="absolute -z-10 inset-0 bg-primary/5 blur-3xl rounded-full"></div>
-                    <div className="bg-gradient-to-b from-primary/20 to-primary/5 h-24 w-24 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <FolderRoot className="w-10 h-10 text-primary" />
+                <Button size="sm" onClick={() => {}} className="bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary">
+                  <MessageSquarePlus className="h-4 w-4 mr-2" />
+                  New Thread
+                </Button>
+              </div>
+            )}
+
+            {/* Project workspace header */}
+            {currentProjectId && currentProjectThreadId && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => selectProjectThread(null)} 
+                    className="hover:bg-primary/5 transition-colors"
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back to Threads
+                  </Button>
+                  <h2 className="text-lg font-semibold">
+                    {projectThreads.find(t => t.id === currentProjectThreadId)?.title ?? "Untitled Thread"}
+                  </h2>
+                </div>
+                <ModelSelector value={selectedModel} onChange={setSelectedModel} />
+              </div>
+            )}
+          </header>
+
+          {/* Show project workspace when a project is selected */}
+          {currentProjectId && !currentProjectThreadId && !showProjectsGrid ? (
+            <ProjectProvider initialProjectId={currentProjectId}>
+              <ProjectWorkspace />
+            </ProjectProvider>
+          ) : (
+            <ScrollArea className="flex-1 p-4">
+              <div className="max-w-5xl mx-auto">
+                {/* Show projects grid if requested */}
+                {showProjectsGrid && (
+                  <div className="space-y-8">
+                    <ProjectGrid 
+                      projects={projects}
+                      onProjectSelect={handleProjectSelect}
+                      onCreateProject={() => {
+                        // Handle creating a new project
+                        toast({
+                          title: "Create Project",
+                          description: "Project creation feature coming soon",
+                        })
+                      }}
+                      onToggleStar={(projectId, starred) => {
+                        // Handle starring projects
+                        toast({
+                          title: starred ? "Project Starred" : "Project Unstarred",
+                          description: `Project has been ${starred ? "starred" : "unstarred"}`,
+                        })
+                      }}
+                    />
+                  </div>
+                )}
+                
+                {/* Empty state with welcome message when no content is selected */}
+                {!showProjectsGrid && !currentProjectId && !currentThread?.id && (
+                  <div className="flex flex-col items-center justify-center h-full py-20">
+                    <div className="relative">
+                      <div className="absolute -z-10 inset-0 bg-primary/5 blur-3xl rounded-full"></div>
+                      <div className="bg-gradient-to-b from-primary/20 to-primary/5 h-24 w-24 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <FolderRoot className="w-10 h-10 text-primary" />
+                      </div>
+                    </div>
+                    <h2 className="text-3xl font-bold mb-3">Welcome to Erzen AI</h2>
+                    <p className="text-muted-foreground text-center max-w-md mb-8">
+                      Create a new project or start a chat to begin working with AI
+                    </p>
+                    <div className="flex gap-3">
+                      <Button onClick={() => setShowProjectDialog(true)}>
+                        <FolderPlus className="w-4 h-4 mr-2" />
+                        Create Project
+                      </Button>
+                      <Button variant="outline" onClick={() => createThread()}>
+                        <MessageSquarePlus className="w-4 h-4 mr-2" />
+                        New Chat
+                      </Button>
                     </div>
                   </div>
-                  <h2 className="text-3xl font-bold mb-3">Welcome to Erzen AI</h2>
-                  <p className="text-muted-foreground text-center max-w-md mb-8">
-                    Create a new project or start a chat to begin working with AI
-                  </p>
-                  <div className="flex gap-3">
-                    <Button onClick={() => {}}>
-                      <FolderPlus className="w-4 h-4 mr-2" />
-                      Create Project
-                    </Button>
-                    <Button variant="outline" onClick={() => createThread()}>
-                      <MessageSquarePlus className="w-4 h-4 mr-2" />
-                      New Chat
-                    </Button>
+                )}
+
+                {/* Show thread messages */}
+                {(currentThread?.id || currentProjectThreadId) && (
+                  <div className="space-y-4">
+                    {currentProjectId && currentProjectThreadId && (
+                      <Button variant="ghost" size="sm" onClick={() => {
+                        // Use null instead of empty string to avoid triggering API call
+                        selectProjectThread(null);
+                      }} >
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Back to Project Threads
+                      </Button>
+                    )}
+                    
+                    {currentThread?.messages.map((msg, index) => (
+                      <ChatMessage 
+                        key={msg.id} 
+                        message={msg} 
+                        isLast={index === currentThread.messages.length - 1}
+                        onRegenerate={msg.role === "assistant" ? handleRegenerateMessage : undefined}
+                        onEdit={msg.role === "user" ? handleEditMessage : undefined}
+                        onReport={handleReportMessage}
+                        onPlay={handlePlayMessage}
+                      />
+                    ))}
+                    
+                    {error && <div className="p-4 text-sm text-destructive bg-destructive/10 rounded-lg">{error}</div>}
                   </div>
-                </div>
-              )}
+                )} 
+              </div>
+            </ScrollArea>
+          )}
+          
+          {/* Chat input footer - only show when in chat mode */}
+          {!showProjectsGrid && (!currentProjectId || currentProjectThreadId) && (currentThread?.id || !currentProjectId) && (
+            <footer className="border-t p-4">
+              <div className="max-w-5xl mx-auto">
+                {showFileUpload && <FileUpload onFilesChange={handleFilesChange} />}
 
-              {/* Show thread messages */}
-              {(currentThread?.id || currentProjectThreadId) && (
-                <div className="space-y-4">
-                  {currentProjectId && currentProjectThreadId && (
-                    <Button variant="ghost" size="sm" onClick={() => {
-                      // Use null instead of empty string to avoid triggering API call
-                      selectProjectThread(null);
-                    }} >
-                      <ArrowLeft className="h-4 w-4 mr-2" />
-                      Back to Project Threads
-                    </Button>
-                  )}
-                  
-                  {currentThread?.messages.map((msg, index) => (
-                    <ChatMessage 
-                      key={msg.id} 
-                      message={msg} 
-                      isLast={index === currentThread.messages.length - 1}
-                      onRegenerate={msg.role === "assistant" ? handleRegenerateMessage : undefined}
-                      onEdit={msg.role === "user" ? handleEditMessage : undefined}
-                      onReport={handleReportMessage}
-                      onPlay={handlePlayMessage}
-                    />
-                  ))}
-                  
-                  {error && <div className="p-4 text-sm text-destructive bg-destructive/10 rounded-lg">{error}</div>}
-                </div>
-              )} 
-            </div>
-          </ScrollArea>
-        )}
-        
-        {/* Chat input footer - only show when in chat mode */}
-        {!showProjectsGrid && (!currentProjectId || currentProjectThreadId) && (currentThread?.id || !currentProjectId) && (
-          <footer className="border-t p-4">
-            <div className="max-w-5xl mx-auto">
-              {showFileUpload && <FileUpload onFilesChange={handleFilesChange} />}
+                <ChatInput
+                  message={message}
+                  onMessageChange={setMessage}
+                  onSubmit={handleSubmit}
+                  onToggleFileUpload={() => setShowFileUpload(!showFileUpload)}
+                  isLoading={isLoading}
+                  isDisabled={!user || !selectedModel}
+                  isProcessingFiles={isProcessingFiles}
+                  uploadedFilesCount={uploadedFiles.length}
+                  showFileUpload={showFileUpload}
+                  onClearFiles={() => {
+                    setUploadedFiles([])
+                    setShowFileUpload(false)
+                  }}
+                  placeholder={
+                    isEditingMessage
+                      ? "Edit your message..."
+                      : getInputPlaceholder()
+                  }
+                  onCommandExecute={handleCommandExecute}
+                />
+              </div>
+            </footer>
+          )}
+        </div>
 
-              <ChatInput
-                message={message}
-                onMessageChange={setMessage}
-                onSubmit={handleSubmit}
-                onToggleFileUpload={() => setShowFileUpload(!showFileUpload)}
-                isLoading={isLoading}
-                isDisabled={!user || !selectedModel}
-                isProcessingFiles={isProcessingFiles}
-                uploadedFilesCount={uploadedFiles.length}
-                showFileUpload={showFileUpload}
-                onClearFiles={() => {
-                  setUploadedFiles([])
-                  setShowFileUpload(false)
-                }}
-                placeholder={
-                  isEditingMessage
-                    ? "Edit your message..."
-                    : getInputPlaceholder()
-                }
-                onCommandExecute={handleCommandExecute}
-              />
-            </div>
-          </footer>
-        )}
+        {/* Dialog for Delete Thread or Report Message */}
+        <AlertDialog
+          open={isDeleteDialogOpen}
+          onOpenChange={(open) => {
+            setIsDeleteDialogOpen(open)
+            if (!open) {
+              resetDialogStates()
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {dialogAction === "delete-thread" ? "Delete Thread?" : "Report Message?"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {dialogAction === "delete-thread" 
+                  ? "This action cannot be undone. This will permanently delete the chat and all its messages."
+                  : "Thank you for helping us maintain quality. Please confirm you want to report this message."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={resetDialogStates}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmAction}
+                className={dialogAction === "delete-thread" 
+                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  : ""}
+              >
+                {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                {dialogAction === "delete-thread" ? "Delete" : "Report"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
-      {/* Dialog for Delete Thread or Report Message */}
-      <AlertDialog
-        open={isDeleteDialogOpen}
-        onOpenChange={(open) => {
-          setIsDeleteDialogOpen(open)
-          if (!open) {
-            resetDialogStates()
-          }
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {dialogAction === "delete-thread" ? "Delete Thread?" : "Report Message?"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {dialogAction === "delete-thread" 
-                ? "This action cannot be undone. This will permanently delete the chat and all its messages."
-                : "Thank you for helping us maintain quality. Please confirm you want to report this message."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={resetDialogStates}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmAction}
-              className={dialogAction === "delete-thread" 
-                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                : ""}
-            >
-              {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              {dialogAction === "delete-thread" ? "Delete" : "Report"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+      {/* Project Creation Dialog */}
+      <ProjectProvider>
+        <ProjectCreationDialog 
+          open={showProjectDialog} 
+          onOpenChange={setShowProjectDialog}
+          onProjectCreated={(projectId) => {
+            // Close the dialog
+            setShowProjectDialog(false);
+            
+            // Select the new project
+            handleProjectSelect(projectId);
+            
+            toast({
+              title: "Project created",
+              description: "Your new project has been created successfully.",
+            });
+          }}
+        />
+      </ProjectProvider>
+    </>
   )
 }

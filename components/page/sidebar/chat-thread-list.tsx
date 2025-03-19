@@ -32,6 +32,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { useState, useEffect, useRef } from "react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useRouter } from "next/navigation"
 
 interface ChatThreadListProps {
   threads: ChatThread[]
@@ -47,6 +48,8 @@ interface ChatThreadListProps {
   onSearchChange?: (query: string) => void
   projects: Project[]
   onViewProjects?: () => void
+  onProjectSelect?: (projectId: string) => void
+  onNewProject?: () => void
 }
 
 export function ChatThreadList({
@@ -63,6 +66,8 @@ export function ChatThreadList({
   onSearchChange,
   projects,
   onViewProjects,
+  onProjectSelect,
+  onNewProject,
 }: ChatThreadListProps) {
   const { user, isLoading } = useAuth()
   const [collapsed, setCollapsed] = useState(false)
@@ -71,6 +76,7 @@ export function ChatThreadList({
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState<string>("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
   
   // Focus the input when editing starts
   useEffect(() => {
@@ -300,7 +306,7 @@ export function ChatThreadList({
                   <MessageSquarePlus className="w-4 h-4 mr-2" />
                   New Chat
                 </Button>
-                <Button onClick={() => {}} className="flex-[1]" variant="outline">
+                <Button onClick={() => onNewProject?.()} className="flex-[1]" variant="outline">
                   <FolderPlus className="w-4 h-4" />
                 </Button>
                 </div>
