@@ -321,7 +321,45 @@ export default function Home() {
   }, [resetDialogStates]);
 
   if (!user) {
-    return null;
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-background">
+        <div className="relative">
+          {/* Animated background gradient */}
+          <div className="absolute inset-0 -z-10">
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 animate-gradient-x"></div>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent animate-pulse"></div>
+          </div>
+
+          {/* Main content */}
+          <div className="flex flex-col items-center">
+            {/* Logo/Icon */}
+            <div className="relative mb-8">
+              <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full"></div>
+              <div className="relative bg-gradient-to-b from-primary/20 to-primary/5 p-6 rounded-full border border-primary/10">
+                <Brain className="w-12 h-12 text-primary animate-pulse" />
+              </div>
+            </div>
+
+            {/* Loading text */}
+            <div className="space-y-2 text-center">
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                Erzen AI
+              </h1>
+              <p className="text-muted-foreground text-sm">
+                Preparing your workspace...
+              </p>
+            </div>
+
+            {/* Loading dots */}
+            <div className="flex gap-1 mt-6">
+              <div className="w-2 h-2 rounded-full bg-primary/30 animate-bounce [animation-delay:-0.3s]"></div>
+              <div className="w-2 h-2 rounded-full bg-primary/30 animate-bounce [animation-delay:-0.15s]"></div>
+              <div className="w-2 h-2 rounded-full bg-primary/30 animate-bounce"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
