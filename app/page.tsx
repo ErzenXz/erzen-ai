@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react"
 import { 
   Globe, Brain, Loader2, FolderRoot, ArrowLeft, Clock, MessageSquarePlus, 
-  FolderPlus 
+  FolderPlus, Code, BookOpen
 } from "lucide-react"
 import { readFileAsText } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -34,6 +34,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+
+// Define types for template data
+interface Template {
+  title: string;
+  description: string;
+  prompt: string;
+  enableBrowse?: boolean;
+}
+
+interface TemplateCategory {
+  id: string;
+  label: string;
+  color: string;
+  bgColor: string;
+  hoverColor: string;
+  borderColor: string;
+  icon: React.ElementType;
+  templates: Template[];
+}
 
 export default function Home() {
   const {
@@ -70,6 +89,7 @@ export default function Home() {
   const [isEditingMessage, setIsEditingMessage] = useState<string | null>(null)
   const [showProjectsGrid, setShowProjectsGrid] = useState(false)
   const [showProjectDialog, setShowProjectDialog] = useState(false)
+  const [selectedTemplateCategory, setSelectedTemplateCategory] = useState<"create" | "explore" | "code" | "learn">("create")
 
   // Dialog states
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -319,6 +339,156 @@ export default function Home() {
       resetDialogStates();
     };
   }, [resetDialogStates]);
+
+  // Template data organized by category
+  const templateCategories: TemplateCategory[] = [
+    { 
+      id: "create", 
+      label: "Create", 
+      color: "primary",
+      bgColor: "bg-primary/10",
+      hoverColor: "hover:text-primary",
+      borderColor: "border-primary/30",
+      icon: MessageSquarePlus,
+      templates: [
+        {
+          title: "Write a short story about...",
+          description: "Generate creative stories in any genre or style",
+          prompt: "Write a short story about a robot learning to love"
+        },
+        {
+          title: "Write a blog post about...",
+          description: "Create well-structured articles on any topic",
+          prompt: "Write a blog post about the future of AI"
+        },
+        {
+          title: "Generate marketing ideas for...",
+          description: "Brainstorm creative marketing content",
+          prompt: "Generate 5 creative marketing slogans for a sustainable clothing brand"
+        },
+        {
+          title: "Draft an email to...",
+          description: "Professional communication for any situation",
+          prompt: "Draft a professional email to schedule a meeting with a potential client"
+        },
+        {
+          title: "Create a product description for...",
+          description: "Compelling copy for products or services",
+          prompt: "Create an engaging product description for a new smartwatch"
+        }
+      ]
+    },
+    { 
+      id: "explore", 
+      label: "Explore", 
+      color: "blue-500",
+      bgColor: "bg-blue-500/10",
+      hoverColor: "hover:text-blue-500",
+      borderColor: "border-blue-500/30",
+      icon: Globe,
+      templates: [
+        {
+          title: "Explain a complex topic...",
+          description: "Get simple explanations for difficult concepts",
+          prompt: "Explain quantum computing in simple terms"
+        },
+        {
+          title: "Research current trends in...",
+          description: "Discover the latest information on any subject",
+          prompt: "What are the latest developments in renewable energy?",
+          enableBrowse: true
+        },
+        {
+          title: "Compare and contrast...",
+          description: "Get balanced analysis of different options",
+          prompt: "Compare the pros and cons of React vs. Vue"
+        },
+        {
+          title: "Summarize the key points of...",
+          description: "Get concise summaries of complex topics",
+          prompt: "Summarize the key points of the latest IPCC climate report"
+        },
+        {
+          title: "Find facts about...",
+          description: "Research specific information on any topic",
+          prompt: "Find interesting facts about deep sea creatures",
+          enableBrowse: true
+        }
+      ]
+    },
+    { 
+      id: "code", 
+      label: "Code", 
+      color: "green-500",
+      bgColor: "bg-green-500/10",
+      hoverColor: "hover:text-green-500",
+      borderColor: "border-green-500/30",
+      icon: Code,
+      templates: [
+        {
+          title: "Write a component for...",
+          description: "Generate code for specific UI components",
+          prompt: "Write a React component for a responsive image gallery"
+        },
+        {
+          title: "Debug my code...",
+          description: "Find and fix issues in your code",
+          prompt: "Debug this code: [paste your code here]"
+        },
+        {
+          title: "Explain how to implement...",
+          description: "Get step-by-step coding instructions",
+          prompt: "Explain how to implement authentication in a NextJS app"
+        },
+        {
+          title: "Optimize this function...",
+          description: "Improve performance and readability",
+          prompt: "Optimize this JavaScript function for better performance"
+        },
+        {
+          title: "Convert this code to...",
+          description: "Translate between programming languages",
+          prompt: "Convert this Python code to TypeScript"
+        }
+      ]
+    },
+    { 
+      id: "learn", 
+      label: "Learn", 
+      color: "amber-500",
+      bgColor: "bg-amber-500/10",
+      hoverColor: "hover:text-amber-500",
+      borderColor: "border-amber-500/30",
+      icon: BookOpen,
+      templates: [
+        {
+          title: "Create a study plan for...",
+          description: "Get personalized learning roadmaps",
+          prompt: "Create a study plan for learning machine learning in 3 months"
+        },
+        {
+          title: "What should I know about...",
+          description: "Discover essential knowledge in any field",
+          prompt: "What are the most important concepts to understand in modern JavaScript?"
+        },
+        {
+          title: "Explain with examples...",
+          description: "Learn concepts with practical demonstrations",
+          prompt: "Explain TypeScript generics with practical examples"
+        },
+        {
+          title: "Recommend resources for learning...",
+          description: "Get curated learning materials",
+          prompt: "Recommend the best resources for learning data science from scratch"
+        },
+        {
+          title: "Quiz me on...",
+          description: "Test your knowledge with interactive quizzes",
+          prompt: "Create a quiz to test my knowledge of world geography"
+        }
+      ]
+    }
+  ]
 
   if (!user) {
     return (
@@ -697,151 +867,71 @@ export default function Home() {
                 )}
 
                 {/* Show templates for a new chat thread */}
-                {currentThread?.id === 'new' && currentThread.messages.length === 0 && (
+                {currentThread?.id === 'new' && currentThread.messages.length === 0 && !showProjectsGrid && (
                   <div className="py-8">
-                    <div className="relative mb-12 text-center">
+                    <div className="relative mb-8 text-center">
                       <div className="absolute -z-10 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/5 blur-3xl rounded-full"></div>
                       <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">How can I help you?</h2>
                       <p className="text-muted-foreground mt-3 max-w-xl mx-auto">Select a template or type your own message below</p>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      {/* Create Category */}
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Badge variant="outline" className="px-4 py-1.5 text-lg font-medium text-primary border-primary/30 bg-primary/5 rounded-lg">
-                            Create
-                          </Badge>
-                          <div className="h-px flex-1 bg-primary/10"></div>
-                        </div>
-                        
-                        <Card className="p-5 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-primary/10 hover:border-primary/30 hover:shadow-sm group" 
-                          onClick={() => {
-                            setMessage("Write a short story about a robot learning to love");
-                          }}>
-                          <p className="font-medium text-base group-hover:text-primary transition-colors">Write a short story about...</p>
-                          <p className="text-sm text-muted-foreground mt-1">Generate creative stories in any genre or style</p>
-                        </Card>
-                        
-                        <Card className="p-5 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-primary/10 hover:border-primary/30 hover:shadow-sm group" 
-                          onClick={() => {
-                            setMessage("Write a blog post about the future of AI");
-                          }}>
-                          <p className="font-medium text-base group-hover:text-primary transition-colors">Write a blog post about...</p>
-                          <p className="text-sm text-muted-foreground mt-1">Create well-structured articles on any topic</p>
-                        </Card>
-                        
-                        <Card className="p-5 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-primary/10 hover:border-primary/30 hover:shadow-sm group" 
-                          onClick={() => {
-                            setMessage("Generate 5 creative marketing slogans for a sustainable clothing brand");
-                          }}>
-                          <p className="font-medium text-base group-hover:text-primary transition-colors">Generate marketing ideas for...</p>
-                          <p className="text-sm text-muted-foreground mt-1">Brainstorm creative marketing content</p>
-                        </Card>
-                      </div>
-                      
-                      {/* Explore Category */}
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Badge variant="outline" className="px-4 py-1.5 text-lg font-medium text-blue-500 border-blue-500/30 bg-blue-500/5 rounded-lg">
-                            Explore
-                          </Badge>
-                          <div className="h-px flex-1 bg-blue-500/10"></div>
-                        </div>
-                        
-                        <Card className="p-5 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-blue-500/10 hover:border-blue-500/30 hover:shadow-sm group" 
-                          onClick={() => {
-                            setMessage("Explain quantum computing in simple terms");
-                          }}>
-                          <p className="font-medium text-base group-hover:text-blue-500 transition-colors">Explain a complex topic...</p>
-                          <p className="text-sm text-muted-foreground mt-1">Get simple explanations for difficult concepts</p>
-                        </Card>
-                        
-                        <Card className="p-5 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-blue-500/10 hover:border-blue-500/30 hover:shadow-sm group" 
-                          onClick={() => {
-                            setBrowseMode(true);
-                            setMessage("What are the latest developments in renewable energy?");
-                          }}>
-                          <p className="font-medium text-base group-hover:text-blue-500 transition-colors">Research current trends in...</p>
-                          <p className="text-sm text-muted-foreground mt-1">Discover the latest information on any subject</p>
-                        </Card>
-                        
-                        <Card className="p-5 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-blue-500/10 hover:border-blue-500/30 hover:shadow-sm group" 
-                          onClick={() => {
-                            setMessage("Compare the pros and cons of React vs. Vue");
-                          }}>
-                          <p className="font-medium text-base group-hover:text-blue-500 transition-colors">Compare and contrast...</p>
-                          <p className="text-sm text-muted-foreground mt-1">Get balanced analysis of different options</p>
-                        </Card>
-                      </div>
-                      
-                      {/* Code Category */}
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Badge variant="outline" className="px-4 py-1.5 text-lg font-medium text-green-500 border-green-500/30 bg-green-500/5 rounded-lg">
-                            Code
-                          </Badge>
-                          <div className="h-px flex-1 bg-green-500/10"></div>
-                        </div>
-                        
-                        <Card className="p-5 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-green-500/10 hover:border-green-500/30 hover:shadow-sm group" 
-                          onClick={() => {
-                            setMessage("Write a React component for a responsive image gallery");
-                          }}>
-                          <p className="font-medium text-base group-hover:text-green-500 transition-colors">Write a component for...</p>
-                          <p className="text-sm text-muted-foreground mt-1">Generate code for specific UI components</p>
-                        </Card>
-                        
-                        <Card className="p-5 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-green-500/10 hover:border-green-500/30 hover:shadow-sm group" 
-                          onClick={() => {
-                            setMessage("Debug this code: [paste your code here]");
-                          }}>
-                          <p className="font-medium text-base group-hover:text-green-500 transition-colors">Debug my code...</p>
-                          <p className="text-sm text-muted-foreground mt-1">Find and fix issues in your code</p>
-                        </Card>
-                        
-                        <Card className="p-5 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-green-500/10 hover:border-green-500/30 hover:shadow-sm group" 
-                          onClick={() => {
-                            setMessage("Explain how to implement authentication in a NextJS app");
-                          }}>
-                          <p className="font-medium text-base group-hover:text-green-500 transition-colors">Explain how to implement...</p>
-                          <p className="text-sm text-muted-foreground mt-1">Get step-by-step coding instructions</p>
-                        </Card>
-                      </div>
-                      
-                      {/* Learn Category */}
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Badge variant="outline" className="px-4 py-1.5 text-lg font-medium text-amber-500 border-amber-500/30 bg-amber-500/5 rounded-lg">
-                            Learn
-                          </Badge>
-                          <div className="h-px flex-1 bg-amber-500/10"></div>
-                        </div>
-                        
-                        <Card className="p-5 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-amber-500/10 hover:border-amber-500/30 hover:shadow-sm group" 
-                          onClick={() => {
-                            setMessage("Create a study plan for learning machine learning in 3 months");
-                          }}>
-                          <p className="font-medium text-base group-hover:text-amber-500 transition-colors">Create a study plan for...</p>
-                          <p className="text-sm text-muted-foreground mt-1">Get personalized learning roadmaps</p>
-                        </Card>
-                        
-                        <Card className="p-5 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-amber-500/10 hover:border-amber-500/30 hover:shadow-sm group" 
-                          onClick={() => {
-                            setMessage("What are the most important concepts to understand in modern JavaScript?");
-                          }}>
-                          <p className="font-medium text-base group-hover:text-amber-500 transition-colors">What should I know about...</p>
-                          <p className="text-sm text-muted-foreground mt-1">Discover essential knowledge in any field</p>
-                        </Card>
-                        
-                        <Card className="p-5 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-amber-500/10 hover:border-amber-500/30 hover:shadow-sm group" 
-                          onClick={() => {
-                            setMessage("Explain TypeScript generics with practical examples");
-                          }}>
-                          <p className="font-medium text-base group-hover:text-amber-500 transition-colors">Explain with examples...</p>
-                          <p className="text-sm text-muted-foreground mt-1">Learn concepts with practical demonstrations</p>
-                        </Card>
-                      </div>
+                    {/* Category tabs */}
+                    <div className="flex justify-center mb-8 bg-accent/30 backdrop-blur-sm p-1.5 rounded-xl max-w-lg mx-auto shadow-sm border border-border/50">
+                      {templateCategories.map((category) => (
+                        <button
+                          key={category.id}
+                          onClick={() => setSelectedTemplateCategory(category.id as any)}
+                          className={`px-4 py-2.5 rounded-lg font-medium transition-all duration-200 relative text-sm flex-1 flex items-center justify-center gap-2
+                            ${selectedTemplateCategory === category.id 
+                              ? `bg-background shadow-sm text-${category.color} dark:text-white dark:after:bg-${category.color}` 
+                              : `text-muted-foreground hover:text-foreground ${category.hoverColor} hover:bg-background/50`
+                            }
+                          `}
+                        >
+                          <category.icon className={`w-4 h-4 ${selectedTemplateCategory === category.id ? `text-${category.color}` : ''}`} />
+                          <span>{category.label}</span>
+                          {selectedTemplateCategory === category.id && (
+                            <span className="absolute inset-0 rounded-lg ring-1 ring-border dark:ring-border/50"></span>
+                          )}
+                          {selectedTemplateCategory === category.id && (
+                            <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/2 h-0.5 bg-gradient-to-r from-transparent via-current to-transparent"></span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    
+                    {/* Templates grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+                      {templateCategories.find(c => c.id === selectedTemplateCategory)?.templates.map((template, index) => {
+                        const category = templateCategories.find(c => c.id === selectedTemplateCategory)!;
+                        return (
+                          <Card 
+                            key={index}
+                            className={`p-5 cursor-pointer hover:${category.bgColor} transition-all duration-200 border-muted/30 hover:${category.borderColor} hover:shadow-sm group`}
+                            onClick={() => {
+                              if (template.enableBrowse) {
+                                setBrowseMode(true);
+                              }
+                              setMessage(template.prompt);
+                            }}
+                          >
+                            <div className="flex flex-col h-full">
+                              <div className="flex items-start justify-between mb-1">
+                                <p className={`font-medium text-base ${category.hoverColor} transition-colors`}>
+                                  {template.title}
+                                </p>
+                                {template.enableBrowse && (
+                                  <Badge variant="outline" className={`ml-2 shrink-0 text-xs px-2 py-0.5 text-${category.color} ${category.borderColor} ${category.bgColor}`}>
+                                    <Globe className="w-3 h-3 mr-1" />
+                                    Web
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground">{template.description}</p>
+                            </div>
+                          </Card>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
