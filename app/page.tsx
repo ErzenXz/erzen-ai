@@ -477,7 +477,7 @@ export default function Home() {
                 
                 {/* Empty state with welcome message when no content is selected */}
                 {!showProjectsGrid && !currentProjectId && !currentThread?.id && (
-                  <div className="flex flex-col items-center justify-center h-full py-20">
+                  <div className="flex flex-col items-center justify-center h-full py-8">
                     <div className="relative">
                       <div className="absolute -z-10 inset-0 bg-primary/5 blur-3xl rounded-full"></div>
                       <div className="bg-gradient-to-b from-primary/20 to-primary/5 h-24 w-24 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -485,10 +485,10 @@ export default function Home() {
                       </div>
                     </div>
                     <h2 className="text-3xl font-bold mb-3">Welcome to Erzen AI</h2>
-                    <p className="text-muted-foreground text-center max-w-md mb-8">
+                    <p className="text-muted-foreground text-center max-w-md mb-2">
                       Create a new project or start a chat to begin working with AI
                     </p>
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 mb-10">
                       <Button onClick={() => setShowProjectDialog(true)}>
                         <FolderPlus className="w-4 h-4 mr-2" />
                         Create Project
@@ -498,9 +498,310 @@ export default function Home() {
                         New Chat
                       </Button>
                     </div>
+                    
+                    <div className="w-full max-w-4xl">
+                      <h3 className="text-xl font-semibold text-center mb-6">How can I help you?</h3>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Create Category */}
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline" className="px-3 py-1 text-primary border-primary/30 bg-primary/5">
+                              Create
+                            </Badge>
+                          </div>
+                          
+                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-primary/10 hover:border-primary/30" 
+                            onClick={() => {
+                              createThread();
+                              setMessage("Write a short story about a robot learning to love");
+                            }}>
+                            <p className="font-medium">Write a short story about...</p>
+                            <p className="text-sm text-muted-foreground">Generate creative stories in any genre or style</p>
+                          </Card>
+                          
+                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-primary/10 hover:border-primary/30" 
+                            onClick={() => {
+                              createThread();
+                              setMessage("Write a blog post about the future of AI");
+                            }}>
+                            <p className="font-medium">Write a blog post about...</p>
+                            <p className="text-sm text-muted-foreground">Create well-structured articles on any topic</p>
+                          </Card>
+                          
+                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-primary/10 hover:border-primary/30" 
+                            onClick={() => {
+                              createThread();
+                              setMessage("Generate 5 creative marketing slogans for a sustainable clothing brand");
+                            }}>
+                            <p className="font-medium">Generate marketing ideas for...</p>
+                            <p className="text-sm text-muted-foreground">Brainstorm creative marketing content</p>
+                          </Card>
+                        </div>
+                        
+                        {/* Explore Category */}
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline" className="px-3 py-1 text-blue-500 border-blue-500/30 bg-blue-500/5">
+                              Explore
+                            </Badge>
+                          </div>
+                          
+                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-blue-500/10 hover:border-blue-500/30" 
+                            onClick={() => {
+                              createThread();
+                              setMessage("Explain quantum computing in simple terms");
+                            }}>
+                            <p className="font-medium">Explain a complex topic...</p>
+                            <p className="text-sm text-muted-foreground">Get simple explanations for difficult concepts</p>
+                          </Card>
+                          
+                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-blue-500/10 hover:border-blue-500/30" 
+                            onClick={() => {
+                              createThread();
+                              setBrowseMode(true);
+                              setMessage("What are the latest developments in renewable energy?");
+                            }}>
+                            <p className="font-medium">Research current trends in...</p>
+                            <p className="text-sm text-muted-foreground">Discover the latest information on any subject</p>
+                          </Card>
+                          
+                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-blue-500/10 hover:border-blue-500/30" 
+                            onClick={() => {
+                              createThread();
+                              setMessage("Compare the pros and cons of React vs. Vue");
+                            }}>
+                            <p className="font-medium">Compare and contrast...</p>
+                            <p className="text-sm text-muted-foreground">Get balanced analysis of different options</p>
+                          </Card>
+                        </div>
+                        
+                        {/* Code Category */}
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline" className="px-3 py-1 text-green-500 border-green-500/30 bg-green-500/5">
+                              Code
+                            </Badge>
+                          </div>
+                          
+                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-green-500/10 hover:border-green-500/30" 
+                            onClick={() => {
+                              createThread();
+                              setMessage("Write a React component for a responsive image gallery");
+                            }}>
+                            <p className="font-medium">Write a component for...</p>
+                            <p className="text-sm text-muted-foreground">Generate code for specific UI components</p>
+                          </Card>
+                          
+                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-green-500/10 hover:border-green-500/30" 
+                            onClick={() => {
+                              createThread();
+                              setMessage("Debug this code: [paste your code here]");
+                            }}>
+                            <p className="font-medium">Debug my code...</p>
+                            <p className="text-sm text-muted-foreground">Find and fix issues in your code</p>
+                          </Card>
+                          
+                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-green-500/10 hover:border-green-500/30" 
+                            onClick={() => {
+                              createThread();
+                              setMessage("Explain how to implement authentication in a NextJS app");
+                            }}>
+                            <p className="font-medium">Explain how to implement...</p>
+                            <p className="text-sm text-muted-foreground">Get step-by-step coding instructions</p>
+                          </Card>
+                        </div>
+                        
+                        {/* Learn Category */}
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline" className="px-3 py-1 text-amber-500 border-amber-500/30 bg-amber-500/5">
+                              Learn
+                            </Badge>
+                          </div>
+                          
+                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-amber-500/10 hover:border-amber-500/30" 
+                            onClick={() => {
+                              createThread();
+                              setMessage("Create a study plan for learning machine learning in 3 months");
+                            }}>
+                            <p className="font-medium">Create a study plan for...</p>
+                            <p className="text-sm text-muted-foreground">Get personalized learning roadmaps</p>
+                          </Card>
+                          
+                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-amber-500/10 hover:border-amber-500/30" 
+                            onClick={() => {
+                              createThread();
+                              setMessage("What are the most important concepts to understand in modern JavaScript?");
+                            }}>
+                            <p className="font-medium">What should I know about...</p>
+                            <p className="text-sm text-muted-foreground">Discover essential knowledge in any field</p>
+                          </Card>
+                          
+                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-amber-500/10 hover:border-amber-500/30" 
+                            onClick={() => {
+                              createThread();
+                              setMessage("Explain TypeScript generics with practical examples");
+                            }}>
+                            <p className="font-medium">Explain with examples...</p>
+                            <p className="text-sm text-muted-foreground">Learn concepts with practical demonstrations</p>
+                          </Card>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
 
+                {/* Show templates for a new chat thread */}
+                {currentThread?.id === 'new' && currentThread.messages.length === 0 && (
+                  <div className="py-8">
+                    <div className="relative mb-12 text-center">
+                      <div className="absolute -z-10 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/5 blur-3xl rounded-full"></div>
+                      <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">How can I help you?</h2>
+                      <p className="text-muted-foreground mt-3 max-w-xl mx-auto">Select a template or type your own message below</p>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      {/* Create Category */}
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Badge variant="outline" className="px-4 py-1.5 text-lg font-medium text-primary border-primary/30 bg-primary/5 rounded-lg">
+                            Create
+                          </Badge>
+                          <div className="h-px flex-1 bg-primary/10"></div>
+                        </div>
+                        
+                        <Card className="p-5 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-primary/10 hover:border-primary/30 hover:shadow-sm group" 
+                          onClick={() => {
+                            setMessage("Write a short story about a robot learning to love");
+                          }}>
+                          <p className="font-medium text-base group-hover:text-primary transition-colors">Write a short story about...</p>
+                          <p className="text-sm text-muted-foreground mt-1">Generate creative stories in any genre or style</p>
+                        </Card>
+                        
+                        <Card className="p-5 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-primary/10 hover:border-primary/30 hover:shadow-sm group" 
+                          onClick={() => {
+                            setMessage("Write a blog post about the future of AI");
+                          }}>
+                          <p className="font-medium text-base group-hover:text-primary transition-colors">Write a blog post about...</p>
+                          <p className="text-sm text-muted-foreground mt-1">Create well-structured articles on any topic</p>
+                        </Card>
+                        
+                        <Card className="p-5 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-primary/10 hover:border-primary/30 hover:shadow-sm group" 
+                          onClick={() => {
+                            setMessage("Generate 5 creative marketing slogans for a sustainable clothing brand");
+                          }}>
+                          <p className="font-medium text-base group-hover:text-primary transition-colors">Generate marketing ideas for...</p>
+                          <p className="text-sm text-muted-foreground mt-1">Brainstorm creative marketing content</p>
+                        </Card>
+                      </div>
+                      
+                      {/* Explore Category */}
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Badge variant="outline" className="px-4 py-1.5 text-lg font-medium text-blue-500 border-blue-500/30 bg-blue-500/5 rounded-lg">
+                            Explore
+                          </Badge>
+                          <div className="h-px flex-1 bg-blue-500/10"></div>
+                        </div>
+                        
+                        <Card className="p-5 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-blue-500/10 hover:border-blue-500/30 hover:shadow-sm group" 
+                          onClick={() => {
+                            setMessage("Explain quantum computing in simple terms");
+                          }}>
+                          <p className="font-medium text-base group-hover:text-blue-500 transition-colors">Explain a complex topic...</p>
+                          <p className="text-sm text-muted-foreground mt-1">Get simple explanations for difficult concepts</p>
+                        </Card>
+                        
+                        <Card className="p-5 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-blue-500/10 hover:border-blue-500/30 hover:shadow-sm group" 
+                          onClick={() => {
+                            setBrowseMode(true);
+                            setMessage("What are the latest developments in renewable energy?");
+                          }}>
+                          <p className="font-medium text-base group-hover:text-blue-500 transition-colors">Research current trends in...</p>
+                          <p className="text-sm text-muted-foreground mt-1">Discover the latest information on any subject</p>
+                        </Card>
+                        
+                        <Card className="p-5 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-blue-500/10 hover:border-blue-500/30 hover:shadow-sm group" 
+                          onClick={() => {
+                            setMessage("Compare the pros and cons of React vs. Vue");
+                          }}>
+                          <p className="font-medium text-base group-hover:text-blue-500 transition-colors">Compare and contrast...</p>
+                          <p className="text-sm text-muted-foreground mt-1">Get balanced analysis of different options</p>
+                        </Card>
+                      </div>
+                      
+                      {/* Code Category */}
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Badge variant="outline" className="px-4 py-1.5 text-lg font-medium text-green-500 border-green-500/30 bg-green-500/5 rounded-lg">
+                            Code
+                          </Badge>
+                          <div className="h-px flex-1 bg-green-500/10"></div>
+                        </div>
+                        
+                        <Card className="p-5 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-green-500/10 hover:border-green-500/30 hover:shadow-sm group" 
+                          onClick={() => {
+                            setMessage("Write a React component for a responsive image gallery");
+                          }}>
+                          <p className="font-medium text-base group-hover:text-green-500 transition-colors">Write a component for...</p>
+                          <p className="text-sm text-muted-foreground mt-1">Generate code for specific UI components</p>
+                        </Card>
+                        
+                        <Card className="p-5 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-green-500/10 hover:border-green-500/30 hover:shadow-sm group" 
+                          onClick={() => {
+                            setMessage("Debug this code: [paste your code here]");
+                          }}>
+                          <p className="font-medium text-base group-hover:text-green-500 transition-colors">Debug my code...</p>
+                          <p className="text-sm text-muted-foreground mt-1">Find and fix issues in your code</p>
+                        </Card>
+                        
+                        <Card className="p-5 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-green-500/10 hover:border-green-500/30 hover:shadow-sm group" 
+                          onClick={() => {
+                            setMessage("Explain how to implement authentication in a NextJS app");
+                          }}>
+                          <p className="font-medium text-base group-hover:text-green-500 transition-colors">Explain how to implement...</p>
+                          <p className="text-sm text-muted-foreground mt-1">Get step-by-step coding instructions</p>
+                        </Card>
+                      </div>
+                      
+                      {/* Learn Category */}
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Badge variant="outline" className="px-4 py-1.5 text-lg font-medium text-amber-500 border-amber-500/30 bg-amber-500/5 rounded-lg">
+                            Learn
+                          </Badge>
+                          <div className="h-px flex-1 bg-amber-500/10"></div>
+                        </div>
+                        
+                        <Card className="p-5 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-amber-500/10 hover:border-amber-500/30 hover:shadow-sm group" 
+                          onClick={() => {
+                            setMessage("Create a study plan for learning machine learning in 3 months");
+                          }}>
+                          <p className="font-medium text-base group-hover:text-amber-500 transition-colors">Create a study plan for...</p>
+                          <p className="text-sm text-muted-foreground mt-1">Get personalized learning roadmaps</p>
+                        </Card>
+                        
+                        <Card className="p-5 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-amber-500/10 hover:border-amber-500/30 hover:shadow-sm group" 
+                          onClick={() => {
+                            setMessage("What are the most important concepts to understand in modern JavaScript?");
+                          }}>
+                          <p className="font-medium text-base group-hover:text-amber-500 transition-colors">What should I know about...</p>
+                          <p className="text-sm text-muted-foreground mt-1">Discover essential knowledge in any field</p>
+                        </Card>
+                        
+                        <Card className="p-5 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-amber-500/10 hover:border-amber-500/30 hover:shadow-sm group" 
+                          onClick={() => {
+                            setMessage("Explain TypeScript generics with practical examples");
+                          }}>
+                          <p className="font-medium text-base group-hover:text-amber-500 transition-colors">Explain with examples...</p>
+                          <p className="text-sm text-muted-foreground mt-1">Learn concepts with practical demonstrations</p>
+                        </Card>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 {/* Show thread messages */}
                 {(currentThread?.id || currentProjectThreadId) && (
                   <div className="space-y-4">
