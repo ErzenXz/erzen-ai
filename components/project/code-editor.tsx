@@ -2,13 +2,10 @@
 
 import * as React from "react"
 import Editor, { Monaco } from "@monaco-editor/react"
-import { Loader2, Check, ChevronDown } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
-import { Button } from "@/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import type monaco from "monaco-editor"
+import * as monaco from "monaco-editor"
 
 interface CodeEditorProps {
   value: string
