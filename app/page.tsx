@@ -396,37 +396,43 @@ export default function Home() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <ModelSelector value={selectedModel} onChange={setSelectedModel} />
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-3">
-                      <Globe className="w-5 h-5 text-muted-foreground" />
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor="web-search" className="text-sm font-medium cursor-pointer">
-                          Web Search
-                        </Label>
-                        <Switch
-                          id="web-search"
-                          checked={browseMode}
-                          onCheckedChange={(checked) => {
-                            setBrowseMode(checked);
-                            if (!checked) {
-                              setReasoning(false);
-                            }
-                          }}
-                        />
-                      </div>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center">
+                      <button
+                        onClick={() => {
+                          setBrowseMode(!browseMode);
+                          if (!browseMode) {
+                            // Do nothing
+                          } else {
+                            setReasoning(false);
+                          }
+                        }}
+                        className={`relative flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 
+                          ${browseMode ? 
+                            'bg-primary/10 text-primary ring-1 ring-primary/20 shadow-sm' : 
+                            'hover:bg-accent/50 text-muted-foreground hover:text-foreground'}
+                        `}
+                      >
+                        <Globe className={`w-4 h-4 transition-colors ${browseMode ? 'text-primary' : ''}`} />
+                        <span className="text-sm font-medium">Web Search</span>
+                      </button>
                     </div>
                     
-                    {browseMode && (
-                      <div className="flex items-center gap-3">
-                        <Brain className="w-5 h-5 text-muted-foreground" />
-                        <div className="flex items-center gap-2">
-                          <Label htmlFor="reasoning" className="text-sm font-medium cursor-pointer">
-                            Reasoning
-                          </Label>
-                          <Switch id="reasoning" checked={reasoning} onCheckedChange={setReasoning} />
-                        </div>
-                      </div>
-                    )}
+                    <div className="flex items-center">
+                      <button
+                        onClick={() => browseMode && setReasoning(!reasoning)}
+                        className={`relative flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 
+                          ${!browseMode ? 'opacity-50 cursor-not-allowed' : 
+                            reasoning ? 
+                              'bg-primary/10 text-primary ring-1 ring-primary/20 shadow-sm' : 
+                              'hover:bg-accent/50 text-muted-foreground hover:text-foreground'}
+                        `}
+                        disabled={!browseMode}
+                      >
+                        <Brain className={`w-4 h-4 transition-colors ${reasoning ? 'text-primary' : ''}`} />
+                        <span className="text-sm font-medium">Reasoning</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
