@@ -165,6 +165,20 @@ const MarkdownRenderer = memo(({
 });
 MarkdownRenderer.displayName = "MarkdownRenderer";
 
+// Enhanced text streaming effect component
+const StreamingText = memo(({ content }: { content: string }) => {
+  return (
+    <div className="relative whitespace-pre-wrap break-words">
+      <div className="prose prose-sm dark:prose-invert max-w-full">
+        {content}
+        <span className="ml-0.5 inline-block h-4 w-1.5 animate-cursor-blink bg-primary/80"></span>
+      </div>
+      <div className="absolute left-0 right-0 bottom-0 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none opacity-30"></div>
+    </div>
+  );
+});
+StreamingText.displayName = "StreamingText";
+
 // Optimized content renderer that handles both regular and streaming content
 const ContentRenderer = memo(({ 
   content, 
@@ -183,13 +197,9 @@ const ContentRenderer = memo(({
 }) => {
   // Process content to extract file attachments - moved useMemo BEFORE any conditional returns
   const processedContent = useMemo(() => {
-    // For streaming content, render without heavy processing
+    // For streaming content, render with streaming effect
     if (isStreaming) {
-      return (
-        <div className="whitespace-pre-wrap break-words">
-          {content}
-        </div>
-      );
+      return <StreamingText content={content} />;
     }
     
     // Check if content contains file attachments
@@ -285,6 +295,7 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
   const [isPlaying, setIsPlaying] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
   const isDarkTheme = typeof document !== 'undefined' ? document.documentElement.classList.contains("dark") : false;
   const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
   const shouldAutoScrollRef = useRef(true);
@@ -298,20 +309,20 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
   const checkShouldAutoScroll = useCallback(() => {
     if (!messageRef.current) return;
     
-    const container = messageRef.current.closest('.chat-messages-container');
+    const container = messageRef.current.closest('.chat-messages-container') || messageRef.current.closest('.overflow-y-auto');
     if (!container) return;
     
     const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
     shouldAutoScrollRef.current = distanceFromBottom < 100;
     
-    // Show scroll button when we're more than 600px from bottom
-    setShowScrollButton(distanceFromBottom > 600);
+    // Show scroll button when we're more than 300px from bottom
+    setShowScrollButton(distanceFromBottom > 300);
   }, []);
 
   const scrollToBottom = useCallback(() => {
     if (!messageRef.current) return;
     
-    const container = messageRef.current.closest('.chat-messages-container');
+    const container = messageRef.current.closest('.chat-messages-container') || messageRef.current.closest('.overflow-y-auto');
     if (!container) return;
     
     container.scrollTo({
@@ -326,6 +337,15 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
   // Throttled scroll handler
   const handleScroll = useThrottledCallback(checkShouldAutoScroll, 100);
 
+  // Animation and visibility effect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsVisible(true);
+    }, 50);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
   // Initial scroll effect
   useEffect(() => {
     if (isLast && messageRef.current) {
@@ -333,16 +353,18 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
         messageRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
       }, 100);
     }
-  }, []);
+  }, [isLast]);
 
   // Main scroll effect
   useEffect(() => {
     if (!messageRef.current) return;
     
-    const container = messageRef.current.closest('.chat-messages-container');
+    const container = messageRef.current.closest('.chat-messages-container') || messageRef.current.closest('.overflow-y-auto');
     if (!container) return;
 
     container.addEventListener('scroll', handleScroll);
+    // Initial check
+    checkShouldAutoScroll();
 
     const isNewMessage = message.timestamp && 
       (Date.now() - new Date(message.timestamp).getTime()) < 1000;
@@ -380,7 +402,8 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
     message.thinking, 
     message.thinkingContent, 
     message.timestamp,
-    handleScroll
+    handleScroll,
+    checkShouldAutoScroll
   ]);
 
   const copyToClipboard = useCallback((text: string) => {
@@ -451,19 +474,32 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
   const messageContent = useMemo(() => {
     if (!message.content && !message.thinkingContent) {
       return (
-        <div className="flex gap-1">
-          <span
-            className="w-2 h-2 rounded-full bg-muted-foreground/30 animate-bounce"
-            style={{ animationDelay: "0ms" }}
-          />
-          <span
-            className="w-2 h-2 rounded-full bg-muted-foreground/30 animate-bounce"
-            style={{ animationDelay: "150ms" }}
-          />
-          <span
-            className="w-2 h-2 rounded-full bg-muted-foreground/30 animate-bounce"
-            style={{ animationDelay: "300ms" }}
-          />
+        <div className="relative py-4 px-5 rounded-lg bg-gradient-to-br from-muted/40 to-muted/20 backdrop-blur-sm border border-primary/10 shadow-sm">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-3">
+              <div className="flex gap-1.5">
+                <span
+                  className="w-2.5 h-2.5 rounded-full bg-primary/40 animate-pulse"
+                  style={{ animationDelay: "0ms", animationDuration: "1.2s" }}
+                />
+                <span
+                  className="w-2.5 h-2.5 rounded-full bg-primary/40 animate-pulse"
+                  style={{ animationDelay: "300ms", animationDuration: "1.2s" }}
+                />
+                <span
+                  className="w-2.5 h-2.5 rounded-full bg-primary/40 animate-pulse"
+                  style={{ animationDelay: "600ms", animationDuration: "1.2s" }}
+                />
+              </div>
+              <span className="text-sm font-medium text-primary/90">Processing your request...</span>
+            </div>
+            <div className="pl-6 text-sm text-muted-foreground">
+              <span className="animate-pulse inline-block">Analyzing input and generating a thoughtful response</span>
+            </div>
+          </div>
+          <div className="absolute left-0 right-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-primary/20 to-transparent">
+            <div className="absolute top-0 left-0 h-full w-1/3 bg-gradient-to-r from-transparent via-primary/40 to-transparent animate-slider" />
+          </div>
         </div>
       );
     }
@@ -471,24 +507,36 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
     return (
       <>
         {message.thinkingContent && (
-          <div className="relative">
-            <div className="bg-muted/50 border rounded-lg p-3 mb-2">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Thinking: {message.thinkingContent}</span>
+          <div className="relative mb-3">
+            <div className="bg-gradient-to-r from-muted/30 to-muted/10 backdrop-blur-sm border border-primary/10 rounded-lg p-4 transform transition-all duration-300 hover:shadow-md">
+              <div className="flex items-center gap-3">
+                <div className="h-2.5 w-2.5 rounded-full bg-primary/60 animate-pulse"></div>
+                <span className="text-sm font-medium bg-gradient-to-r from-primary/90 to-primary/70 bg-clip-text text-transparent">
+                  Thinking: <span className="text-foreground/90 ml-1">{message.thinkingContent}</span>
+                </span>
+              </div>
+              <div className="mt-1.5 pl-6 text-sm text-muted-foreground">
+                <div className="overflow-hidden">
+                  <span className="inline-block relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:bg-gradient-to-r after:from-primary/40 after:to-transparent after:animate-expand-line">
+                    
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         )}
         
         {message.content && (
-          <ContentRenderer 
-            content={message.content} 
-            isDarkTheme={isDarkTheme}
-            isStreaming={isStreaming}
-            remarkPlugins={remarkPlugins}
-            copyToClipboard={copyToClipboard}
-            copied={copied}
-          />
+          <div className="transform transition-opacity duration-300 ease-in-out">
+            <ContentRenderer 
+              content={message.content} 
+              isDarkTheme={isDarkTheme}
+              isStreaming={isStreaming}
+              remarkPlugins={remarkPlugins}
+              copyToClipboard={copyToClipboard}
+              copied={copied}
+            />
+          </div>
         )}
       </>
     );
@@ -497,13 +545,13 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
   return (
     <TooltipProvider>
       {isLast && showScrollButton && (
-        <div className="fixed bottom-24 right-8 z-50 animate-fade-in">
+        <div className="fixed bottom-24 right-8 z-50 transition-all duration-300 opacity-90 hover:opacity-100 animate-bounce-subtle">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="default"
                 size="icon"
-                className="h-10 w-10 rounded-full shadow-lg bg-primary hover:bg-primary/90"
+                className="h-10 w-10 rounded-full shadow-lg bg-primary hover:bg-primary/90 transition-transform hover:scale-105"
                 onClick={scrollToBottom}
               >
                 <ChevronDown className="h-5 w-5" />
@@ -518,18 +566,19 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
       <div 
         ref={messageRef} 
         className={cn(
-          "flex gap-4 px-2 py-6 relative group transition-colors duration-200"
+          "flex gap-4 px-2 py-6 relative group transition-all duration-300",
+          isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
         )}
         onMouseEnter={() => setShowActions(true)}
         onMouseLeave={() => setShowActions(false)}
       >
         <div className="flex-shrink-0 mt-1">
           {message.role === "user" ? (
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center ring-2 ring-background">
+            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center ring-2 ring-background shadow-sm">
               <User className="w-5 h-5 text-primary-foreground" />
             </div>
           ) : (
-            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center ring-2 ring-background">
+            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center ring-2 ring-background shadow-sm">
               <Bot className="w-5 h-5 text-secondary-foreground" />
             </div>
           )}
@@ -549,7 +598,7 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
             
             {/* Action buttons - visible on hover or for the last message */}
             <div className={cn(
-              "flex items-center gap-1 ml-auto transition-opacity",
+              "flex items-center gap-1 ml-auto transition-opacity duration-200",
               (showActions || isLast) ? "opacity-100" : "opacity-0"
             )}>
               {/* Regenerate button - only for assistant messages */}
@@ -559,7 +608,7 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-8 w-8 hover:bg-muted/50 transition-all duration-200"
                       onClick={handleRegenerate}
                     >
                       <RefreshCw className="w-4 h-4" />
@@ -576,7 +625,10 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8"
+                    className={cn(
+                      "h-8 w-8 hover:bg-muted/50 transition-all duration-200",
+                      isPlaying && "text-primary bg-primary/10"
+                    )}
                     onClick={handlePlay}
                   >
                     {isPlaying ? (
@@ -596,10 +648,13 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8"
+                    className={cn(
+                      "h-8 w-8 hover:bg-muted/50 transition-all duration-200",
+                      copied && "text-green-500 bg-green-500/10"
+                    )}
                     onClick={() => copyToClipboard(message.content || "")}
                   >
-                    {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                     <span className="sr-only">Copy message</span>
                   </Button>
                 </TooltipTrigger>
@@ -609,7 +664,7 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
               {/* More options dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted/50 transition-all duration-200">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       width="16"
