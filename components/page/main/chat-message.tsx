@@ -116,7 +116,7 @@ const MarkdownRenderer = memo(
       <ReactMarkdown
         remarkPlugins={remarkPlugins}
         rehypePlugins={[rehypeKatex]}
-        className="whitespace-pre-wrap break-words"
+        className="prose-content"
         components={{
           code({ node: _node, className, children, ...props }) {
             const match = /language-(\w+)/.exec(className ?? "")
@@ -965,7 +965,7 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
               </DropdownMenu>
             </div>
           </div>
-          <div className="prose prose-sm dark:prose-invert max-w-full [&_p]:whitespace-pre-wrap [&_p]:mb-0">
+          <div className="markdown-wrapper max-w-full">
             {messageContent}
           </div>
         </div>
