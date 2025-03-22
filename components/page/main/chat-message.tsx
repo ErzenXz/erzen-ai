@@ -221,11 +221,14 @@ const ThinkingContent = memo(({ content }: { content: string }) => {
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="relative mb-3 transition-all duration-300">
-      <div className="bg-gradient-to-r from-muted/30 to-muted/10 backdrop-blur-sm border border-primary/10 rounded-lg p-4 transform transition-all duration-300 hover:shadow-md">
+      <div className="bg-gradient-to-br from-primary/5 via-muted/30 to-background backdrop-blur-sm border border-primary/10 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 dark:from-primary/10 dark:via-muted/20 dark:to-background/80">
         <div className="flex items-center gap-2">
-          <div className="h-2.5 w-2.5 rounded-full bg-primary/60 animate-pulse"></div>
-          <span className="text-sm font-medium bg-gradient-to-r from-primary/90 to-primary/70 bg-clip-text text-transparent">
-            Thinking
+          <div className="relative h-3 w-3">
+            <div className="absolute inset-0 rounded-full bg-primary/30 animate-ping opacity-75" style={{ animationDuration: "3s" }}></div>
+            <div className="relative h-3 w-3 rounded-full bg-primary/60 animate-pulse" style={{ animationDuration: "2s" }}></div>
+          </div>
+          <span className="text-sm font-medium bg-gradient-to-r from-primary/90 via-primary/80 to-primary/70 bg-clip-text text-transparent">
+            AI Thinking
           </span>
           <CollapsibleTrigger asChild>
             <Button
@@ -244,22 +247,28 @@ const ThinkingContent = memo(({ content }: { content: string }) => {
         </div>
 
         {!isOpen && (
-          <div className="mt-1.5 pl-6 text-sm text-muted-foreground">
-            <div className="overflow-hidden whitespace-pre-line">
+          <div className="mt-2 pl-5 text-sm text-muted-foreground">
+            <div className="overflow-hidden whitespace-pre-line font-light italic">
               <span className="inline-block">{previewContent}</span>
             </div>
           </div>
         )}
 
-        <CollapsibleContent className="mt-2 pl-6 text-sm text-foreground/90 overflow-hidden">
-          <div className="border-l-2 border-primary/20 pl-3 py-1 space-y-2">
-            {cleanedContent.split("\n").map((line, i) => (
-              <p key={i} className={line.trim() === "" ? "h-2" : ""}>
-                {line}
-              </p>
-            ))}
+        <CollapsibleContent className="mt-3 overflow-hidden transition-all duration-300 ease-in-out">
+          <div className="border-l-2 border-primary/20 pl-4 py-1 space-y-2">
+            <div className="text-sm text-foreground/90 font-light leading-relaxed space-y-2">
+              {cleanedContent.split("\n").map((line, i) => (
+                <p key={i} className={line.trim() === "" ? "h-2" : ""}>
+                  {line}
+                </p>
+              ))}
+            </div>
           </div>
         </CollapsibleContent>
+        
+        {/* Decorative elements */}
+        <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-primary/5 to-transparent rounded-full -z-10 opacity-60 blur-xl"></div>
+        <div className="absolute bottom-0 left-0 w-16 h-16 bg-gradient-to-tr from-primary/5 to-transparent rounded-full -z-10 opacity-60 blur-lg"></div>
       </div>
     </Collapsible>
   )
