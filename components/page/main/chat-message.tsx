@@ -194,11 +194,30 @@ StreamingText.displayName = "StreamingText"
 const ThinkingContent = memo(({ content }: { content: string }) => {
   const [isOpen, setIsOpen] = useState(false)
 
-  // Extract first line or first 50 characters for preview
+  // Clean up content by removing any stray HTML-like tags and normalize whitespace
+  const cleanedContent = useMemo(() => {
+    // Clean remaining tags, extra whitespace, etc.
+    return content
+      .replace(/<\/?(?:think|reasoning)>/gi, "")  // Remove any remaining thinking tags
+      .replace(/\n{3,}/g, "\n\n")                 // Normalize multiple newlines
+      .trim();
+  }, [content]);
+
+  // Extract last 3 lines or first 50 characters for preview
   const previewContent = useMemo(() => {
-    const firstLine = content.split("\n")[0]
-    return firstLine.length > 50 ? firstLine.substring(0, 50) + "..." : firstLine
-  }, [content])
+    const lines = cleanedContent.split("\n").filter(line => line.trim().length > 0);
+    if (lines.length <= 1) {
+      // If just one line, show first 50 chars
+      const firstLine = lines[0] || "";
+      return firstLine.length > 50 ? firstLine.substring(0, 50) + "..." : firstLine;
+    } else {
+      // Show last 3 lines for better context
+      const lastLines = lines.slice(-3);
+      return lastLines.map(line => 
+        line.length > 50 ? line.substring(0, 50) + "..." : line
+      ).join("\n");
+    }
+  }, [cleanedContent]);
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="relative mb-3 transition-all duration-300">
@@ -226,7 +245,7 @@ const ThinkingContent = memo(({ content }: { content: string }) => {
 
         {!isOpen && (
           <div className="mt-1.5 pl-6 text-sm text-muted-foreground">
-            <div className="overflow-hidden">
+            <div className="overflow-hidden whitespace-pre-line">
               <span className="inline-block">{previewContent}</span>
             </div>
           </div>
@@ -234,7 +253,7 @@ const ThinkingContent = memo(({ content }: { content: string }) => {
 
         <CollapsibleContent className="mt-2 pl-6 text-sm text-foreground/90 overflow-hidden">
           <div className="border-l-2 border-primary/20 pl-3 py-1 space-y-2">
-            {content.split("\n").map((line, i) => (
+            {cleanedContent.split("\n").map((line, i) => (
               <p key={i} className={line.trim() === "" ? "h-2" : ""}>
                 {line}
               </p>
@@ -256,6 +275,7 @@ const ContentRenderer = memo(
     remarkPlugins,
     copyToClipboard,
     copied,
+    thinkingContent,
   }: {
     content: string
     isDarkTheme: boolean
@@ -263,40 +283,171 @@ const ContentRenderer = memo(
     remarkPlugins: any[]
     copyToClipboard: (text: string) => void
     copied: boolean
+    thinkingContent?: string
   }) => {
+    // Add state for tracking thinking content that's currently streaming
+    const [streamingThinkingContent, setStreamingThinkingContent] = useState<string | null>(null);
+    const [isInThinkingBlock, setIsInThinkingBlock] = useState(false);
+    const [mainStreamingContent, setMainStreamingContent] = useState<string>("");
+    // Add ref to store the position and type of the opening tag
+    const openingTagRef = useRef<{pos: number, type: string}>({pos: -1, type: ""});
+
+    // Process streaming thinking content in real-time
+    useEffect(() => {
+      if (!isStreaming) {
+        // Reset streaming states when not streaming
+        setIsInThinkingBlock(false);
+        setStreamingThinkingContent(null);
+        setMainStreamingContent("");
+        openingTagRef.current = {pos: -1, type: ""};
+        return;
+      }
+      
+      if (!isInThinkingBlock) {
+        // Look for opening tags
+        const thinkMatch = content.match(/<think>/i);
+        const reasoningMatch = content.match(/<reasoning>/i);
+        
+        // Determine which tag comes first (if any)
+        let openingTag = null;
+        if (thinkMatch && (!reasoningMatch || thinkMatch.index! < reasoningMatch.index!)) {
+          openingTag = {pos: thinkMatch.index!, type: "think"};
+        } else if (reasoningMatch) {
+          openingTag = {pos: reasoningMatch.index!, type: "reasoning"};
+        }
+        
+        if (openingTag) {
+          // We found an opening tag - enter thinking block state
+          openingTagRef.current = openingTag;
+          setIsInThinkingBlock(true);
+          
+          // Extract content before the tag and the thinking content so far
+          const beforeThinking = content.substring(0, openingTag.pos);
+          const tagLength = openingTag.type.length + 2; // +2 for "<" and ">"
+          const thinkingStart = openingTag.pos + tagLength;
+          const thinkingContent = content.substring(thinkingStart);
+          
+          setMainStreamingContent(beforeThinking);
+          setStreamingThinkingContent(thinkingContent);
+        } else {
+          // No thinking block detected
+          setMainStreamingContent(content);
+          setStreamingThinkingContent(null);
+        }
+      } else {
+        // We're already in a thinking block
+        const { pos: openPos, type: openType } = openingTagRef.current;
+        const closingTagPattern = new RegExp(`</${openType}>`, 'i');
+        const closingMatch = content.match(closingTagPattern);
+        
+        if (closingMatch && closingMatch.index! > openPos) {
+          // Found closing tag - extract the complete thinking content
+          const tagLength = openType.length + 2; // +2 for "<" and ">"
+          const thinkingStart = openPos + tagLength;
+          const thinkingEnd = closingMatch.index!;
+          const closingTagLength = openType.length + 3; // +3 for "</>"
+          
+          // Extract thinking content
+          const extractedThinking = content.substring(thinkingStart, thinkingEnd);
+          
+          // Reconstruct main content by removing the thinking block
+          const beforeBlock = content.substring(0, openPos);
+          const afterBlock = content.substring(thinkingEnd + closingTagLength);
+          const newMainContent = beforeBlock + afterBlock;
+          
+          setStreamingThinkingContent(extractedThinking);
+          setMainStreamingContent(newMainContent);
+          
+          // Exit thinking block state
+          setIsInThinkingBlock(false);
+          openingTagRef.current = {pos: -1, type: ""};
+        } else {
+          // Still in thinking block, update with latest content
+          const tagLength = openType.length + 2; // +2 for "<" and ">"
+          const thinkingStart = openPos + tagLength;
+          const currentThinking = content.substring(thinkingStart);
+          
+          setStreamingThinkingContent(currentThinking);
+          setMainStreamingContent(content.substring(0, openPos));
+        }
+      }
+    }, [content, isStreaming, isInThinkingBlock]);
+
     // Process content to extract file attachments - moved useMemo BEFORE any conditional returns
     const processedContent = useMemo(() => {
-      // For streaming content, render with streaming effect
+      // For streaming content with active thinking tags, render with special handling
       if (isStreaming) {
+        if (streamingThinkingContent) {
+          return (
+            <>
+              {thinkingContent && <ThinkingContent content={thinkingContent} />}
+              <ThinkingContent content={streamingThinkingContent} />
+              {mainStreamingContent && <StreamingText content={mainStreamingContent} />}
+            </>
+          );
+        }
         return <StreamingText content={content} />
       }
 
+      // Extract thinking content from tags like <think> or <reasoning>
+      const thinkingTagRegex = /<(think|reasoning)>([\s\S]*?)<\/\1>/gi
+      let mainContent = content
+      const thinkingBlocks: string[] = []
+      
+      // Find all thinking/reasoning blocks
+      let match
+      while ((match = thinkingTagRegex.exec(content)) !== null) {
+        thinkingBlocks.push(match[2].trim())
+        // Remove the thinking block from main content to avoid duplication
+        mainContent = mainContent.replace(match[0], '')
+      }
+      
+      // Combine extracted thinking blocks with existing thinkingContent
+      let finalThinkingBlocks: JSX.Element[] = []
+      
+      // Add existing thinking content if provided
+      if (thinkingContent) {
+        finalThinkingBlocks.push(
+          <ThinkingContent key="thinking-existing" content={thinkingContent} />
+        )
+      }
+      
+      // Add newly extracted thinking blocks
+      thinkingBlocks.forEach((block, index) => {
+        finalThinkingBlocks.push(
+          <ThinkingContent key={`thinking-extracted-${index}`} content={block} />
+        )
+      })
+
       // Check if content contains file attachments
-      if (!content.match(fileAttachmentRegex)) {
+      if (!mainContent.match(fileAttachmentRegex)) {
         // If no file attachments, render as normal markdown
         return (
-          <MarkdownRenderer
-            content={content}
-            isDarkTheme={isDarkTheme}
-            remarkPlugins={remarkPlugins}
-            copyToClipboard={copyToClipboard}
-            copied={copied}
-          />
+          <>
+            {finalThinkingBlocks}
+            <MarkdownRenderer
+              content={mainContent}
+              isDarkTheme={isDarkTheme}
+              remarkPlugins={remarkPlugins}
+              copyToClipboard={copyToClipboard}
+              copied={copied}
+            />
+          </>
         )
       }
 
       // Split content by file attachments
       const parts: JSX.Element[] = []
       let lastIndex = 0
-      let match
+      let fileMatch
 
       // Reset regex index
       fileAttachmentRegex.lastIndex = 0
 
-      while ((match = fileAttachmentRegex.exec(content)) !== null) {
+      while ((fileMatch = fileAttachmentRegex.exec(mainContent)) !== null) {
         // Add text before the file attachment
-        if (match.index > lastIndex) {
-          const textBefore = content.substring(lastIndex, match.index)
+        if (fileMatch.index > lastIndex) {
+          const textBefore = mainContent.substring(lastIndex, fileMatch.index)
           if (textBefore.trim()) {
             parts.push(
               <MarkdownRenderer
@@ -312,8 +463,8 @@ const ContentRenderer = memo(
         }
 
         // Add the file attachment
-        const fileName = match[1].trim()
-        let fileContent = match[2]
+        const fileName = fileMatch[1].trim()
+        let fileContent = fileMatch[2]
 
         // Format CSV content for better readability if needed
         if (fileName.toLowerCase().endsWith(".csv")) {
@@ -326,17 +477,17 @@ const ContentRenderer = memo(
         }
 
         parts.push(
-          <FileAttachment key={`file-${match.index}`} name={fileName}>
+          <FileAttachment key={`file-${fileMatch.index}`} name={fileName}>
             {fileContent}
           </FileAttachment>,
         )
 
-        lastIndex = match.index + match[0].length
+        lastIndex = fileMatch.index + fileMatch[0].length
       }
 
       // Add any remaining text after the last file attachment
-      if (lastIndex < content.length) {
-        const textAfter = content.substring(lastIndex)
+      if (lastIndex < mainContent.length) {
+        const textAfter = mainContent.substring(lastIndex)
         if (textAfter.trim()) {
           parts.push(
             <MarkdownRenderer
@@ -351,8 +502,13 @@ const ContentRenderer = memo(
         }
       }
 
-      return <>{parts}</>
-    }, [content, isDarkTheme, isStreaming, remarkPlugins, copyToClipboard, copied])
+      return (
+        <>
+          {finalThinkingBlocks}
+          {parts}
+        </>
+      )
+    }, [content, isDarkTheme, isStreaming, remarkPlugins, copyToClipboard, copied, thinkingContent, streamingThinkingContent, mainStreamingContent, isInThinkingBlock]);
 
     return processedContent
   },
@@ -366,14 +522,45 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
   const [showActions, setShowActions] = useState(false)
   const [showScrollButton, setShowScrollButton] = useState(false)
   const [isVisible, setIsVisible] = useState(false)
+  const [extractedThinking, setExtractedThinking] = useState<string | null>(null)
+  const [cleanedContent, setCleanedContent] = useState<string | null>(null)
   const isDarkTheme = typeof document !== "undefined" ? document.documentElement.classList.contains("dark") : false
   const speechRef = useRef<SpeechSynthesisUtterance | null>(null)
   const shouldAutoScrollRef = useRef(true)
 
-  // Detect if content is currently streaming
+  // Detect if content is streaming
   const isStreaming = useMemo(() => {
-    return message.thinking || !message.content
-  }, [message.thinking, message.content])
+    return message.thinking || !message.content;
+  }, [message.thinking, message.content]);
+
+  // Extract embedded thinking content before rendering
+  useEffect(() => {
+    if (message.content && !message.thinking) {
+      const thinkingTagRegex = /<(think|reasoning)>([\s\S]*?)<\/\1>/gi;
+      let mainContent = message.content;
+      const thinkingBlocks: string[] = [];
+      
+      // Find all thinking/reasoning blocks
+      let match;
+      let hasFoundThinking = false;
+      while ((match = thinkingTagRegex.exec(message.content)) !== null) {
+        thinkingBlocks.push(match[2].trim());
+        // Remove the thinking block from main content
+        mainContent = mainContent.replace(match[0], '');
+        hasFoundThinking = true;
+      }
+      
+      // Only update if we found embedded thinking content
+      if (thinkingBlocks.length > 0) {
+        // Update local state instead of modifying message directly
+        setExtractedThinking(thinkingBlocks.join('\n\n'));
+        setCleanedContent(mainContent.trim());
+      } else {
+        setExtractedThinking(null);
+        setCleanedContent(null);
+      }
+    }
+  }, [message.content, message.thinking]);
 
   // Move these functions before the useEffect
   const checkShouldAutoScroll = useCallback(() => {
@@ -576,14 +763,22 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
       )
     }
 
+    // Use extractedThinking if available, otherwise use message.thinkingContent
+    const thinkingContentToShow = extractedThinking || message.thinkingContent;
+    
+    // Use cleanedContent if available (when we found thinking tags), otherwise use message.content
+    const contentToShow = cleanedContent || message.content;
+
     return (
       <>
-        {message.thinkingContent && <ThinkingContent content={message.thinkingContent} />}
-
-        {message.content && (
+        {thinkingContentToShow && (
+          <ThinkingContent content={thinkingContentToShow} />
+        )}
+        
+        {contentToShow && (
           <div className="transform transition-opacity duration-300 ease-in-out">
             <ContentRenderer
-              content={message.content}
+              content={contentToShow}
               isDarkTheme={isDarkTheme}
               isStreaming={isStreaming}
               remarkPlugins={remarkPlugins}
@@ -594,7 +789,17 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
         )}
       </>
     )
-  }, [message.content, message.thinkingContent, isDarkTheme, isStreaming, copyToClipboard, copied])
+  }, [
+    message.content,
+    message.thinkingContent,
+    isDarkTheme,
+    isStreaming,
+    remarkPlugins,
+    copyToClipboard,
+    copied,
+    extractedThinking,
+    cleanedContent
+  ])
 
   return (
     <TooltipProvider>

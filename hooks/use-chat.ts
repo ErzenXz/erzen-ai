@@ -464,13 +464,94 @@ export function useChat() {
             threadId === "new" ? newThreadId ?? "new" : threadId;
           const currentMessages =
             messageMapRef.current.get(activeThreadId) || [];
+
           if (currentMessages.length > 0) {
             const updatedMessages = [...currentMessages];
+            const lastMessage = updatedMessages[updatedMessages.length - 1];
+
+            // Process streaming content to detect thinking blocks
+            let mainContent = fullResponse;
+            let thinkingContent = lastMessage.thinkingContent || "";
+
+            // Regular expression to find all thinking tags
+            const thinkRegex = /<think>([\s\S]*?)(?:<\/think>|$)/gi;
+            const reasoningRegex = /<reasoning>([\s\S]*?)(?:<\/reasoning>|$)/gi;
+
+            // Extract thinking content from matched tags
+            let extractedThinking = "";
+            let match;
+
+            // Handle <think> tags
+            while ((match = thinkRegex.exec(fullResponse)) !== null) {
+              if (match[1]) {
+                extractedThinking +=
+                  (extractedThinking ? "\n\n" : "") + match[1].trim();
+                // Remove the matched thinking block from main content
+                const fullMatch = match[0];
+                const matchIndex = fullResponse.indexOf(fullMatch, match.index);
+                if (matchIndex !== -1) {
+                  mainContent =
+                    mainContent.substring(0, matchIndex) +
+                    mainContent.substring(matchIndex + fullMatch.length);
+                }
+              }
+            }
+
+            // Handle <reasoning> tags
+            while ((match = reasoningRegex.exec(fullResponse)) !== null) {
+              if (match[1]) {
+                extractedThinking +=
+                  (extractedThinking ? "\n\n" : "") + match[1].trim();
+                // Remove the matched reasoning block from main content
+                const fullMatch = match[0];
+                const matchIndex = fullResponse.indexOf(fullMatch, match.index);
+                if (matchIndex !== -1) {
+                  mainContent =
+                    mainContent.substring(0, matchIndex) +
+                    mainContent.substring(matchIndex + fullMatch.length);
+                }
+              }
+            }
+
+            // Check for incomplete thinking blocks - open tags without closing tags
+            const openThinkTag = /<think>/i.exec(mainContent);
+            const openReasonTag = /<reasoning>/i.exec(mainContent);
+
+            if (openThinkTag || openReasonTag) {
+              const tag = openThinkTag ? "think" : "reasoning";
+              const tagPos = openThinkTag
+                ? openThinkTag.index
+                : openReasonTag!.index;
+
+              // Extract content after the opening tag
+              const partialThinking = mainContent.substring(
+                tagPos + tag.length + 2
+              );
+              if (partialThinking) {
+                extractedThinking +=
+                  (extractedThinking ? "\n\n" : "") + partialThinking.trim();
+              }
+
+              // Keep only content before the tag
+              mainContent = mainContent.substring(0, tagPos).trim();
+            }
+
+            // Update thinking content
+            if (extractedThinking) {
+              thinkingContent = extractedThinking;
+            }
+
+            // Normalize whitespace in main content
+            mainContent = mainContent.replace(/\s+/g, " ").trim();
+
+            // Update the message with potentially modified content
             updatedMessages[updatedMessages.length - 1] = {
-              ...updatedMessages[updatedMessages.length - 1],
-              content: fullResponse,
-              thinking: false,
+              ...lastMessage,
+              content: mainContent,
+              thinking: thinkingContent.length > 0,
+              thinkingContent: thinkingContent || lastMessage.thinkingContent,
             };
+
             messageMapRef.current.set(activeThreadId, updatedMessages);
 
             // Force re-render based on thread type
