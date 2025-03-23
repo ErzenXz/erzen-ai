@@ -178,10 +178,237 @@ MarkdownRenderer.displayName = "MarkdownRenderer"
 
 // Enhanced text streaming effect component
 const StreamingText = memo(({ content }: { content: string }) => {
+  const isDarkTheme = typeof document !== "undefined" ? document.documentElement.classList.contains("dark") : false
+  const [copied, setCopied] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [useDirectHtml, setUseDirectHtml] = useState(true)
+  
+  // Force styles to apply immediately after mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    // Create a unique ID for this instance
+    const uniqueId = `streaming-styles-${Math.random().toString(36).substring(2, 9)}`;
+    
+    // Create dynamic style tag for immediate styling with higher specificity
+    const styleTag = document.createElement('style');
+    styleTag.textContent = `
+      /* Super high specificity selector */
+      body #__next .urgent-streaming-styles[data-id="${uniqueId}"] * {
+        opacity: 1 !important;
+        visibility: visible !important;
+        animation: none !important;
+        transition: none !important;
+        display: block !important;
+      }
+      
+      body #__next .urgent-streaming-styles[data-id="${uniqueId}"] h1,
+      body #__next .urgent-streaming-styles[data-id="${uniqueId}"] .urgent-md-h1 {
+        font-size: 1.5rem !important;
+        font-weight: 700 !important;
+        margin-top: 1.5rem !important;
+        margin-bottom: 1rem !important;
+        padding-bottom: 0.25rem !important;
+        border-bottom: 1px solid hsl(var(--border) / 0.4) !important;
+        color: hsl(var(--foreground)) !important;
+      }
+      
+      body #__next .urgent-streaming-styles[data-id="${uniqueId}"] h2,
+      body #__next .urgent-streaming-styles[data-id="${uniqueId}"] .urgent-md-h2 {
+        font-size: 1.25rem !important;
+        font-weight: 700 !important;
+        margin-top: 1.25rem !important;
+        margin-bottom: 0.75rem !important;
+        padding-bottom: 0.25rem !important;
+        border-bottom: 1px solid hsl(var(--border) / 0.3) !important;
+        color: hsl(var(--foreground)) !important;
+      }
+      
+      body #__next .urgent-streaming-styles[data-id="${uniqueId}"] h3,
+      body #__next .urgent-streaming-styles[data-id="${uniqueId}"] .urgent-md-h3 {
+        font-size: 1.125rem !important;
+        font-weight: 700 !important;
+        margin-top: 1rem !important;
+        margin-bottom: 0.5rem !important;
+        color: hsl(var(--foreground)) !important;
+      }
+      
+      body #__next .urgent-streaming-styles[data-id="${uniqueId}"] p {
+        margin-bottom: 1rem !important;
+        white-space: pre-wrap !important;
+      }
+      
+      body #__next .urgent-streaming-styles[data-id="${uniqueId}"] ul,
+      body #__next .urgent-streaming-styles[data-id="${uniqueId}"] ol {
+        padding-left: 1.5rem !important;
+        margin-bottom: 1rem !important;
+        display: block !important;
+      }
+      
+      body #__next .urgent-streaming-styles[data-id="${uniqueId}"] ul {
+        list-style-type: disc !important;
+      }
+      
+      body #__next .urgent-streaming-styles[data-id="${uniqueId}"] ol {
+        list-style-type: decimal !important;
+      }
+      
+      body #__next .urgent-streaming-styles[data-id="${uniqueId}"] li {
+        margin-bottom: 0.25rem !important;
+        display: list-item !important;
+      }
+      
+      body #__next .urgent-streaming-styles[data-id="${uniqueId}"] blockquote {
+        margin: 1rem 0 !important;
+        padding-left: 1rem !important;
+        border-left: 2px solid hsl(var(--primary) / 0.3) !important;
+        color: hsl(var(--muted-foreground)) !important;
+        font-style: italic !important;
+      }
+      
+      body #__next .urgent-streaming-styles[data-id="${uniqueId}"] code {
+        background-color: hsl(var(--muted)) !important;
+        padding: 0.125rem 0.375rem !important;
+        border-radius: 0.25rem !important;
+        font-size: 0.875rem !important;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+        display: inline !important;
+      }
+      
+      body #__next .urgent-streaming-styles[data-id="${uniqueId}"] pre {
+        padding: 1rem !important;
+        border-radius: 0.5rem !important;
+        background-color: hsl(var(--muted)) !important;
+        overflow-x: auto !important;
+        font-size: 0.875rem !important;
+        margin: 1rem 0 !important;
+      }
+      
+      body #__next .urgent-streaming-styles[data-id="${uniqueId}"] pre code {
+        background-color: transparent !important;
+        padding: 0 !important;
+        display: block !important;
+      }
+      
+      body #__next .urgent-streaming-styles[data-id="${uniqueId}"] strong {
+        font-weight: bold !important;
+        display: inline !important;
+      }
+      
+      body #__next .urgent-streaming-styles[data-id="${uniqueId}"] em {
+        font-style: italic !important;
+        display: inline !important;
+      }
+    `;
+    document.head.appendChild(styleTag);
+    
+    // Function defined outside of blocks to satisfy strict mode
+    const applyStylesToMarkdown = () => {
+      if (containerRef.current) {
+        const elements = containerRef.current.querySelectorAll('h1, h2, h3, h4, h5, h6, p, ul, ol, li, blockquote, code, pre');
+        elements.forEach(el => {
+          // Force visibility
+          (el as HTMLElement).style.display = el.tagName === 'LI' ? 'list-item' : 
+                                             (el.tagName === 'CODE' && el.parentElement?.tagName !== 'PRE') ? 'inline' : 'block';
+          (el as HTMLElement).style.visibility = 'visible';
+          (el as HTMLElement).style.opacity = '1';
+        });
+      }
+    };
+    
+    // Apply styles immediately
+    applyStylesToMarkdown();
+    
+    // Switch to ReactMarkdown after a delay
+    const timer1 = setTimeout(applyStylesToMarkdown, 100);
+    const timer2 = setTimeout(() => {
+      setUseDirectHtml(false);
+    }, 1000);
+    
+    return () => {
+      document.head.removeChild(styleTag);
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
+  }, []);
+  
+  const copyToClipboard = useCallback((text: string) => {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }, [])
+  
+  // Normalize content before rendering
+  const normalizedContent = useMemo(() => {
+    return dedent(content)
+      .replace(/\n{3,}/g, "\n\n")
+      .replace(/\n+$/, "\n")
+  }, [content])
+  
+  // Create HTML directly instead of using ReactMarkdown for streaming
+  // This will be more immediately styled by the browser
+  const createMarkdownHtml = useMemo(() => {
+    // Simple markdown parser for immediate display
+    let html = normalizedContent
+      // Headers
+      .replace(/^# (.*$)/gim, '<h1 class="urgent-md-h1">$1</h1>')
+      .replace(/^## (.*$)/gim, '<h2 class="urgent-md-h2">$1</h2>')
+      .replace(/^### (.*$)/gim, '<h3 class="urgent-md-h3">$1</h3>')
+      .replace(/^#### (.*$)/gim, '<h4 class="urgent-md-h4">$1</h4>')
+      // Bold and italic
+      .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
+      .replace(/\*(.*)\*/gim, '<em>$1</em>')
+      .replace(/\_(.*)\_/gim, '<em>$1</em>')
+      // Lists
+      .replace(/^\s*\n\* (.*)/gim, '<ul>\n<li>$1</li>\n</ul>')
+      .replace(/^\s*\n\d\. (.*)/gim, '<ol>\n<li>$1</li>\n</ol>')
+      // Fix lists continuation
+      .replace(/<\/ul>\s*\n<ul>/gim, '')
+      .replace(/<\/ol>\s*\n<ol>/gim, '')
+      // Add list items
+      .replace(/^\* (.*)/gim, '<li>$1</li>')
+      .replace(/^\d\. (.*)/gim, '<li>$1</li>')
+      // Blockquotes
+      .replace(/^\> (.*$)/gim, '<blockquote>$1</blockquote>')
+      // Code blocks
+      .replace(/```([^`]+)```/gim, '<pre><code>$1</code></pre>')
+      // Inline code
+      .replace(/`([^`]+)`/gim, '<code>$1</code>')
+      // Paragraphs
+      .replace(/^\s*\n\s*\n/gim, '</p>\n\n<p>')
+      // Wrap content in paragraph if it's not wrapped
+      .replace(/^([^<].*)/gim, '<p>$1</p>')
+      // Fix extra opening paragraphs
+      .replace(/^<p><\/p>/gim, '')
+      // Fix multiple paragraph tags
+      .replace(/<\/p><p>/gim, '</p>\n<p>');
+    
+    return html;
+  }, [normalizedContent]);
+
+  // Generate a unique ID for this component instance
+  const uniqueId = useMemo(() => `streaming-${Math.random().toString(36).substring(2, 9)}`, []);
+  
   return (
-    <div className="relative whitespace-pre-wrap break-words">
-      <div className="prose prose-sm dark:prose-invert max-w-full">
-        {content}
+    <div className="relative streaming-markdown-container urgent-streaming-styles" 
+      ref={containerRef} 
+      data-id={uniqueId}>
+      <div className="prose-content streaming-content custom-streaming-markdown">
+        {useDirectHtml ? (
+          <div 
+            className="urgent-streaming-styles" 
+            data-id={uniqueId}
+            dangerouslySetInnerHTML={{ __html: createMarkdownHtml }}
+          />
+        ) : (
+          <ReactMarkdown
+            className="custom-streaming-markdown urgent-streaming-styles"
+            remarkPlugins={remarkPlugins}
+            rehypePlugins={[rehypeKatex]}
+          >
+            {normalizedContent}
+          </ReactMarkdown>
+        )}
         <span className="ml-0.5 inline-block h-4 w-1.5 animate-cursor-blink bg-primary/80"></span>
       </div>
       <div className="absolute left-0 right-0 bottom-0 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none opacity-30"></div>
@@ -300,6 +527,14 @@ const ContentRenderer = memo(
     const [mainStreamingContent, setMainStreamingContent] = useState<string>("");
     // Add ref to store the position and type of the opening tag
     const openingTagRef = useRef<{pos: number, type: string}>({pos: -1, type: ""});
+    // Add state to track if the component is mounted
+    const [isMounted, setIsMounted] = useState(false);
+    
+    // Set mounted state on initial render
+    useEffect(() => {
+      setIsMounted(true);
+      return () => setIsMounted(false);
+    }, []);
 
     // Process streaming thinking content in real-time
     useEffect(() => {
@@ -517,7 +752,7 @@ const ContentRenderer = memo(
           {parts}
         </>
       )
-    }, [content, isDarkTheme, isStreaming, remarkPlugins, copyToClipboard, copied, thinkingContent, streamingThinkingContent, mainStreamingContent, isInThinkingBlock]);
+    }, [content, isDarkTheme, isStreaming, remarkPlugins, copyToClipboard, copied, thinkingContent, streamingThinkingContent, mainStreamingContent, isInThinkingBlock, isMounted]);
 
     return processedContent
   },
