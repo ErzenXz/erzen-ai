@@ -17,6 +17,7 @@ import {
   FolderPlus,
   FolderRoot,
   ChevronDown,
+  Bot,
 } from "lucide-react"
 import { format, isToday, isYesterday } from "date-fns"
 import { Button } from "@/components/ui/button"
@@ -50,6 +51,7 @@ interface ChatThreadListProps {
   onViewProjects?: () => void
   onProjectSelect?: (projectId: string) => void
   onNewProject?: () => void
+  onViewAgents?: () => void
 }
 
 export function ChatThreadList({
@@ -68,6 +70,7 @@ export function ChatThreadList({
   onViewProjects,
   onProjectSelect,
   onNewProject,
+  onViewAgents,
 }: ChatThreadListProps) {
   const { user, isLoading } = useAuth()
   const [collapsed, setCollapsed] = useState(false)
@@ -326,6 +329,66 @@ export function ChatThreadList({
 
         <ScrollArea className="flex-1" onScroll={handleScroll}>
           <div className="space-y-1 p-2">
+            {/* Agents Section */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  className={cn(
+                    "w-full text-left rounded-lg transition-all duration-200 group relative",
+                    collapsed ? "p-2" : "p-3",
+                    "hover:bg-muted/80",
+                    "hover:shadow-sm",
+                  )}
+                  onClick={onViewAgents}
+                >
+                  <button 
+                    className="w-full text-left"
+                  >
+                    <div className={cn("flex items-start", collapsed ? "justify-center" : "gap-3")}>
+                      <div className="relative mt-0.5">
+                        <div
+                          className={cn(
+                            collapsed ? "w-10 h-10" : "w-8 h-8",
+                            "rounded-lg border flex items-center justify-center transition-all",
+                            "border-purple-300/30 bg-purple-500/10 text-purple-500 group-hover:scale-110 group-hover:bg-purple-500/15",
+                          )}
+                        >
+                          <Bot className={cn(collapsed ? "w-5 h-5" : "w-4 h-4")} />
+                        </div>
+                      </div>
+
+                      {!collapsed && (
+                        <div className="flex-1 min-w-0 flex items-center justify-between">
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-medium text-sm">Agents</span> 
+                              <span className="px-1.5 py-0.5 text-[10px] leading-none font-medium rounded-full bg-purple-500/20 text-purple-600 border border-purple-500/20">
+                              BETA
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span className="text-xs text-muted-foreground">
+                                Automate your workflows
+                              </span>
+                            </div>
+                          </div>
+                          <div className="w-5 h-5 rounded-full bg-primary/5 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                            <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                </div>
+              </TooltipTrigger>
+              {collapsed && (
+                <TooltipContent side="right" className="max-w-[200px]">
+                  <p className="font-medium">Agents</p>
+                  <p className="text-xs text-muted-foreground mt-1">Automate your workflows</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+            
             {/* Projects Section */}
             <Tooltip>
               <TooltipTrigger asChild>

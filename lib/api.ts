@@ -11,6 +11,12 @@ import {
   ProjectFile,
   ProjectFileCreateDto,
   CurrentVersion,
+  Agent,
+  AgentStep,
+  AgentVariable,
+  AgentCredential,
+  AgentExecution,
+  AgentStepResult,
 } from "./types";
 
 const API_BASE_URL = "https://apis.erzen.tk";
@@ -844,5 +850,242 @@ export async function processAgentInstruction(
     const errorData = await response.json();
     throw new Error(errorData.error || "Failed to process agent instruction");
   }
+  return response.json();
+}
+
+// Agent API methods
+export async function fetchAgents(): Promise<Agent[]> {
+  const response = await fetchWithAuth(`${API_BASE_URL}/agents`);
+  return response.json();
+}
+
+export async function fetchAgent(id: string): Promise<Agent> {
+  const response = await fetchWithAuth(`${API_BASE_URL}/agents/${id}`);
+  return response.json();
+}
+
+export async function createAgent(data: {
+  name: string;
+  description?: string;
+}): Promise<Agent> {
+  const response = await fetchWithAuth(`${API_BASE_URL}/agents`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  return response.json();
+}
+
+export async function updateAgent(
+  id: string,
+  data: { name?: string; description?: string }
+): Promise<Agent> {
+  const response = await fetchWithAuth(`${API_BASE_URL}/agents/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+  return response.json();
+}
+
+export async function deleteAgent(id: string): Promise<void> {
+  await fetchWithAuth(`${API_BASE_URL}/agents/${id}`, {
+    method: "DELETE",
+  });
+}
+
+// Agent steps API methods
+export async function addAgentStep(
+  agentId: string,
+  data: {
+    name: string;
+    description?: string;
+    type: string;
+    config: any;
+    order: number;
+    nextOnSuccess?: string;
+    nextOnFailure?: string;
+  }
+): Promise<AgentStep> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/agents/${agentId}/steps`,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.json();
+}
+
+export async function updateAgentStep(
+  agentId: string,
+  stepId: string,
+  data: {
+    name?: string;
+    description?: string;
+    type?: string;
+    config?: any;
+    order?: number;
+    nextOnSuccess?: string;
+    nextOnFailure?: string;
+  }
+): Promise<AgentStep> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/agents/${agentId}/steps/${stepId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.json();
+}
+
+export async function deleteAgentStep(
+  agentId: string,
+  stepId: string
+): Promise<void> {
+  await fetchWithAuth(`${API_BASE_URL}/agents/${agentId}/steps/${stepId}`, {
+    method: "DELETE",
+  });
+}
+
+// Agent credentials API methods
+export async function addAgentCredential(
+  agentId: string,
+  data: {
+    name: string;
+    type: string;
+    value: string;
+  }
+): Promise<AgentCredential> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/agents/${agentId}/credentials`,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.json();
+}
+
+export async function updateAgentCredential(
+  agentId: string,
+  credentialId: string,
+  data: {
+    name?: string;
+    type?: string;
+    value?: string;
+  }
+): Promise<AgentCredential> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/agents/${agentId}/credentials/${credentialId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.json();
+}
+
+export async function deleteAgentCredential(
+  agentId: string,
+  credentialId: string
+): Promise<void> {
+  await fetchWithAuth(
+    `${API_BASE_URL}/agents/${agentId}/credentials/${credentialId}`,
+    {
+      method: "DELETE",
+    }
+  );
+}
+
+// Agent variables API methods
+export async function addAgentVariable(
+  agentId: string,
+  data: {
+    name: string;
+    defaultValue?: string;
+    description?: string;
+  }
+): Promise<AgentVariable> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/agents/${agentId}/variables`,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.json();
+}
+
+export async function updateAgentVariable(
+  agentId: string,
+  variableId: string,
+  data: {
+    name?: string;
+    defaultValue?: string;
+    description?: string;
+  }
+): Promise<AgentVariable> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/agents/${agentId}/variables/${variableId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.json();
+}
+
+export async function deleteAgentVariable(
+  agentId: string,
+  variableId: string
+): Promise<void> {
+  await fetchWithAuth(
+    `${API_BASE_URL}/agents/${agentId}/variables/${variableId}`,
+    {
+      method: "DELETE",
+    }
+  );
+}
+
+// Agent execution API methods
+export async function executeAgent(
+  agentId: string,
+  input: Record<string, any>
+): Promise<{
+  id: string;
+  status: "RUNNING" | "COMPLETED" | "FAILED";
+  output?: any;
+  error?: string;
+  executionPath: string[];
+  startTime: string;
+  endTime?: string;
+  tokenUsage: number;
+}> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/agents/${agentId}/execute`,
+    {
+      method: "POST",
+      body: JSON.stringify({ input }),
+    }
+  );
+  return response.json();
+}
+
+export async function getAgentExecutions(
+  agentId: string
+): Promise<AgentExecution[]> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/agents/${agentId}/executions`
+  );
+  return response.json();
+}
+
+export async function getAgentExecution(
+  agentId: string,
+  executionId: string
+): Promise<AgentExecution> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/agents/${agentId}/executions/${executionId}`
+  );
   return response.json();
 }

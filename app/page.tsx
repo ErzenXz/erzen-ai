@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react"
 import { 
   Globe, Brain, Loader2, FolderRoot, ArrowLeft, Clock, MessageSquarePlus, 
-  FolderPlus, Code, BookOpen
+  FolderPlus, Code, BookOpen, Bot, Play
 } from "lucide-react"
 import { readFileAsText } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -34,6 +34,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { MoreVertical } from "lucide-react"
+import { AgentGrid } from "@/components/agent/agent-grid"
+import { AgentCreationDialog } from "@/components/agent/agent-creation-dialog"
+import { AgentRunDialog } from "@/components/agent/agent-run-dialog"
+import type { Agent } from "@/lib/types"
+import { useAgents } from "@/hooks/use-agents"
+import { cn } from "@/lib/utils"
 
 // Define types for template data
 interface Template {
@@ -89,6 +102,11 @@ export default function Home() {
   const [isEditingMessage, setIsEditingMessage] = useState<string | null>(null)
   const [showProjectsGrid, setShowProjectsGrid] = useState(false)
   const [showProjectDialog, setShowProjectDialog] = useState(false)
+  const [showAgentsGrid, setShowAgentsGrid] = useState(false)
+  const [showAgentDialog, setShowAgentDialog] = useState(false)
+  const [isEditingAgent, setIsEditingAgent] = useState(false)
+  const [showAgentDetails, setShowAgentDetails] = useState(false)
+  const [showAgentRunDialog, setShowAgentRunDialog] = useState(false)
   const [selectedTemplateCategory, setSelectedTemplateCategory] = useState<"create" | "explore" | "code" | "learn">("create")
 
   // Dialog states
@@ -96,6 +114,21 @@ export default function Home() {
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null)
   const [dialogAction, setDialogAction] = useState<"delete-thread" | "report-message">("delete-thread")
   const [reportedMessageId, setReportedMessageId] = useState<string | null>(null)
+
+  // Use the agents hook
+  const {
+    agents,
+    currentAgent,
+    isLoading: isLoadingAgents,
+    error: agentError,
+    loadAgents,
+    getAgent,
+    createAgent: createAgentApi,
+    updateAgent: updateAgentApi,
+    duplicateAgent: duplicateAgentApi,
+    deleteAgent: deleteAgentApi,
+    setCurrentAgent,
+  } = useAgents()
 
   // Reset states when dialog closes to prevent state inconsistency
   const resetDialogStates = useCallback(() => {
@@ -322,6 +355,76 @@ export default function Home() {
     }
   }
 
+  const handleViewAgents = () => {
+    setShowAgentsGrid(true);
+    setShowAgentDetails(false);
+    setShowProjectsGrid(false);
+    
+    if (currentThread?.id && currentThread.id !== 'new') {
+      setCurrentThread(null);
+    }
+    
+    if (currentProjectId) {
+      selectProject(null);
+    }
+    
+    if (currentProjectThreadId) {
+      selectProjectThread(null);
+    }
+  }
+
+  const handleAgentSelect = async (agentId: string) => {
+    const agent = await getAgent(agentId);
+    if (agent) {
+      setShowAgentDetails(true);
+      toast({
+        title: "Agent Selected",
+        description: `Selected agent: ${agent.name}`,
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to load agent details",
+        variant: "destructive",
+      });
+    }
+  }
+
+  const handleBackToAgents = () => {
+    setShowAgentDetails(false);
+    setCurrentAgent(null);
+  }
+
+  const handleCreateAgent = () => {
+    setIsEditingAgent(false);
+    setCurrentAgent(null);
+    setShowAgentDialog(true);
+  }
+
+  const handleEditAgent = async (agentId: string) => {
+    await getAgent(agentId);
+    setIsEditingAgent(true);
+    setShowAgentDialog(true);
+  }
+
+  const handleDuplicateAgent = async (agentId: string) => {
+    await duplicateAgentApi(agentId);
+  }
+
+  const handleDeleteAgent = async (agentId: string) => {
+    await deleteAgentApi(agentId);
+  }
+
+  const handleAgentCreated = async (agentId: string) => {
+    await loadAgents();
+  }
+
+  const handleRunAgent = () => {
+    if (currentAgent) {
+      setShowAgentRunDialog(true);
+    }
+  }
+
   // Helper to get placeholder text
   const getInputPlaceholder = (): string => {
     if (!selectedModel) {
@@ -490,6 +593,13 @@ export default function Home() {
     }
   ]
 
+  // Load agents when agents view is shown
+  useEffect(() => {
+    if (showAgentsGrid && user) {
+      loadAgents();
+    }
+  }, [showAgentsGrid, user, loadAgents]);
+
   if (!user) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-background">
@@ -540,10 +650,12 @@ export default function Home() {
           currentThreadId={currentThread?.id ?? null}
           onThreadSelect={(id) => {
             setShowProjectsGrid(false);
+            setShowAgentsGrid(false);
             setCurrentThread(id);
           }}
           onNewThread={() => {
             setShowProjectsGrid(false);
+            setShowAgentsGrid(false);
             createThread();
           }}
           onRenameThread={handleRenameThread}
@@ -557,12 +669,13 @@ export default function Home() {
           onViewProjects={handleViewProjects}
           onProjectSelect={handleProjectSelect}
           onNewProject={() => setShowProjectDialog(true)}
+          onViewAgents={handleViewAgents}
         />
 
         <div className="flex-1 flex flex-col">
           <header className="border-b p-4">
             {/* Chat mode header with model selector */}
-            {!showProjectsGrid && !currentProjectId && (
+            {!showProjectsGrid && !showAgentsGrid && !currentProjectId && (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <ModelSelector value={selectedModel} onChange={setSelectedModel} />
@@ -615,8 +728,58 @@ export default function Home() {
               </div>
             )}
 
+            {/* Agents view header */}
+            {showAgentsGrid && !showAgentDetails && (
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Agents</h2>
+                <Button 
+                  size="sm" 
+                  onClick={handleCreateAgent} 
+                  className="bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 hover:text-purple-600"
+                >
+                  <Bot className="h-4 w-4 mr-2" />
+                  New Agent
+                </Button>
+              </div>
+            )}
+
+            {/* Agent details header */}
+            {showAgentDetails && currentAgent && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="mr-2"
+                    onClick={handleBackToAgents}
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back
+                  </Button>
+                  <h2 className="text-lg font-semibold">{currentAgent.name}</h2>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => handleEditAgent(currentAgent.id)}
+                  >
+                    Edit Agent
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    className="bg-purple-500 hover:bg-purple-600 text-white"
+                    onClick={handleRunAgent}
+                  >
+                    <Play className="h-4 w-4 mr-2" />
+                    Run Agent
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* Project threads view header - just back button and title */}
-            {currentProjectId && !currentProjectThreadId && !showProjectsGrid && (
+            {currentProjectId && !currentProjectThreadId && !showProjectsGrid && !showAgentsGrid && (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Button variant="ghost" size="sm" onClick={handleBackToProjects} 
@@ -658,7 +821,7 @@ export default function Home() {
           </header>
 
           {/* Show project workspace when a project is selected */}
-          {currentProjectId && !currentProjectThreadId && !showProjectsGrid ? (
+          {currentProjectId && !currentProjectThreadId && !showProjectsGrid && !showAgentsGrid ? (
             <ProjectProvider initialProjectId={currentProjectId}>
               <ProjectWorkspace />
             </ProjectProvider>
@@ -689,8 +852,218 @@ export default function Home() {
                   </div>
                 )}
                 
+                {/* Show agents grid if requested */}
+                {showAgentsGrid && !showAgentDetails && (
+                  <div className="max-w-5xl mx-auto">
+                    {isLoadingAgents ? (
+                      <div className="flex flex-col items-center justify-center py-12">
+                        <Loader2 className="h-8 w-8 text-primary animate-spin mb-4" />
+                        <p className="text-muted-foreground">Loading agents...</p>
+                      </div>
+                    ) : agentError ? (
+                      <div className="flex flex-col items-center justify-center py-12">
+                        <div className="p-4 rounded-lg bg-destructive/10 text-destructive mb-4">
+                          <span className="font-medium">Error:</span> {agentError}
+                        </div>
+                        <Button variant="outline" onClick={loadAgents}>
+                          Try Again
+                        </Button>
+                      </div>
+                    ) : (
+                      <AgentGrid 
+                        agents={agents}
+                        onAgentSelect={handleAgentSelect}
+                        onCreateAgent={handleCreateAgent}
+                        onEditAgent={handleEditAgent}
+                        onDuplicateAgent={handleDuplicateAgent}
+                        onDeleteAgent={handleDeleteAgent}
+                      />
+                    )}
+                  </div>
+                )}
+                
+                {/* Show agent details if an agent is selected */}
+                {showAgentDetails && currentAgent && (
+                  <div className="max-w-5xl mx-auto">
+                    <div className="bg-purple-500/5 rounded-xl p-6 border border-purple-200/20 mb-6">
+                      <div className="flex items-start gap-4">
+                        <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-300/20">
+                          <Bot className="h-8 w-8 text-purple-500" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-xl font-semibold">{currentAgent.name}</h3>
+                          <p className="text-muted-foreground mt-1">
+                            {currentAgent.description || "No description provided"}
+                          </p>
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            <Badge variant="outline" className="bg-purple-500/5 text-purple-600 border-purple-200/30">
+                              {currentAgent.steps?.length || 0} steps
+                            </Badge>
+                            <Badge variant="outline" className="bg-muted/50">
+                              Created: {new Date(currentAgent.createdAt).toLocaleDateString()}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Agent steps section */}
+                    <div className="border rounded-lg p-4 mb-6">
+                      <h3 className="text-lg font-medium mb-4">Workflow Steps</h3>
+                      
+                      {!currentAgent.steps || currentAgent.steps.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          This agent doesn&apos;t have any steps defined yet.
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {currentAgent.steps.sort((a, b) => a.order - b.order).map((step, index) => (
+                            <div key={step.id} className="border rounded-lg p-4 bg-card">
+                              <div className="flex items-start">
+                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-500/10 text-purple-600 font-medium mr-3">
+                                  {index + 1}
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex items-center mb-2">
+                                    <h4 className="font-medium">{step.name}</h4>
+                                    <Badge 
+                                      className={cn(
+                                        "ml-2 border-none",
+                                        step.type === "API_CALL" && "bg-blue-500/10 text-blue-600",
+                                        step.type === "SET_VARIABLE" && "bg-green-500/10 text-green-600",
+                                        step.type === "TRANSFORMATION" && "bg-amber-500/10 text-amber-600",
+                                        step.type === "PROMPT" && "bg-purple-500/10 text-purple-600",
+                                        step.type === "CODE" && "bg-slate-500/10 text-slate-600",
+                                        step.type === "CONDITION" && "bg-red-500/10 text-red-600",
+                                        step.type === "DATA_TRANSFORM" && "bg-teal-500/10 text-teal-600"
+                                      )}
+                                    >
+                                      {step.type?.replace(/_/g, ' ')}
+                                    </Badge>
+                                  </div>
+                                  
+                                  {step.description && (
+                                    <p className="text-sm text-muted-foreground mb-3">{step.description}</p>
+                                  )}
+                                  
+                                  {/* Display step configuration based on type */}
+                                  <div className="mt-3 text-xs bg-muted/50 rounded-md p-3 font-mono">
+                                    {step.type === "SET_VARIABLE" && (
+                                      <div className="space-y-1">
+                                        <div><span className="text-blue-600">Variable:</span> {step.config.variable}</div>
+                                        <div><span className="text-blue-600">Expression:</span> {step.config.expression}</div>
+                                      </div>
+                                    )}
+                                    
+                                    {step.type === "API_CALL" && (
+                                      <div className="space-y-1">
+                                        <div><span className="text-blue-600">Method:</span> {step.config.method}</div>
+                                        <div><span className="text-blue-600">Endpoint:</span> <span className="break-all">{step.config.endpoint}</span></div>
+                                        <div><span className="text-blue-600">Output Variable:</span> {step.config.outputVariable}</div>
+                                      </div>
+                                    )}
+                                    
+                                    {step.type === "TRANSFORMATION" && step.config.transformation && (
+                                      <div className="space-y-1">
+                                        <div><span className="text-blue-600">Input:</span> {step.config.inputVariable}</div>
+                                        <div><span className="text-blue-600">Output:</span> {step.config.outputVariable}</div>
+                                        <div>
+                                          <span className="text-blue-600">Transformation:</span>
+                                          <div className="mt-1 pl-3 border-l-2 border-blue-500/20">
+                                            {Object.entries(step.config.transformation as Record<string, any>).map(([key, value]) => (
+                                              <div key={key} className="grid grid-cols-[auto_1fr] gap-2">
+                                                <span className="text-green-600">{key}:</span>
+                                                <span className="break-all">{String(value)}</span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                    
+                                    {step.type === "PROMPT" && (
+                                      <div className="space-y-1">
+                                        <div><span className="text-blue-600">Prompt:</span> {step.config.prompt}</div>
+                                        <div><span className="text-blue-600">Model:</span> {step.config.model}</div>
+                                        {step.config.outputVariable && (
+                                          <div><span className="text-blue-600">Output Variable:</span> {step.config.outputVariable}</div>
+                                        )}
+                                      </div>
+                                    )}
+                                    
+                                    {/* Fallback for other step types */}
+                                    {!["SET_VARIABLE", "API_CALL", "TRANSFORMATION", "PROMPT"].includes(step.type) && (
+                                      <pre className="overflow-auto max-h-40">{JSON.stringify(step.config, null, 2)}</pre>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Variables section */}
+                    <div className="border rounded-lg p-4 mb-6">
+                      <h3 className="text-lg font-medium mb-4">Variables</h3>
+                      
+                      {!currentAgent.variables || currentAgent.variables.length === 0 ? (
+                        <div className="text-center py-4 text-muted-foreground">
+                          This agent doesn&apos;t have any variables defined.
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {currentAgent.variables.map((variable) => (
+                            <div key={variable.id} className="border rounded-lg p-3 bg-green-500/5">
+                              <div className="flex justify-between items-start mb-1">
+                                <h4 className="font-medium text-green-700">{variable.name}</h4>
+                              </div>
+                              {variable.description && (
+                                <p className="text-sm text-muted-foreground mb-2">{variable.description}</p>
+                              )}
+                              {variable.defaultValue && (
+                                <div className="text-xs text-muted-foreground bg-background rounded p-2 font-mono">
+                                  Default: {variable.defaultValue}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Credentials section */}
+                    <div className="border rounded-lg p-4">
+                      <h3 className="text-lg font-medium mb-4">Credentials</h3>
+                      
+                      {!currentAgent.credentials || currentAgent.credentials.length === 0 ? (
+                        <div className="text-center py-4 text-muted-foreground">
+                          This agent doesn&apos;t have any credentials defined.
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {currentAgent.credentials.map((credential) => (
+                            <div key={credential.id} className="border rounded-lg p-3 bg-blue-500/5">
+                              <div className="flex justify-between items-start">
+                                <h4 className="font-medium text-blue-700">{credential.name}</h4>
+                                <Badge className="bg-blue-500/10 text-blue-600 border-none">
+                                  {credential.type}
+                                </Badge>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-2">
+                                Added: {new Date(credential.createdAt).toLocaleDateString()}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
                 {/* Empty state with welcome message when no content is selected */}
-                {!showProjectsGrid && !currentProjectId && !currentThread?.id && (
+                {!showProjectsGrid && !showAgentsGrid && !currentProjectId && !currentThread?.id && (
                   <div className="flex flex-col items-center justify-center h-full py-8">
                     <div className="relative">
                       <div className="absolute -z-10 inset-0 bg-primary/5 blur-3xl rounded-full"></div>
@@ -867,7 +1240,7 @@ export default function Home() {
                 )}
 
                 {/* Show templates for a new chat thread */}
-                {currentThread?.id === 'new' && currentThread.messages.length === 0 && !showProjectsGrid && (
+                {currentThread?.id === 'new' && currentThread.messages.length === 0 && !showProjectsGrid && !showAgentsGrid && (
                   <div className="py-8">
                     <div className="relative mb-8 text-center">
                       <div className="absolute -z-10 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/5 blur-3xl rounded-full"></div>
@@ -969,7 +1342,7 @@ export default function Home() {
           )}
           
           {/* Chat input footer - only show when in chat mode */}
-          {!showProjectsGrid && (!currentProjectId || currentProjectThreadId) && (currentThread?.id || !currentProjectId) && (
+          {!showProjectsGrid && !showAgentsGrid && (!currentProjectId || currentProjectThreadId) && (currentThread?.id || !currentProjectId) && (
             <footer className="border-t p-4">
               <div className="max-w-5xl mx-auto">
                 {showFileUpload && <FileUpload onFilesChange={handleFilesChange} />}
@@ -1056,6 +1429,33 @@ export default function Home() {
           }}
         />
       </ProjectProvider>
+
+      {/* Agent Creation Dialog */}
+      <AgentCreationDialog 
+        open={showAgentDialog} 
+        onOpenChange={setShowAgentDialog}
+        onAgentCreated={handleAgentCreated}
+        agent={currentAgent || undefined}
+        isEditing={isEditingAgent}
+      />
+
+      {/* Agent Run Dialog */}
+      {showAgentRunDialog && (
+        <AgentRunDialog
+          open={showAgentRunDialog}
+          onOpenChange={(open) => {
+            setShowAgentRunDialog(open);
+            if (!open) {
+              // Give a small delay before fully unmounting 
+              // to prevent state issues during unmounting
+              setTimeout(() => {
+                // cleanup if needed
+              }, 100);
+            }
+          }}
+          agent={currentAgent || undefined}
+        />
+      )}
     </>
   )
 }

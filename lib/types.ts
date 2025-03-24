@@ -207,3 +207,71 @@ export interface AIInstruction {
   result: string;
   createdAt: string;
 }
+
+export interface Agent {
+  id: string;
+  name: string;
+  description?: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+  steps?: AgentStep[];
+  variables?: AgentVariable[];
+  credentials?: AgentCredential[];
+}
+
+export interface AgentStep {
+  id: string;
+  name: string;
+  description?: string;
+  type: string;
+  config: any;
+  order: number;
+  agentId: string;
+  nextOnSuccess?: string;
+  nextOnFailure?: string;
+}
+
+export interface AgentVariable {
+  id: string;
+  name: string;
+  defaultValue?: string;
+  description?: string;
+  agentId: string;
+}
+
+export interface AgentCredential {
+  id: string;
+  name: string;
+  type: string;
+  agentId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AgentExecution {
+  id: string;
+  agentId: string;
+  userId: string;
+  status: "RUNNING" | "COMPLETED" | "FAILED";
+  input: any;
+  output?: any;
+  executionPath: string[];
+  startTime: string;
+  endTime?: string;
+  errorMessage?: string;
+  tokenUsage: number;
+  stepResults?: AgentStepResult[];
+}
+
+export interface AgentStepResult {
+  id: string;
+  stepId: string;
+  executionId: string;
+  status: "SUCCESS" | "FAILURE";
+  input: any;
+  output: any;
+  startTime: string;
+  endTime: string;
+  errorMessage?: string;
+}
