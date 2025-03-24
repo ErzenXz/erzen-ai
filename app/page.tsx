@@ -174,6 +174,8 @@ export default function Home() {
       setUploadedFiles([])
       setShowFileUpload(false)
       setIsEditingMessage(null)
+      setShowAgentsGrid(false)
+      setShowAgentDetails(false)
       await sendMessage(content, selectedModel, browseMode, reasoning)
       toast({
         title: "Message Sent",
@@ -317,6 +319,8 @@ export default function Home() {
   const handleProjectSelect = async (projectId: string) => {
     // Hide the projects grid and select the project
     setShowProjectsGrid(false);
+    setShowAgentsGrid(false);
+    setShowAgentDetails(false);
     await selectProject(projectId);
     
     // Any messages or threads should also be cleared
@@ -337,10 +341,14 @@ export default function Home() {
   const handleBackToProjects = () => {
     selectProject(null);
     setShowProjectsGrid(true);
+    setShowAgentsGrid(false);
+    setShowAgentDetails(false);
   }
   
   const handleViewProjects = () => {
     setShowProjectsGrid(true);
+    setShowAgentsGrid(false);
+    setShowAgentDetails(false);
     
     if (currentThread?.id && currentThread.id !== 'new') {
       setCurrentThread(null);
@@ -821,7 +829,7 @@ export default function Home() {
           </header>
 
           {/* Show project workspace when a project is selected */}
-          {currentProjectId && !currentProjectThreadId && !showProjectsGrid && !showAgentsGrid ? (
+          {currentProjectId && !currentProjectThreadId && !showProjectsGrid && !showAgentsGrid && !showAgentDetails ? (
             <ProjectProvider initialProjectId={currentProjectId}>
               <ProjectWorkspace />
             </ProjectProvider>
@@ -829,7 +837,7 @@ export default function Home() {
             <ScrollArea className="flex-1 p-4">
               <div className="max-w-5xl mx-auto">
                 {/* Show projects grid if requested */}
-                {showProjectsGrid && (
+                {showProjectsGrid && !showAgentsGrid && !showAgentDetails && (
                   <div className="space-y-8">
                     <ProjectGrid 
                       projects={projects}
@@ -853,7 +861,7 @@ export default function Home() {
                 )}
                 
                 {/* Show agents grid if requested */}
-                {showAgentsGrid && !showAgentDetails && (
+                {showAgentsGrid && !showAgentDetails && !showProjectsGrid && (
                   <div className="max-w-5xl mx-auto">
                     {isLoadingAgents ? (
                       <div className="flex flex-col items-center justify-center py-12">
@@ -883,7 +891,7 @@ export default function Home() {
                 )}
                 
                 {/* Show agent details if an agent is selected */}
-                {showAgentDetails && currentAgent && (
+                {showAgentDetails && currentAgent && showAgentsGrid && !showProjectsGrid && (
                   <div className="max-w-5xl mx-auto">
                     <div className="bg-purple-500/5 rounded-xl p-6 border border-purple-200/20 mb-6">
                       <div className="flex items-start gap-4">
