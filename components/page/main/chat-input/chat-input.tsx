@@ -28,6 +28,7 @@ interface ChatInputProps {
   placeholder?: string
   maxLength?: number
   onCommandExecute?: (command: string) => void
+  onKeyDown?: (e: React.KeyboardEvent) => void
 }
 
 export function ChatInput({
@@ -43,6 +44,7 @@ export function ChatInput({
   onClearFiles,
   placeholder = "Type your message...",
   onCommandExecute,
+  onKeyDown,
 }: ChatInputProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const commandMenuContainerRef = useRef<HTMLDivElement>(null)
@@ -130,6 +132,15 @@ export function ChatInput({
   }, [isRecording])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Allow parent component to handle keyboard events first
+    if (onKeyDown) {
+      onKeyDown(e);
+      // If the event was prevented by the parent handler, don't continue
+      if (e.defaultPrevented) {
+        return;
+      }
+    }
+    
     // Submit on Enter without Shift key
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()

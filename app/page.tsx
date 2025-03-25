@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { 
   Globe, Brain, Loader2, FolderRoot, ArrowLeft, Clock, MessageSquarePlus, 
-  FolderPlus, Code, BookOpen, Bot, Play
+  FolderPlus, Code, BookOpen, Bot, Play, Check, ArrowRight
 } from "lucide-react"
 import { readFileAsText } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -47,6 +47,7 @@ import { AgentRunDialog } from "@/components/agent/agent-run-dialog"
 import type { Agent } from "@/lib/types"
 import { useAgents } from "@/hooks/use-agents"
 import { cn } from "@/lib/utils"
+import { getTextInputCompletions } from "@/lib/api"
 
 // Define types for template data
 interface Template {
@@ -129,6 +130,11 @@ export default function Home() {
     deleteAgent: deleteAgentApi,
     setCurrentAgent,
   } = useAgents()
+
+  const [suggestedCompletions, setSuggestedCompletions] = useState<string[]>([])
+  const [isLoadingCompletions, setIsLoadingCompletions] = useState(false)
+  const [selectedCompletionIndex, setSelectedCompletionIndex] = useState(-1)
+  const completionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Reset states when dialog closes to prevent state inconsistency
   const resetDialogStates = useCallback(() => {
@@ -607,6 +613,91 @@ export default function Home() {
       loadAgents();
     }
   }, [showAgentsGrid, user, loadAgents]);
+
+  // Handle text input changes with debounced completions
+  const handleMessageChange = (newMessage: string) => {
+    setMessage(newMessage)
+    
+    // Clear any existing timeout
+    if (completionTimeoutRef.current) {
+      clearTimeout(completionTimeoutRef.current)
+    }
+    
+    // Reset completions if input is cleared
+    if (!newMessage.trim()) {
+      setSuggestedCompletions([])
+      return
+    }
+    
+    // Set a new timeout for completion suggestions (500ms delay)
+    completionTimeoutRef.current = setTimeout(async () => {
+      // Only fetch completions if the message is long enough and a model is selected
+      if (newMessage.trim().length >= 5 && selectedModel) {
+        setIsLoadingCompletions(true)
+        try {
+          // Pass the selected model to the function
+          const completions = await getTextInputCompletions(newMessage, 25)
+          console.log("Completions received:", completions)
+          setSuggestedCompletions(completions)
+        } catch (error) {
+          console.error("Error fetching completions:", error)
+        } finally {
+          setIsLoadingCompletions(false)
+        }
+      } else {
+        setSuggestedCompletions([])
+      }
+    }, 500)
+  }
+  
+  // Select a completion suggestion
+  const handleSelectCompletion = (completion: string) => {
+    // Trim the message and completion to avoid extra spaces
+    const trimmedMessage = message.trimEnd();
+    
+    // Check if the message already ends with a space
+    const needsSpace = trimmedMessage.length > 0 && !trimmedMessage.endsWith(" ");
+    
+    // Add the completion with a space only if needed
+    setMessage(trimmedMessage + (needsSpace ? " " : "") + completion);
+    setSuggestedCompletions([]);
+    setSelectedCompletionIndex(-1);
+  }
+  
+  // Handle keyboard navigation for completions
+  const handleCompletionKeyDown = (e: React.KeyboardEvent) => {
+    if (suggestedCompletions.length === 0) return
+    
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setSelectedCompletionIndex(prev => 
+        prev < suggestedCompletions.length - 1 ? prev + 1 : 0
+      )
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setSelectedCompletionIndex(prev => 
+        prev > 0 ? prev - 1 : suggestedCompletions.length - 1
+      )
+    } else if (e.key === 'Tab' || e.key === 'Enter') {
+      if (selectedCompletionIndex >= 0 && selectedCompletionIndex < suggestedCompletions.length) {
+        e.preventDefault()
+        handleSelectCompletion(suggestedCompletions[selectedCompletionIndex])
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      setSuggestedCompletions([])
+      setSelectedCompletionIndex(-1)
+    }
+  }
+
+  // Reset completion state when component unmounts
+  useEffect(() => {
+    return () => {
+      if (completionTimeoutRef.current) {
+        clearTimeout(completionTimeoutRef.current)
+      }
+    }
+  }, [])
 
   if (!user) {
     return (
@@ -1355,9 +1446,38 @@ export default function Home() {
               <div className="max-w-5xl mx-auto">
                 {showFileUpload && <FileUpload onFilesChange={handleFilesChange} />}
 
+                {/* Show completion suggestions if available */}
+                {suggestedCompletions.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {suggestedCompletions.map((completion, index) => (
+                      <Button
+                        key={index}
+                        size="sm"
+                        variant="outline"
+                        className={`text-xs py-1 px-2 h-auto flex items-center gap-1 transition-all ${
+                          index === selectedCompletionIndex 
+                            ? 'bg-primary/10 text-primary border-primary/30' 
+                            : 'bg-muted/50 hover:bg-primary/5 hover:text-primary'
+                        }`}
+                        onClick={() => handleSelectCompletion(completion)}
+                      >
+                        {index === selectedCompletionIndex && <Check className="w-3 h-3" />}
+                        {completion}
+                        <ArrowRight className="w-3 h-3 ml-1 opacity-60" />
+                      </Button>
+                    ))}
+                    {isLoadingCompletions && (
+                      <div className="text-xs text-muted-foreground flex items-center py-1">
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                        Loading...
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <ChatInput
                   message={message}
-                  onMessageChange={setMessage}
+                  onMessageChange={handleMessageChange}
                   onSubmit={handleSubmit}
                   onToggleFileUpload={() => setShowFileUpload(!showFileUpload)}
                   isLoading={isLoading}
@@ -1375,6 +1495,7 @@ export default function Home() {
                       : getInputPlaceholder()
                   }
                   onCommandExecute={handleCommandExecute}
+                  onKeyDown={handleCompletionKeyDown}
                 />
               </div>
             </footer>
