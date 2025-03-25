@@ -1104,7 +1104,7 @@ export async function getTextInputCompletions(
 
   try {
     // Use the correct API key reference
-    const apiKey = GROQ_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
 
     // Log only a portion of the key for debugging (be careful with sensitive data)
     console.log(
