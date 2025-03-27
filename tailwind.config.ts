@@ -102,12 +102,50 @@ const config: Config = {
             "background-position": "right center",
           },
         },
+        "text-reveal": {
+          "0%": {
+            opacity: "0",
+            transform: "translateY(8px) scale(0.95)",
+          },
+          "100%": {
+            opacity: "1",
+            transform: "translateY(0) scale(1)",
+          },
+        },
+        "cursor-blink": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.6" },
+        },
+        "cursor-pulse": {
+          "0%, 100%": { transform: "scale(1)" },
+          "50%": { transform: "scale(1.1)" },
+        },
+        shimmer: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(100%)" },
+        },
+        glow: {
+          "0%, 100%": { opacity: "0.5" },
+          "50%": { opacity: "1" },
+        },
+        "ping-slow": {
+          "75%, 100%": {
+            transform: "scale(1.5)",
+            opacity: "0",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fadeIn 0.2s ease-in-out",
         "gradient-x": "gradient-x 15s ease infinite",
+        "text-reveal": "text-reveal 0.5s ease forwards",
+        "cursor-blink": "cursor-blink 0.8s ease-in-out infinite",
+        "cursor-pulse": "cursor-pulse 2s ease-in-out infinite",
+        shimmer: "shimmer 2s linear infinite",
+        glow: "glow 1.5s ease-in-out infinite",
+        "ping-slow": "ping-slow 1.5s cubic-bezier(0, 0, 0.2, 1) infinite",
       },
     },
   },

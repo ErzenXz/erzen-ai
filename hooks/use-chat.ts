@@ -542,7 +542,7 @@ export function useChat() {
             }
 
             // Normalize whitespace in main content
-            mainContent = mainContent.replace(/\s+/g, " ").trim();
+            mainContent = mainContent.replace(/[ \t\r]+/g, " ").trim();
 
             // Update the message with potentially modified content
             updatedMessages[updatedMessages.length - 1] = {
