@@ -769,13 +769,142 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
   const [extractedThinking, setExtractedThinking] = useState<string | null>(null)
   const [cleanedContent, setCleanedContent] = useState<string | null>(null)
   const isDarkTheme = typeof document !== "undefined" ? document.documentElement.classList.contains("dark") : false
-  const speechRef = useRef<SpeechSynthesisUtterance | null>(null)
+  const speechRef = useRef<HTMLAudioElement | null>(null)
   const shouldAutoScrollRef = useRef(true)
+  // Add new state for TTS processing
+  const [currentTtsChunk, setCurrentTtsChunk] = useState<number>(0)
+  const [audioQueue, setAudioQueue] = useState<string[]>([])
+  const [isTtsLoading, setIsTtsLoading] = useState(false)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   // Detect if content is streaming
   const isStreaming = useMemo(() => {
     return message.thinking || !message.content;
   }, [message.thinking, message.content]);
+
+  // Helper function to split text into reasonable chunks for TTS
+  const splitTextIntoChunks = useCallback((text: string, maxChunkLength: number = 300): string[] => {
+    if (!text) return [];
+    
+    // Remove markdown syntax for better TTS experience
+    const cleanText = text
+      .replace(/```[\s\S]*?```/g, '') // Remove code blocks
+      .replace(/`([^`]+)`/g, '$1') // Remove inline code
+      .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold
+      .replace(/\*([^*]+)\*/g, '$1') // Remove italic
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove links
+      .replace(/#+\s(.*)/g, '$1') // Remove headings
+      .replace(/!\[.*?\]\(.*?\)/g, '') // Remove images
+
+    const sentences = cleanText.match(/[^.!?]+[.!?]+|\s*\n\s*|\s*\n\s*\n\s*/g) || [];
+    const chunks: string[] = [];
+    let currentChunk = '';
+    
+    for (const sentence of sentences) {
+      // If adding this sentence would make the chunk too long, start a new chunk
+      if (currentChunk.length + sentence.length > maxChunkLength && currentChunk.length > 0) {
+        chunks.push(currentChunk.trim());
+        currentChunk = sentence;
+      } else {
+        currentChunk += sentence;
+      }
+      
+      // If the current sentence ends with a paragraph break or is very long, force a chunk break
+      if (sentence.match(/\n\s*\n/) || currentChunk.length >= maxChunkLength) {
+        chunks.push(currentChunk.trim());
+        currentChunk = '';
+      }
+    }
+    
+    // Add any remaining text as the final chunk
+    if (currentChunk.trim().length > 0) {
+      chunks.push(currentChunk.trim());
+    }
+    
+    return chunks.filter(chunk => chunk.length > 0);
+  }, []);
+
+  // Function to fetch and play TTS audio for a text chunk
+  const fetchTtsAudio = useCallback(async (text: string): Promise<string> => {
+    setIsTtsLoading(true);
+    
+    try {
+      // Create a new abort controller for this request
+      abortControllerRef.current = new AbortController();
+      
+      // Use a more robust approach with error handling
+      const response = await fetch('/api/transcribe/tts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          text,
+          voice: "Arista-PlayAI" 
+        }),
+        signal: abortControllerRef.current.signal,
+        cache: 'no-store' // Prevent caching issues
+      });
+      
+      if (!response.ok) {
+        // Handle error without trying to read the response body twice
+        const errorMessage = `Failed to generate speech: ${response.status} ${response.statusText}`;
+        console.error(errorMessage);
+        throw new Error(errorMessage);
+      }
+      
+      // IMPORTANT: We only consume the response body once, as a blob
+      const audioBlob = await response.blob();
+      
+      // Create a URL for the audio blob
+      const audioUrl = URL.createObjectURL(audioBlob);
+      return audioUrl;
+      
+    } catch (error) {
+      if ((error as Error).name === 'AbortError') {
+        console.log('TTS request was cancelled');
+      } else {
+        console.error('Error generating speech:', error);
+      }
+      throw error;
+    } finally {
+      setIsTtsLoading(false);
+    }
+  }, []);
+
+  // Handle the end of audio playback
+  const handleAudioEnded = useCallback(() => {
+    // If there are more chunks to play
+    if (currentTtsChunk < audioQueue.length - 1) {
+      setCurrentTtsChunk(prev => prev + 1);
+    } else {
+      // We've finished all chunks
+      setIsPlaying(false);
+      setCurrentTtsChunk(0);
+      // Clean up audio URLs
+      audioQueue.forEach(url => {
+        URL.revokeObjectURL(url);
+      });
+      setAudioQueue([]);
+    }
+  }, [currentTtsChunk, audioQueue]);
+
+  // Effect to play the current audio chunk
+  useEffect(() => {
+    if (isPlaying && audioQueue.length > 0 && currentTtsChunk < audioQueue.length) {
+      if (!speechRef.current) {
+        speechRef.current = new Audio();
+      }
+      
+      const audio = speechRef.current;
+      audio.src = audioQueue[currentTtsChunk];
+      audio.onended = handleAudioEnded;
+      audio.play().catch(error => {
+        console.error('Error playing audio:', error);
+        handleAudioEnded(); // Try to recover by moving to next chunk
+      });
+    }
+  }, [isPlaying, audioQueue, currentTtsChunk, handleAudioEnded]);
 
   // Extract embedded thinking content before rendering
   useEffect(() => {
@@ -933,45 +1062,106 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
     }
   }, [onReport, message.id])
 
-  const handlePlay = useCallback(() => {
+  const handlePlay = useCallback(async () => {
     if (!message.content) {
-      return
+      return;
     }
 
+    // If already playing, stop the playback
     if (isPlaying) {
-      window.speechSynthesis.cancel()
-      setIsPlaying(false)
-      return
+      if (speechRef.current) {
+        speechRef.current.pause();
+      }
+      
+      // Cancel any ongoing TTS request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      
+      // Clean up audio URLs
+      audioQueue.forEach(url => {
+        URL.revokeObjectURL(url);
+      });
+      
+      setIsPlaying(false);
+      setCurrentTtsChunk(0);
+      setAudioQueue([]);
+      return;
     }
 
-    if (!speechRef.current) {
-      speechRef.current = new SpeechSynthesisUtterance(message.content)
-
-      speechRef.current.onend = () => {
-        setIsPlaying(false)
+    // Start TTS process
+    try {
+      // Split the message content into manageable chunks
+      const contentToSpeak = cleanedContent || message.content;
+      const textChunks = splitTextIntoChunks(contentToSpeak);
+      
+      // Set playing state immediately for better UX
+      setIsPlaying(true);
+      
+      // Fetch TTS for the first chunk immediately
+      const firstAudioUrl = await fetchTtsAudio(textChunks[0]);
+      setAudioQueue([firstAudioUrl]);
+      
+      // Pre-fetch the rest of the chunks in the background
+      if (textChunks.length > 1) {
+        (async () => {
+          const audioUrls: string[] = [firstAudioUrl];
+          
+          for (let i = 1; i < textChunks.length; i++) {
+            try {
+              // Skip if we're no longer playing
+              if (!isPlaying) break;
+              
+              const audioUrl = await fetchTtsAudio(textChunks[i]);
+              audioUrls.push(audioUrl);
+              setAudioQueue(audioUrls.slice()); // Update audio queue with all fetched URLs
+            } catch (error) {
+              if ((error as Error).name !== 'AbortError') {
+                console.error(`Error fetching TTS for chunk ${i}:`, error);
+              }
+              break;
+            }
+          }
+        })();
       }
 
-      speechRef.current.onerror = () => {
-        setIsPlaying(false)
+      // Notify the parent component about the play action
+      if (onPlay && message.id) {
+        onPlay(message.id);
       }
+    } catch (error) {
+      console.error('Failed to start TTS playback:', error);
+      setIsPlaying(false);
     }
-
-    setIsPlaying(true)
-    window.speechSynthesis.speak(speechRef.current)
-
-    if (onPlay && message.id) {
-      onPlay(message.id)
-    }
-  }, [isPlaying, message.content, message.id, onPlay])
+  }, [
+    message.content, 
+    message.id, 
+    isPlaying, 
+    cleanedContent, 
+    splitTextIntoChunks, 
+    fetchTtsAudio, 
+    audioQueue, 
+    onPlay
+  ]);
 
   // Clean up speech synthesis when component unmounts
   useEffect(() => {
     return () => {
-      if (isPlaying) {
-        window.speechSynthesis.cancel()
+      if (isPlaying && speechRef.current) {
+        speechRef.current.pause();
       }
-    }
-  }, [isPlaying])
+      
+      // Cancel any ongoing TTS request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      
+      // Clean up audio URLs
+      audioQueue.forEach(url => {
+        URL.revokeObjectURL(url);
+      });
+    };
+  }, [isPlaying, audioQueue]);
 
   // Memoize the message content component to prevent unnecessary re-renders
   const messageContent = useMemo(() => {
@@ -1133,14 +1323,16 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
                     className={cn(
                       "h-8 w-8 hover:bg-muted/50 transition-all duration-200",
                       isPlaying && "text-primary bg-primary/10",
+                      isTtsLoading && "text-primary bg-primary/10 animate-pulse",
                     )}
                     onClick={handlePlay}
+                    disabled={isTtsLoading && !isPlaying}
                   >
                     {isPlaying ? <Pause className="w-4 h-4" /> : <AudioLines className="w-4 h-4" />}
                     <span className="sr-only">{isPlaying ? "Pause" : "Play"}</span>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>{isPlaying ? "Pause" : "Play"}</TooltipContent>
+                <TooltipContent>{isPlaying ? "Pause" : (isTtsLoading ? "Loading..." : "Play")}</TooltipContent>
               </Tooltip>
 
               {/* Copy button */}
