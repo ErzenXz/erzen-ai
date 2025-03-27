@@ -776,6 +776,7 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
   const [audioQueue, setAudioQueue] = useState<string[]>([])
   const [isTtsLoading, setIsTtsLoading] = useState(false)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const debugAudioPlayerRef = useRef<HTMLAudioElement | null>(null)
 
   // Detect if content is streaming
   const isStreaming = useMemo(() => {
@@ -785,6 +786,11 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
   // Helper function to split text into reasonable chunks for TTS
   const splitTextIntoChunks = useCallback((text: string, maxChunkLength: number = 300): string[] => {
     if (!text) return [];
+    
+    // Ensure there's always at least one chunk even for very short text
+    if (text.trim().length <= maxChunkLength) {
+      return [text.trim()];
+    }
     
     // Remove markdown syntax for better TTS experience
     const cleanText = text
@@ -796,7 +802,18 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
       .replace(/#+\s(.*)/g, '$1') // Remove headings
       .replace(/!\[.*?\]\(.*?\)/g, '') // Remove images
 
+    // Ensure we have at least one chunk even if the cleaned text is empty
+    if (!cleanText.trim()) {
+      return [text.trim().substring(0, Math.min(text.trim().length, maxChunkLength))];
+    }
+
     const sentences = cleanText.match(/[^.!?]+[.!?]+|\s*\n\s*|\s*\n\s*\n\s*/g) || [];
+    
+    // If no sentences found, just return the whole text as one chunk if it's short enough
+    if (sentences.length === 0) {
+      return [cleanText.trim()];
+    }
+    
     const chunks: string[] = [];
     let currentChunk = '';
     
@@ -821,7 +838,12 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
       chunks.push(currentChunk.trim());
     }
     
-    return chunks.filter(chunk => chunk.length > 0);
+    // Add safeguard to ensure we have at least one chunk
+    if (chunks.length === 0) {
+      return [text.trim().substring(0, Math.min(text.trim().length, maxChunkLength))];
+    }
+    
+    return chunks;
   }, []);
 
   // Function to fetch and play TTS audio for a text chunk
@@ -829,10 +851,13 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
     setIsTtsLoading(true);
     
     try {
-      // Create a new abort controller for this request
-      abortControllerRef.current = new AbortController();
+      console.log("Fetching TTS audio for text:", text.substring(0, 20) + "...");
       
-      // Use a more robust approach with error handling
+      // Create a new abort controller for this request - make sure it's not prematurely aborted
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      
+      // Request TTS audio
       const response = await fetch('/api/transcribe/tts', {
         method: 'POST',
         headers: {
@@ -842,23 +867,35 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
           text,
           voice: "Arista-PlayAI" 
         }),
-        signal: abortControllerRef.current.signal,
-        cache: 'no-store' // Prevent caching issues
+        signal: controller.signal,
+        cache: 'no-store'
       });
       
       if (!response.ok) {
-        // Handle error without trying to read the response body twice
         const errorMessage = `Failed to generate speech: ${response.status} ${response.statusText}`;
         console.error(errorMessage);
         throw new Error(errorMessage);
       }
       
-      // IMPORTANT: We only consume the response body once, as a blob
-      const audioBlob = await response.blob();
+      console.log("Received response from TTS API");
       
-      // Create a URL for the audio blob
-      const audioUrl = URL.createObjectURL(audioBlob);
-      return audioUrl;
+      // Parse the JSON response which now contains base64 data
+      const data = await response.json();
+      
+      if (!data.audio) {
+        console.error("Invalid response - missing audio data");
+        throw new Error("Invalid response - missing audio data");
+      }
+      
+      // Add to visible debug player
+      if (debugAudioPlayerRef.current) {
+        debugAudioPlayerRef.current.src = data.audio;
+      }
+      
+      console.log("Got audio data URL of length:", data.audio.length);
+      
+      // Return the data URL directly - no need to create a blob
+      return data.audio;
       
     } catch (error) {
       if ((error as Error).name === 'AbortError') {
@@ -871,69 +908,6 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
       setIsTtsLoading(false);
     }
   }, []);
-
-  // Handle the end of audio playback
-  const handleAudioEnded = useCallback(() => {
-    // If there are more chunks to play
-    if (currentTtsChunk < audioQueue.length - 1) {
-      setCurrentTtsChunk(prev => prev + 1);
-    } else {
-      // We've finished all chunks
-      setIsPlaying(false);
-      setCurrentTtsChunk(0);
-      // Clean up audio URLs
-      audioQueue.forEach(url => {
-        URL.revokeObjectURL(url);
-      });
-      setAudioQueue([]);
-    }
-  }, [currentTtsChunk, audioQueue]);
-
-  // Effect to play the current audio chunk
-  useEffect(() => {
-    if (isPlaying && audioQueue.length > 0 && currentTtsChunk < audioQueue.length) {
-      if (!speechRef.current) {
-        speechRef.current = new Audio();
-      }
-      
-      const audio = speechRef.current;
-      audio.src = audioQueue[currentTtsChunk];
-      audio.onended = handleAudioEnded;
-      audio.play().catch(error => {
-        console.error('Error playing audio:', error);
-        handleAudioEnded(); // Try to recover by moving to next chunk
-      });
-    }
-  }, [isPlaying, audioQueue, currentTtsChunk, handleAudioEnded]);
-
-  // Extract embedded thinking content before rendering
-  useEffect(() => {
-    if (message.content && !message.thinking) {
-      const thinkingTagRegex = /<(think|reasoning)>([\s\S]*?)<\/\1>/gi;
-      let mainContent = message.content;
-      const thinkingBlocks: string[] = [];
-      
-      // Find all thinking/reasoning blocks
-      let match;
-      let hasFoundThinking = false;
-      while ((match = thinkingTagRegex.exec(message.content)) !== null) {
-        thinkingBlocks.push(match[2].trim());
-        // Remove the thinking block from main content
-        mainContent = mainContent.replace(match[0], '');
-        hasFoundThinking = true;
-      }
-      
-      // Only update if we found embedded thinking content
-      if (thinkingBlocks.length > 0) {
-        // Update local state instead of modifying message directly
-        setExtractedThinking(thinkingBlocks.join('\n\n'));
-        setCleanedContent(mainContent.trim());
-      } else {
-        setExtractedThinking(null);
-        setCleanedContent(null);
-      }
-    }
-  }, [message.content, message.thinking]);
 
   // Move these functions before the useEffect
   const checkShouldAutoScroll = useCallback(() => {
@@ -1064,67 +1038,271 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
 
   const handlePlay = useCallback(async () => {
     if (!message.content) {
+      console.log("No message content to play");
       return;
     }
 
     // If already playing, stop the playback
     if (isPlaying) {
-      if (speechRef.current) {
-        speechRef.current.pause();
-      }
+      console.log("Stopping current playback");
+      setIsPlaying(false);
+      setCurrentTtsChunk(0);
       
       // Cancel any ongoing TTS request
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      
+      if (speechRef.current) {
+        // Store the current audio element
+        const audioToStop = speechRef.current;
+        
+        // Clear the reference first to prevent any new operations on it
+        speechRef.current = null;
+        
+        // Set onended to null to prevent any callbacks
+        audioToStop.onended = null;
+        
+        // Then pause the audio
+        setTimeout(() => {
+          audioToStop.pause();
+        }, 50);
       }
       
       // Clean up audio URLs
       audioQueue.forEach(url => {
-        URL.revokeObjectURL(url);
+        if (url.startsWith('blob:')) {
+          URL.revokeObjectURL(url);
+        }
       });
       
-      setIsPlaying(false);
-      setCurrentTtsChunk(0);
       setAudioQueue([]);
       return;
     }
 
+    console.log("Starting TTS process");
+    
+    // Play a test sound first to verify audio is working
+    try {
+      const testAudio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA");
+      testAudio.volume = 1.0; // Full volume
+      console.log("Playing test beep...");
+      await testAudio.play();
+      console.log("Test beep should have played");
+    } catch (error) {
+      console.log("Test beep failed - autoplay may be blocked:", error);
+      // Continue anyway
+    }
+    
     // Start TTS process
     try {
       // Split the message content into manageable chunks
       const contentToSpeak = cleanedContent || message.content;
+      console.log("Content length to speak:", contentToSpeak.length);
+      
       const textChunks = splitTextIntoChunks(contentToSpeak);
+      console.log("Split into chunks:", textChunks.length);
+      
+      if (textChunks.length === 0) {
+        console.error("No text chunks to speak");
+        return;
+      }
       
       // Set playing state immediately for better UX
       setIsPlaying(true);
       
-      // Fetch TTS for the first chunk immediately
-      const firstAudioUrl = await fetchTtsAudio(textChunks[0]);
-      setAudioQueue([firstAudioUrl]);
+      // Create a new Audio element for each playback session
+      // This helps avoid state conflicts
+      const audio = new Audio();
       
-      // Pre-fetch the rest of the chunks in the background
-      if (textChunks.length > 1) {
-        (async () => {
-          const audioUrls: string[] = [firstAudioUrl];
-          
-          for (let i = 1; i < textChunks.length; i++) {
-            try {
-              // Skip if we're no longer playing
-              if (!isPlaying) break;
-              
-              const audioUrl = await fetchTtsAudio(textChunks[i]);
-              audioUrls.push(audioUrl);
-              setAudioQueue(audioUrls.slice()); // Update audio queue with all fetched URLs
-            } catch (error) {
-              if ((error as Error).name !== 'AbortError') {
-                console.error(`Error fetching TTS for chunk ${i}:`, error);
-              }
-              break;
-            }
+      // Explicitly set volume to maximum
+      audio.volume = 1.0;
+      
+      // Debug audio capabilities
+      audio.onerror = (e) => {
+        console.error("Audio element error:", e);
+      };
+      
+      // Setup audio event listeners for debugging
+      audio.addEventListener('canplay', () => {
+        console.log("Audio can play now");
+      });
+      
+      audio.addEventListener('playing', () => {
+        console.log("Audio is now playing");
+        console.log("Audio duration:", audio.duration);
+        console.log("Audio volume:", audio.volume);
+        console.log("Audio muted:", audio.muted);
+      });
+      
+      speechRef.current = audio;
+      
+      // Fetch the first chunk's audio
+      try {
+        console.log("Fetching first chunk");
+        const firstUrl = await fetchTtsAudio(textChunks[0]);
+        console.log("Setting audio queue with first URL");
+        
+        // Log the first few characters of the data URL to verify format
+        console.log("Data URL prefix:", firstUrl.substring(0, 30));
+        
+        setAudioQueue([firstUrl]);
+        setCurrentTtsChunk(0);
+        
+        // Set up event handlers for auto-advancing
+        audio.onended = () => {
+          console.log("Audio ended, advancing to next chunk");
+          // Only process if we're still playing and the element is still valid
+          if (!isPlaying || !speechRef.current) {
+            console.log("Not advancing: isPlaying=", isPlaying, "speechRef.current=", !!speechRef.current);
+            return;
           }
-        })();
+          
+          // Auto-advance to next chunk when one finishes
+          if (currentTtsChunk < textChunks.length - 1) {
+            const nextChunk = currentTtsChunk + 1;
+            console.log("Moving to next chunk:", nextChunk);
+            
+            // Fetch next chunk if not already fetched
+            (async () => {
+              try {
+                if (!isPlaying) return;
+                
+                // Get or fetch next audio chunk
+                let nextUrl = audioQueue[nextChunk];
+                if (!nextUrl) {
+                  console.log("Fetching next chunk:", nextChunk);
+                  nextUrl = await fetchTtsAudio(textChunks[nextChunk]);
+                  
+                  // Update queue with new URL
+                  setAudioQueue(prev => {
+                    const newQueue = [...prev];
+                    newQueue[nextChunk] = nextUrl;
+                    return newQueue;
+                  });
+                }
+                
+                // Advance to next chunk
+                setCurrentTtsChunk(nextChunk);
+                
+                // Only proceed if we're still playing
+                if (!isPlaying || !speechRef.current) return;
+                
+                // Create a new Audio element for cleaner playback
+                const nextAudio = new Audio();
+                nextAudio.volume = 1.0; // Full volume
+                nextAudio.src = nextUrl;
+                
+                // Debug listeners
+                nextAudio.addEventListener('canplay', () => {
+                  console.log("Next audio can play now");
+                });
+                
+                nextAudio.addEventListener('playing', () => {
+                  console.log("Next audio is now playing");
+                  console.log("Next audio duration:", nextAudio.duration);
+                });
+                
+                // Set up the onended handler
+                nextAudio.onended = audio.onended;
+                
+                // Replace the reference
+                speechRef.current = nextAudio;
+                
+                // Play next chunk
+                console.log("Starting to play next chunk");
+                const playPromise = nextAudio.play();
+                if (playPromise) {
+                  playPromise.catch(err => {
+                    console.error("Error playing next chunk:", err);
+                    if (err.name !== 'AbortError') {
+                      setIsPlaying(false);
+                    }
+                  });
+                }
+              } catch (error) {
+                console.error("Error in next chunk processing:", error);
+                if ((error as Error).name !== 'AbortError') {
+                  setIsPlaying(false);
+                }
+              }
+            })();
+          } else {
+            // Finished all chunks
+            console.log("Finished all chunks");
+            setIsPlaying(false);
+            setCurrentTtsChunk(0);
+            setAudioQueue([]);
+          }
+        };
+        
+        // Set source
+        console.log("Setting up audio source");
+        audio.src = firstUrl;
+        
+        // Try immediately playing to test if it works
+        try {
+          console.log("Attempting immediate playback");
+          await audio.play();
+          console.log("Immediate playback successful");
+        } catch (error) {
+          console.log("Immediate playback failed, will try with delay:", error);
+          
+          // Wait a moment to ensure the component is stable before trying again
+          console.log("Scheduling playback with delay");
+          setTimeout(() => {
+            // Only play if we're still in playing state
+            if (isPlaying && speechRef.current === audio) {
+              console.log("Starting delayed playback");
+              const playPromise = audio.play();
+              if (playPromise) {
+                playPromise.then(() => {
+                  console.log("Playback started successfully");
+                }).catch(error => {
+                  console.error("Initial playback error:", error);
+                  if (error.name !== 'AbortError') {
+                    setIsPlaying(false);
+                  }
+                });
+              }
+            } else {
+              console.log("Not starting playback - state changed");
+            }
+          }, 100);
+        }
+        
+        // Start prefetching next chunks in background
+        if (textChunks.length > 1) {
+          setTimeout(() => {
+            (async () => {
+              try {
+                if (!isPlaying) return;
+                
+                // Prefetch next chunk
+                console.log("Prefetching second chunk");
+                const secondUrl = await fetchTtsAudio(textChunks[1]);
+                setAudioQueue(prev => {
+                  const newQueue = [...prev];
+                  newQueue[1] = secondUrl;
+                  return newQueue;
+                });
+              } catch (error) {
+                // Ignore prefetch errors - will retry when needed
+                console.log("Prefetch error (non-critical):", error);
+              }
+            })();
+          }, 500); // Short delay to prioritize first chunk playback
+        }
+      } catch (error) {
+        console.error("Error in initial setup:", error);
+        if ((error as Error).name !== 'AbortError') {
+          console.error("Failed to start initial playback:", error);
+          setIsPlaying(false);
+        }
+        return;
       }
-
+      
       // Notify the parent component about the play action
       if (onPlay && message.id) {
         onPlay(message.id);
@@ -1134,34 +1312,45 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
       setIsPlaying(false);
     }
   }, [
-    message.content, 
-    message.id, 
-    isPlaying, 
-    cleanedContent, 
-    splitTextIntoChunks, 
-    fetchTtsAudio, 
-    audioQueue, 
+    message.content,
+    message.id,
+    isPlaying,
+    cleanedContent,
+    splitTextIntoChunks,
+    fetchTtsAudio,
+    audioQueue,
+    currentTtsChunk,
     onPlay
   ]);
 
-  // Clean up speech synthesis when component unmounts
+  // Extract embedded thinking content before rendering
   useEffect(() => {
-    return () => {
-      if (isPlaying && speechRef.current) {
-        speechRef.current.pause();
+    if (message.content && !message.thinking) {
+      const thinkingTagRegex = /<(think|reasoning)>([\s\S]*?)<\/\1>/gi;
+      let mainContent = message.content;
+      const thinkingBlocks: string[] = [];
+      
+      // Find all thinking/reasoning blocks
+      let match;
+      let hasFoundThinking = false;
+      while ((match = thinkingTagRegex.exec(message.content)) !== null) {
+        thinkingBlocks.push(match[2].trim());
+        // Remove the thinking block from main content
+        mainContent = mainContent.replace(match[0], '');
+        hasFoundThinking = true;
       }
       
-      // Cancel any ongoing TTS request
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+      // Only update if we found embedded thinking content
+      if (thinkingBlocks.length > 0) {
+        // Update local state instead of modifying message directly
+        setExtractedThinking(thinkingBlocks.join('\n\n'));
+        setCleanedContent(mainContent.trim());
+      } else {
+        setExtractedThinking(null);
+        setCleanedContent(null);
       }
-      
-      // Clean up audio URLs
-      audioQueue.forEach(url => {
-        URL.revokeObjectURL(url);
-      });
-    };
-  }, [isPlaying, audioQueue]);
+    }
+  }, [message.content, message.thinking]);
 
   // Memoize the message content component to prevent unnecessary re-renders
   const messageContent = useMemo(() => {
@@ -1234,6 +1423,32 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
     extractedThinking,
     cleanedContent
   ])
+
+  // Cleanup effect for audio resources when component unmounts
+  useEffect(() => {
+    return () => {
+      // Cancel any ongoing TTS requests
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      
+      // Stop audio playback
+      if (speechRef.current) {
+        speechRef.current.pause();
+        speechRef.current.onended = null;
+        speechRef.current.onerror = null;
+        speechRef.current = null;
+      }
+      
+      // Clean up audio URLs
+      audioQueue.forEach(url => {
+        if (url.startsWith('blob:')) {
+          URL.revokeObjectURL(url);
+        }
+      });
+    };
+  }, [audioQueue]);
 
   return (
     <TooltipProvider>
@@ -1394,6 +1609,19 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
           </div>
           <div className="markdown-wrapper max-w-full">
             {messageContent}
+            {/* Debug audio player - only visible when playing */}
+            {isPlaying && (
+              <div className="mt-4 p-3 bg-muted rounded-md">
+                <p className="text-xs text-muted-foreground mb-2">Debug audio player (can you hear this?):</p>
+                <audio 
+                  ref={debugAudioPlayerRef} 
+                  controls 
+                  autoPlay 
+                  className="w-full" 
+                  onError={(e) => console.error("Audio player error:", e)}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

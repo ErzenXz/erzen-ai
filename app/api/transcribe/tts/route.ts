@@ -1,46 +1,43 @@
-import { NextResponse } from "next/server";
+// Define route config to optimize API route handling
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
-// Ensure the API key is properly loaded from environment variables
-const GROQ_API_KEY = process.env.GROQ_API_KEY ?? "";
+// Simple helper to create JSON responses
+const jsonResponse = (data: any, status = 200) => {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+};
 
 export async function POST(request: Request) {
   try {
-    // Parse request body - clone the request first to avoid disturbing it
-    const requestClone = request.clone();
-    let body;
-    try {
-      body = await requestClone.json();
-    } catch (e) {
-      console.error("Failed to parse request body:", e);
-      return NextResponse.json(
-        { error: "Invalid request body" },
-        { status: 400 }
-      );
-    }
-    
-    const { text, voice = "Arista-PlayAI" } = body;
+    console.log("TTS API route called");
 
-    // Validate input
+    // Parse the JSON from the request
+    const data = await request.json();
+
+    // Extract and validate text
+    const text = data.text;
     if (!text || typeof text !== "string" || text.trim().length === 0) {
-      return NextResponse.json(
-        { error: "Text input is required" },
-        { status: 400 }
-      );
+      console.error("TTS API: Text input is required");
+      return jsonResponse({ error: "Text input is required" }, 400);
     }
 
-    // Check for API key
+    // Get voice parameter or use default
+    const voice = data.voice || "Arista-PlayAI";
+
+    // Get API key
+    const GROQ_API_KEY = process.env.GROQ_API_KEY ?? "";
     if (!GROQ_API_KEY) {
-      console.error(
-        "Groq API key is not set. Please check your environment variables."
-      );
-      return NextResponse.json(
-        { error: "API key configuration error" },
-        { status: 500 }
-      );
+      console.error("TTS API: Groq API key is not set");
+      return jsonResponse({ error: "API key configuration error" }, 500);
     }
 
-    // Call the Groq TTS API
-    const response = await fetch(
+    console.log("TTS API: Calling Groq TTS API");
+
+    // Call Groq TTS API
+    const ttsResponse = await fetch(
       "https://api.groq.com/openai/v1/audio/speech",
       {
         method: "POST",
@@ -52,45 +49,32 @@ export async function POST(request: Request) {
           model: "playai-tts",
           voice: voice,
           input: text,
+          response_format: "wav", // Explicitly use WAV format
         }),
       }
     );
 
-    if (!response.ok) {
-      let errorMessage = "Failed to generate speech";
-      try {
-        // Try to get error details but don't fail if we can't
-        const errorText = await response.text();
-        console.error("Error generating speech:", errorText);
-        errorMessage = `Failed to generate speech: ${errorText.substring(0, 100)}`;
-      } catch (e) {
-        console.error("Could not read error response:", e);
-      }
-      
-      return NextResponse.json(
-        { error: errorMessage },
-        { status: response.status }
+    if (!ttsResponse.ok) {
+      const errorText = await ttsResponse.text();
+      console.error("TTS API: Error generating speech:", errorText);
+      return jsonResponse(
+        { error: "Failed to generate speech" },
+        ttsResponse.status
       );
     }
 
-    // Get the audio data as buffer
-    const audioBuffer = await response.arrayBuffer();
-    
-    // Create a new response with the audio data
-    return new NextResponse(audioBuffer, {
-      status: 200,
-      headers: {
-        "Content-Type": "audio/wav",
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        "Pragma": "no-cache",
-        "Expires": "0"
-      },
+    // Get the full audio data
+    const audioBuffer = await ttsResponse.arrayBuffer();
+
+    // Convert to base64 string
+    const audioBase64 = Buffer.from(audioBuffer).toString("base64");
+
+    // Return as JSON with base64 data
+    return jsonResponse({
+      audio: `data:audio/wav;base64,${audioBase64}`,
     });
   } catch (error) {
-    console.error("Error in text-to-speech API:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    console.error("TTS API: Error in text-to-speech API:", error);
+    return jsonResponse({ error: "Internal server error" }, 500);
   }
 }
