@@ -455,7 +455,7 @@ const ThinkingContent = memo(({ content }: { content: string }) => {
             <div className="relative h-3 w-3 rounded-full bg-primary/60 animate-pulse" style={{ animationDuration: "2s" }}></div>
           </div>
           <span className="text-sm font-medium bg-gradient-to-r from-primary/90 via-primary/80 to-primary/70 bg-clip-text text-transparent">
-            AI Thinking
+            Thinking
           </span>
           <CollapsibleTrigger asChild>
             <Button
