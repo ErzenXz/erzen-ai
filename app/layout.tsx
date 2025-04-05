@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { Inter, Roboto_Mono } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
+import { Analytics } from "@vercel/analytics/react"
 
 // Primary font for headings and UI elements
 const inter = Inter({
