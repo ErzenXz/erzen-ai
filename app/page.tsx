@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect, useRef } from "react"
+import { useState, useCallback, useEffect, useRef, useMemo } from "react"
 import {
   Globe, Brain, Loader2, FolderRoot, ArrowLeft, Clock, MessageSquarePlus,
   FolderPlus, Code, BookOpen, Bot, Play, Check, ArrowRight
@@ -147,7 +147,7 @@ export default function Home() {
     setReportedMessageId(null)
   }, [])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Use blocks for early returns
@@ -197,35 +197,35 @@ export default function Home() {
     } finally {
       setIsProcessingFiles(false)
     }
-  }
+  }, [message, uploadedFiles, selectedModel, user, isProcessingFiles, browseMode, reasoning, sendMessage, toast])
 
-  const handleFilesChange = (files: File[]) => {
+  const handleFilesChange = useCallback((files: File[]) => {
     setUploadedFiles(files)
-  }
+  }, [])
 
-  const handleRenameThread = (threadId: string, newTitle: string) => {
+  const handleRenameThread = useCallback((threadId: string, newTitle: string) => {
     if (threadId && newTitle.trim()) {
       renameThread(threadId, newTitle)
     }
-  }
+  }, [renameThread])
 
-  const handleDuplicateThread = (threadId: string) => {
+  const handleDuplicateThread = useCallback((threadId: string) => {
     duplicateThread(threadId)
-  }
+  }, [duplicateThread])
 
-  const handleDeleteThread = (threadId: string) => {
+  const handleDeleteThread = useCallback((threadId: string) => {
     setSelectedThreadId(threadId)
     setDialogAction("delete-thread")
     setIsDeleteDialogOpen(true)
-  }
+  }, [])
 
-  const handleReportMessage = (messageId: string) => {
+  const handleReportMessage = useCallback((messageId: string) => {
     setReportedMessageId(messageId)
     setDialogAction("report-message")
     setIsDeleteDialogOpen(true)
-  }
+  }, [])
 
-  const handleRegenerateMessage = async () => {
+  const handleRegenerateMessage = useCallback(async () => {
     if (!currentThread?.messages.length) {
       return
     }
@@ -243,9 +243,9 @@ export default function Home() {
         description: "The AI has generated a new response",
       })
     }, 2000)
-  }
+  }, [currentThread?.messages.length, toast])
 
-  const handleEditMessage = (messageId: string) => {
+  const handleEditMessage = useCallback((messageId: string) => {
     if (!currentThread) return
 
     const messageToEdit = currentThread.messages.find(msg => msg.id === messageId)
@@ -264,17 +264,17 @@ export default function Home() {
       title: "Edit mode",
       description: "Edit your message and send it again",
     })
-  }
+  }, [currentThread, toast])
 
-  const handlePlayMessage = (messageId: string) => {
+  const handlePlayMessage = useCallback((messageId: string) => {
     // In a real app, you would implement audio playback logic here
     toast({
       title: "Playing message",
       description: "Audio playback would start here in a real implementation",
     })
-  }
+  }, [toast])
 
-  const confirmAction = async () => {
+  const confirmAction = useCallback(async () => {
     if (dialogAction === "delete-thread" && selectedThreadId) {
       const threadId = selectedThreadId
       setIsDeleteDialogOpen(false)
@@ -288,9 +288,9 @@ export default function Home() {
       })
       resetDialogStates()
     }
-  }
+  }, [dialogAction, selectedThreadId, reportedMessageId, deleteThread, resetDialogStates, toast])
 
-  const handleCommandExecute = (command: string) => {
+  const handleCommandExecute = useCallback((command: string) => {
     switch (command) {
       case "/clear":
         if (currentThread) {
@@ -325,9 +325,9 @@ export default function Home() {
         // Just keep the command in the input
         break
     }
-  }
+  }, [currentThread, toast])
 
-  const handleProjectSelect = async (projectId: string) => {
+  const handleProjectSelect = useCallback(async (projectId: string) => {
     // Hide the projects grid and select the project
     setShowProjectsGrid(false);
     setShowAgentsGrid(false);
@@ -343,20 +343,20 @@ export default function Home() {
     if (currentProjectThreadId) {
       selectProjectThread(null);
     }
-  }
+  }, [currentThread?.id, currentProjectThreadId, selectProject, selectProjectThread, setCurrentThread])
 
-  const handleProjectThreadSelect = (threadId: string) => {
+  const handleProjectThreadSelect = useCallback((threadId: string) => {
     selectProjectThread(threadId);
-  }
+  }, [selectProjectThread])
 
-  const handleBackToProjects = () => {
+  const handleBackToProjects = useCallback(() => {
     selectProject(null);
     setShowProjectsGrid(true);
     setShowAgentsGrid(false);
     setShowAgentDetails(false);
-  }
+  }, [selectProject])
 
-  const handleViewProjects = () => {
+  const handleViewProjects = useCallback(() => {
     setShowProjectsGrid(true);
     setShowAgentsGrid(false);
     setShowAgentDetails(false);
@@ -372,9 +372,9 @@ export default function Home() {
     if (currentProjectThreadId) {
       selectProjectThread(null);
     }
-  }
+  }, [currentProjectId, currentProjectThreadId, currentThread?.id, selectProject, selectProjectThread, setCurrentThread])
 
-  const handleViewAgents = () => {
+  const handleViewAgents = useCallback(() => {
     setShowAgentsGrid(true);
     setShowAgentDetails(false);
     setShowProjectsGrid(false);
@@ -390,9 +390,9 @@ export default function Home() {
     if (currentProjectThreadId) {
       selectProjectThread(null);
     }
-  }
+  }, [currentProjectId, currentProjectThreadId, currentThread?.id, selectProject, selectProjectThread, setCurrentThread])
 
-  const handleAgentSelect = async (agentId: string) => {
+  const handleAgentSelect = useCallback(async (agentId: string) => {
     const agent = await getAgent(agentId);
     if (agent) {
       setShowAgentDetails(true);
@@ -407,45 +407,45 @@ export default function Home() {
         variant: "destructive",
       });
     }
-  }
+  }, [getAgent, toast])
 
-  const handleBackToAgents = () => {
+  const handleBackToAgents = useCallback(() => {
     setShowAgentDetails(false);
     setCurrentAgent(null);
-  }
+  }, [setCurrentAgent])
 
-  const handleCreateAgent = () => {
+  const handleCreateAgent = useCallback(() => {
     setIsEditingAgent(false);
     setCurrentAgent(null);
     setShowAgentDialog(true);
-  }
+  }, [setCurrentAgent])
 
-  const handleEditAgent = async (agentId: string) => {
+  const handleEditAgent = useCallback(async (agentId: string) => {
     await getAgent(agentId);
     setIsEditingAgent(true);
     setShowAgentDialog(true);
-  }
+  }, [getAgent])
 
-  const handleDuplicateAgent = async (agentId: string) => {
+  const handleDuplicateAgent = useCallback(async (agentId: string) => {
     await duplicateAgentApi(agentId);
-  }
+  }, [duplicateAgentApi])
 
-  const handleDeleteAgent = async (agentId: string) => {
+  const handleDeleteAgent = useCallback(async (agentId: string) => {
     await deleteAgentApi(agentId);
-  }
+  }, [deleteAgentApi])
 
-  const handleAgentCreated = async (agentId: string) => {
+  const handleAgentCreated = useCallback(async (agentId: string) => {
     await loadAgents();
-  }
+  }, [loadAgents])
 
-  const handleRunAgent = () => {
+  const handleRunAgent = useCallback(() => {
     if (currentAgent) {
       setShowAgentRunDialog(true);
     }
-  }
+  }, [currentAgent])
 
   // Helper to get placeholder text
-  const getInputPlaceholder = (): string => {
+  const getInputPlaceholder = useCallback((): string => {
     if (!selectedModel) {
       return "Select a model to start...";
     }
@@ -453,7 +453,7 @@ export default function Home() {
       return `${uploadedFiles.length} file(s) attached. Add a message or send...`;
     }
     return "Type your message...";
-  }
+  }, [selectedModel, uploadedFiles.length])
 
   // Reset states when dialog closes to prevent state inconsistency
   useEffect(() => {
@@ -463,7 +463,7 @@ export default function Home() {
   }, [resetDialogStates]);
 
   // Template data organized by category
-  const templateCategories: TemplateCategory[] = [
+  const templateCategories = useMemo<TemplateCategory[]>(() => [
     {
       id: "create",
       label: "Create",
@@ -610,7 +610,7 @@ export default function Home() {
         }
       ]
     }
-  ]
+  ], []);
 
   // Load agents when agents view is shown
   useEffect(() => {
@@ -620,7 +620,7 @@ export default function Home() {
   }, [showAgentsGrid, user, loadAgents]);
 
   // Handle text input changes with debounced completions
-  const handleMessageChange = (newMessage: string) => {
+  const handleMessageChange = useCallback((newMessage: string) => {
     setMessage(newMessage)
 
     // Clear any existing timeout
@@ -653,10 +653,10 @@ export default function Home() {
         setSuggestedCompletions([])
       }
     }, 500)
-  }
+  }, [selectedModel])
 
   // Select a completion suggestion
-  const handleSelectCompletion = (completion: string) => {
+  const handleSelectCompletion = useCallback((completion: string) => {
     // Trim the message and completion to avoid extra spaces
     const trimmedMessage = message.trimEnd();
 
@@ -667,7 +667,7 @@ export default function Home() {
     setMessage(trimmedMessage + (needsSpace ? " " : "") + completion);
     setSuggestedCompletions([]);
     setSelectedCompletionIndex(-1);
-  }
+  }, [message])
 
   // Handle scroll to show/hide chat input
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -720,10 +720,10 @@ export default function Home() {
 
       loadModels()
     }
-  }, [models.length])
+  }, [models.length, selectedModel, toast])
 
   // Handle keyboard navigation for completions
-  const handleCompletionKeyDown = (e: React.KeyboardEvent) => {
+  const handleCompletionKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (suggestedCompletions.length === 0) return
 
     if (e.key === 'ArrowDown') {
@@ -746,7 +746,7 @@ export default function Home() {
       setSuggestedCompletions([])
       setSelectedCompletionIndex(-1)
     }
-  }
+  }, [suggestedCompletions, selectedCompletionIndex, handleSelectCompletion])
 
   // Reset completion state when component unmounts
   useEffect(() => {
@@ -766,12 +766,12 @@ export default function Home() {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,_var(--tw-gradient-stops))] from-primary/40 via-primary/5 to-transparent animate-pulse [animation-duration:8s] will-change-opacity"></div>
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_70%,_var(--tw-gradient-stops))] from-blue-500/30 via-blue-500/5 to-transparent animate-pulse [animation-duration:12s] [animation-delay:2s] will-change-opacity"></div>
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_10%,_var(--tw-gradient-stops))] from-purple-500/30 via-purple-600/5 to-transparent animate-pulse [animation-duration:10s] [animation-delay:1s] will-change-opacity"></div>
-          
+
           {/* Realistic marble veining - subtle overlays */}
           <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(68,51,122,0.05)_25%,rgba(68,51,122,0.05)_50%,transparent_50%,transparent_75%,rgba(68,51,122,0.05)_75%)] bg-[length:100px_100px] animate-gradient-x [animation-duration:15s] transform will-change-transform"></div>
           <div className="absolute inset-0 bg-[linear-gradient(135deg,transparent_40%,rgba(236,72,153,0.07)_40%,rgba(236,72,153,0.07)_45%,transparent_45%)] bg-[length:150px_150px] animate-gradient-y [animation-duration:18s]"></div>
           <div className="absolute inset-0 bg-[linear-gradient(80deg,transparent_60%,rgba(16,185,129,0.05)_60%,rgba(16,185,129,0.05)_65%,transparent_65%)] bg-[length:120px_120px] animate-gradient-x [animation-duration:12s] [animation-delay:0.5s]"></div>
-          
+
           {/* Optimized blur effect with subtle color diffusion */}
           <div className="absolute inset-0 backdrop-blur-[100px]"></div>
         </div>
@@ -783,31 +783,31 @@ export default function Home() {
             {/* Multi-layered glow with color variation */}
             <div className="absolute -inset-8 bg-gradient-to-r from-primary/20 via-blue-500/20 to-purple-500/20 blur-xl rounded-full opacity-70 animate-pulse [animation-duration:5s] will-change-opacity"></div>
             <div className="absolute -inset-10 bg-gradient-to-br from-emerald-500/10 via-primary/5 to-pink-500/10 blur-2xl rounded-full opacity-50 animate-pulse [animation-duration:7s] [animation-delay:0.5s]"></div>
-            
+
             {/* Enhanced marble sphere with realistic texture and depth */}
             <div className="relative h-48 w-48 rounded-full bg-gradient-to-br from-white/20 via-white/10 to-transparent backdrop-blur-sm border border-white/10 shadow-[inset_0_0_20px_rgba(255,255,255,0.15)] flex items-center justify-center overflow-hidden group">
               {/* Main marble color with subtle swirl pattern */}
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_70%,_var(--tw-gradient-stops))] from-white/30 via-primary/10 to-blue-500/10"></div>
-              
+
               {/* Realistic marble veins */}
               <div className="absolute inset-0 bg-[linear-gradient(120deg,transparent_85%,rgba(255,255,255,0.2)_85%,rgba(255,255,255,0.2)_87%,transparent_87%)]"></div>
               <div className="absolute inset-0 bg-[linear-gradient(30deg,transparent_80%,rgba(255,255,255,0.1)_80%,rgba(255,255,255,0.1)_82%,transparent_82%)]"></div>
               <div className="absolute inset-0 bg-[linear-gradient(220deg,transparent_92%,rgba(255,255,255,0.15)_92%,rgba(255,255,255,0.15)_94%,transparent_94%)]"></div>
-              
+
               {/* Optimized reflection highlights */}
               <div className="absolute top-0 left-0 h-1/2 w-1/2 bg-gradient-to-br from-white/30 to-transparent rounded-tl-full"></div>
               <div className="absolute -top-3 -left-3 h-1/4 w-1/4 bg-gradient-to-br from-white/40 to-transparent rounded-full blur-md"></div>
               <div className="absolute bottom-5 right-5 h-1/4 w-1/4 bg-gradient-to-tl from-white/15 to-transparent rounded-full"></div>
-              
+
               {/* Secondary reflections */}
               <div className="absolute top-1/4 left-1/3 h-1/6 w-1/6 bg-gradient-to-br from-white/25 to-transparent rounded-full blur-sm"></div>
               <div className="absolute bottom-1/3 right-1/4 h-1/6 w-1/6 bg-white/10 rounded-full blur-sm"></div>
-              
+
               {/* Logo with adaptive colors for light/dark mode */}
               <div className="relative transition-all transform scale-125 z-10">
                 <Brain className="w-24 h-24 text-white/90 dark:text-white/90 drop-shadow-lg" />
               </div>
-              
+
               {/* Optimized shine animation with hardware acceleration */}
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:translate-x-full transition-all duration-1500 ease-in-out will-change-transform"></div>
             </div>
@@ -821,7 +821,7 @@ export default function Home() {
             <p className="mt-5 text-foreground/80 dark:text-foreground/80 backdrop-blur-sm px-6 py-3 rounded-full bg-white/5 dark:bg-black/5 border border-white/10 dark:border-white/10">
               Preparing your workspace...
             </p>
-            
+
             {/* Loading animation dots */}
             <div className="mt-8 flex gap-2 justify-center">
               <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-r from-primary to-blue-400 animate-bounce [animation-delay:-0.3s]"></div>

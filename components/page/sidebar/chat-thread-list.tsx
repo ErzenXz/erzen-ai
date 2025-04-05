@@ -30,10 +30,11 @@ import { useAuth } from "@/hooks/use-auth"
 import { Skeleton } from "@/components/ui/skeleton"
 import { SettingsDialog } from "@/components/page/sidebar/settings-dialog"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useRouter } from "next/navigation"
+import { useDebouncedCallback } from "use-debounce"
 
 interface ChatThreadListProps {
   threads: ChatThread[]
@@ -53,6 +54,287 @@ interface ChatThreadListProps {
   onNewProject?: () => void
   onViewAgents?: () => void
 }
+
+// Memoized thread item component to prevent re-renders of all threads
+const ThreadItem = memo(({
+  thread, 
+  currentThreadId, 
+  collapsed, 
+  editingThreadId,
+  editingTitle,
+  inputRef,
+  formatThreadDate,
+  onThreadSelect,
+  startRenaming,
+  saveRenaming,
+  cancelRenaming,
+  handleRenameKeyDown,
+  setEditingTitle,
+  onDuplicateThread,
+  onDeleteThread
+}: {
+  thread: ChatThread
+  currentThreadId: string | null | undefined
+  collapsed: boolean
+  editingThreadId: string | null
+  editingTitle: string
+  inputRef: React.RefObject<HTMLInputElement>
+  formatThreadDate: (date: string) => string
+  onThreadSelect: (threadId: string) => void
+  startRenaming: (threadId: string) => void
+  saveRenaming: () => void
+  cancelRenaming: () => void
+  handleRenameKeyDown: (e: React.KeyboardEvent) => void
+  setEditingTitle: (title: string) => void
+  onDuplicateThread: (threadId: string) => void
+  onDeleteThread: (threadId: string) => void
+}) => {
+  const isEditing = editingThreadId === thread.id;
+  
+  // Memoize dropdown menu component to prevent rerenders
+  const ThreadDropdownMenu = useMemo(() => {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-background/80">
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={() => startRenaming(thread.id)}>Rename</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onDuplicateThread(thread.id)}>Duplicate</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onDeleteThread(thread.id)} className="text-destructive">
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }, [thread.id, startRenaming, onDuplicateThread, onDeleteThread]);
+  
+  // Memoize thread date to prevent recalculation
+  const formattedDate = useMemo(() => {
+    return formatThreadDate(thread.updatedAt);
+  }, [thread.updatedAt, formatThreadDate]);
+  
+  // Memoize thread title
+  const threadTitle = useMemo(() => thread.title ?? "New Chat", [thread.title]);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div
+          className={cn(
+            "w-full text-left rounded-lg transition-all duration-200 group relative",
+            collapsed ? "p-2" : "p-3",
+            "hover:bg-muted/80",
+            currentThreadId === thread.id && "bg-primary/10",
+          )}
+        >
+          <button 
+            onClick={() => onThreadSelect(thread.id)}
+            className="w-full text-left"
+            style={{ display: isEditing ? 'none' : 'block' }}
+          >
+            <div className={cn("flex items-start", collapsed ? "justify-center" : "gap-3")}>
+              <div className="relative mt-0.5">
+                <div
+                  className={cn(
+                    collapsed ? "w-10 h-10" : "w-8 h-8",
+                    "rounded-lg border flex items-center justify-center transition-all",
+                    currentThreadId === thread.id
+                      ? "border-primary/30 bg-primary/10 text-primary"
+                      : "border-muted-foreground/20 text-muted-foreground group-hover:border-primary/20 group-hover:text-foreground",
+                  )}
+                >
+                  <MessageSquare className={cn(collapsed ? "w-5 h-5" : "w-4 h-4")} />
+                </div>
+              </div>
+
+              {!collapsed && (
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                      <span
+                      className={cn(
+                        "font-medium text-sm truncate max-w-[170px] block overflow-hidden text-ellipsis whitespace-nowrap",
+                        currentThreadId === thread.id && "text-primary",
+                      )}
+                      title={threadTitle}
+                      >
+                      {threadTitle}
+                      </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Clock className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">
+                      {formattedDate}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </button>
+          
+          {/* Inline editing input */}
+          {!collapsed && isEditing && (
+            <div className="flex items-center gap-2">
+              <div className="relative mt-0.5">
+                <div
+                  className={cn(
+                    "w-8 h-8",
+                    "rounded-lg border flex items-center justify-center transition-all",
+                    "border-primary/30 bg-primary/10 text-primary"
+                  )}
+                >
+                  <MessageSquare className="w-4 h-4" />
+                </div>
+              </div>
+              
+              <div className="flex-1 flex items-center gap-1">
+                <Input
+                  ref={inputRef}
+                  value={editingTitle}
+                  onChange={(e) => setEditingTitle(e.target.value)}
+                  className="h-8 py-1 text-sm font-medium"
+                  onKeyDown={handleRenameKeyDown}
+                />
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6" 
+                  onClick={saveRenaming}
+                >
+                  <Check className="h-3 w-3" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6" 
+                  onClick={cancelRenaming}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {!collapsed && !isEditing && (
+            <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              {ThreadDropdownMenu}
+            </div>
+          )}
+        </div>
+      </TooltipTrigger>
+      {collapsed && (
+        <TooltipContent side="right" className="max-w-[200px]">
+          <p className="font-medium">{threadTitle}</p>
+          <p className="text-xs text-muted-foreground mt-1">{formattedDate}</p>
+        </TooltipContent>
+      )}
+    </Tooltip>
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison function for ThreadItem to prevent unnecessary re-renders
+  return (
+    prevProps.thread.id === nextProps.thread.id &&
+    prevProps.thread.title === nextProps.thread.title &&
+    prevProps.thread.updatedAt === nextProps.thread.updatedAt &&
+    prevProps.currentThreadId === nextProps.currentThreadId &&
+    prevProps.collapsed === nextProps.collapsed &&
+    prevProps.editingThreadId === nextProps.editingThreadId &&
+    (prevProps.editingThreadId === prevProps.thread.id ? 
+      prevProps.editingTitle === nextProps.editingTitle : true)
+  );
+});
+
+ThreadItem.displayName = "ThreadItem";
+
+// Memoized button component for sidebar navigation
+const NavigationButton = memo(({ 
+  icon: Icon, 
+  title, 
+  description, 
+  badgeText, 
+  badgeColor,
+  colorClass,
+  collapsed,
+  onClick
+}: { 
+  icon: React.ElementType, 
+  title: string, 
+  description: string, 
+  badgeText?: string, 
+  badgeColor?: string,
+  colorClass: string,
+  collapsed: boolean,
+  onClick: () => void
+}) => {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div
+          className={cn(
+            "w-full text-left rounded-lg transition-all duration-200 group relative",
+            collapsed ? "p-2" : "p-3",
+            "hover:bg-muted/80",
+            "hover:shadow-sm",
+          )}
+          onClick={onClick}
+        >
+          <button className="w-full text-left">
+            <div className={cn("flex items-start", collapsed ? "justify-center" : "gap-3")}>
+              <div className="relative mt-0.5">
+                <div
+                  className={cn(
+                    collapsed ? "w-10 h-10" : "w-8 h-8",
+                    "rounded-lg border flex items-center justify-center transition-all",
+                    `${colorClass} group-hover:scale-110`,
+                  )}
+                >
+                  <Icon className={cn(collapsed ? "w-5 h-5" : "w-4 h-4")} />
+                </div>
+              </div>
+
+              {!collapsed && (
+                <div className="flex-1 min-w-0 flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-medium text-sm">{title}</span> 
+                      {badgeText && (
+                        <span className={cn(
+                          "px-1.5 py-0.5 text-[10px] leading-none font-medium rounded-full",
+                          `bg-${badgeColor}/20 text-${badgeColor}-600 border border-${badgeColor}/20`
+                        )}>
+                          {badgeText}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="text-xs text-muted-foreground">
+                        {description}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="w-5 h-5 rounded-full bg-primary/5 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                    <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors" />
+                  </div>
+                </div>
+              )}
+            </div>
+          </button>
+        </div>
+      </TooltipTrigger>
+      {collapsed && (
+        <TooltipContent side="right" className="max-w-[200px]">
+          <p className="font-medium">{title}</p>
+          <p className="text-xs text-muted-foreground mt-1">{description}</p>
+        </TooltipContent>
+      )}
+    </Tooltip>
+  );
+});
+
+NavigationButton.displayName = "NavigationButton";
 
 export function ChatThreadList({
   threads,
@@ -79,7 +361,34 @@ export function ChatThreadList({
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState<string>("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const router = useRouter();
+  const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
+  const threadListRef = useRef<HTMLDivElement>(null);
+  
+  // Virtual scrolling variables
+  const visibleThreadsBuffer = 20; // Number of threads to keep in DOM
+  const [visibleRange, setVisibleRange] = useState({
+    start: 0,
+    end: Math.min(threads.length, visibleThreadsBuffer)
+  });
+  
+  // Update local search state when prop changes
+  useEffect(() => {
+    setLocalSearchQuery(searchQuery);
+  }, [searchQuery]);
+
+  // Debounced search handler to prevent excessive API calls
+  const debouncedSearch = useDebouncedCallback((value: string) => {
+    if (onSearchChange) {
+      onSearchChange(value);
+    }
+  }, 300);
+
+  // Handle search input change
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setLocalSearchQuery(value);
+    debouncedSearch(value);
+  }, [debouncedSearch]);
   
   // Focus the input when editing starts
   useEffect(() => {
@@ -100,7 +409,7 @@ export function ChatThreadList({
     }
   }, [isMobile])
 
-  const formatThreadDate = (date: string) => {
+  const formatThreadDate = useCallback((date: string) => {
     const threadDate = new Date(date)
     if (isToday(threadDate)) {
       return format(threadDate, "HH:mm")
@@ -109,46 +418,65 @@ export function ChatThreadList({
     } else {
       return format(threadDate, "MMM d")
     }
-  }
+  }, []);
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    if (!onLoadMore || !hasMore) return
-    const target = e.target as HTMLDivElement
-    const bottom = target.scrollHeight - target.scrollTop === target.clientHeight
-    if (bottom) {
-      onLoadMore()
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLDivElement;
+    const scrollPosition = target.scrollTop;
+    const viewportHeight = target.clientHeight;
+    
+    // Calculate which threads should be visible
+    const itemHeight = 60; // Approximate height of each thread item
+    const startIndex = Math.max(0, Math.floor(scrollPosition / itemHeight) - 5);
+    const endIndex = Math.min(
+      threads.length, 
+      Math.ceil((scrollPosition + viewportHeight) / itemHeight) + 5
+    );
+    
+    // Update visible range
+    setVisibleRange({
+      start: startIndex,
+      end: Math.min(endIndex, startIndex + visibleThreadsBuffer)
+    });
+    
+    // Check if we need to load more threads
+    if (onLoadMore && hasMore) {
+      const isNearBottom = target.scrollHeight - scrollPosition - viewportHeight < 200;
+      if (isNearBottom) {
+        onLoadMore();
+      }
     }
-  }
+  }, [threads.length, onLoadMore, hasMore]);
 
-  const toggleSidebar = () => {
+  const toggleSidebar = useCallback(() => {
     setCollapsed(!collapsed)
     if (isMobile) {
       setMobileVisible(!mobileVisible)
     }
-  }
+  }, [collapsed, isMobile, mobileVisible]);
 
-  const startRenaming = (threadId: string) => {
+  const startRenaming = useCallback((threadId: string) => {
     const thread = threads.find(t => t.id === threadId);
     if (thread) {
       setEditingThreadId(threadId);
       setEditingTitle(thread.title || "");
     }
-  };
+  }, [threads]);
 
-  const cancelRenaming = () => {
+  const cancelRenaming = useCallback(() => {
     setEditingThreadId(null);
     setEditingTitle("");
-  };
+  }, []);
 
-  const saveRenaming = () => {
+  const saveRenaming = useCallback(() => {
     if (editingThreadId && editingTitle.trim()) {
       onRenameThread(editingThreadId, editingTitle);
       setEditingThreadId(null);
       setEditingTitle("");
     }
-  };
+  }, [editingThreadId, editingTitle, onRenameThread]);
 
-  const handleRenameKeyDown = (e: React.KeyboardEvent) => {
+  const handleRenameKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
       saveRenaming();
@@ -156,7 +484,43 @@ export function ChatThreadList({
       e.preventDefault();
       cancelRenaming();
     }
-  };
+  }, [saveRenaming, cancelRenaming]);
+
+  // Only render visible threads within the current range
+  const visibleThreads = useMemo(() => {
+    return threads.slice(visibleRange.start, visibleRange.end);
+  }, [threads, visibleRange.start, visibleRange.end]);
+
+  // Calculate empty space heights for virtual scrolling
+  const topSpacerHeight = visibleRange.start * 58; // Approximate height per item
+  const bottomSpacerHeight = Math.max(0, (threads.length - visibleRange.end) * 58);
+
+  // Memoize navigation buttons to prevent unnecessary re-renders
+  const AgentsButton = useMemo(() => (
+    <NavigationButton
+      icon={Bot}
+      title="Agents"
+      description="Automate your workflows"
+      badgeText="BETA"
+      badgeColor="purple-500"
+      colorClass="border-purple-300/30 bg-purple-500/10 text-purple-500 group-hover:bg-purple-500/15"
+      collapsed={collapsed}
+      onClick={onViewAgents || (() => {})}
+    />
+  ), [collapsed, onViewAgents]);
+
+  const ProjectsButton = useMemo(() => (
+    <NavigationButton
+      icon={FolderRoot}
+      title="Projects"
+      description={`${projects.length} ${projects.length === 1 ? 'project' : 'projects'}`}
+      badgeText="BETA"
+      badgeColor="blue-500"
+      colorClass="border-blue-300/30 bg-blue-500/10 text-blue-500 group-hover:bg-blue-500/15"
+      collapsed={collapsed}
+      onClick={onViewProjects || (() => {})}
+    />
+  ), [collapsed, projects.length, onViewProjects]);
 
   if (isMobile && !mobileVisible) {
     return (
@@ -196,7 +560,7 @@ export function ChatThreadList({
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant="secondary"
+              variant="ghost"
               size="icon"
               className={cn(
                 "absolute -right-3 top-1/2 transform -translate-y-1/2 z-10 h-6 w-6 rounded-full border shadow-md hidden md:flex",
@@ -304,7 +668,7 @@ export function ChatThreadList({
             </Tooltip>
           ) : (
             <>
-                <div className="flex gap-2 w-full">
+              <div className="flex gap-2 w-full">
                 <Button onClick={onNewThread} className="flex-[2]" variant="default">
                   <MessageSquarePlus className="w-4 h-4 mr-2" />
                   New Chat
@@ -312,15 +676,15 @@ export function ChatThreadList({
                 <Button onClick={() => onNewProject?.()} className="flex-[1]" variant="outline">
                   <FolderPlus className="w-4 h-4" />
                 </Button>
-                </div>
+              </div>
 
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   placeholder="Search chats..."
                   className="pl-8 h-9"
-                  value={searchQuery}
-                  onChange={(e) => onSearchChange?.(e.target.value)}
+                  value={localSearchQuery}
+                  onChange={handleSearchChange}
                 />
               </div>
             </>
@@ -328,126 +692,12 @@ export function ChatThreadList({
         </div>
 
         <ScrollArea className="flex-1" onScroll={handleScroll}>
-          <div className="space-y-1 p-2">
+          <div className="space-y-1 p-2" ref={threadListRef}>
             {/* Agents Section */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div
-                  className={cn(
-                    "w-full text-left rounded-lg transition-all duration-200 group relative",
-                    collapsed ? "p-2" : "p-3",
-                    "hover:bg-muted/80",
-                    "hover:shadow-sm",
-                  )}
-                  onClick={onViewAgents}
-                >
-                  <button 
-                    className="w-full text-left"
-                  >
-                    <div className={cn("flex items-start", collapsed ? "justify-center" : "gap-3")}>
-                      <div className="relative mt-0.5">
-                        <div
-                          className={cn(
-                            collapsed ? "w-10 h-10" : "w-8 h-8",
-                            "rounded-lg border flex items-center justify-center transition-all",
-                            "border-purple-300/30 bg-purple-500/10 text-purple-500 group-hover:scale-110 group-hover:bg-purple-500/15",
-                          )}
-                        >
-                          <Bot className={cn(collapsed ? "w-5 h-5" : "w-4 h-4")} />
-                        </div>
-                      </div>
-
-                      {!collapsed && (
-                        <div className="flex-1 min-w-0 flex items-center justify-between">
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-medium text-sm">Agents</span> 
-                              <span className="px-1.5 py-0.5 text-[10px] leading-none font-medium rounded-full bg-purple-500/20 text-purple-600 border border-purple-500/20">
-                              BETA
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1.5 mt-1">
-                              <span className="text-xs text-muted-foreground">
-                                Automate your workflows
-                              </span>
-                            </div>
-                          </div>
-                          <div className="w-5 h-5 rounded-full bg-primary/5 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                            <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors" />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                </div>
-              </TooltipTrigger>
-              {collapsed && (
-                <TooltipContent side="right" className="max-w-[200px]">
-                  <p className="font-medium">Agents</p>
-                  <p className="text-xs text-muted-foreground mt-1">Automate your workflows</p>
-                </TooltipContent>
-              )}
-            </Tooltip>
+            {AgentsButton}
             
             {/* Projects Section */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div
-                  className={cn(
-                    "w-full text-left rounded-lg transition-all duration-200 group relative",
-                    collapsed ? "p-2" : "p-3",
-                    "hover:bg-muted/80",
-                    "hover:shadow-sm",
-                  )}
-                  onClick={onViewProjects}
-                >
-                  <button 
-                    className="w-full text-left"
-                  >
-                    <div className={cn("flex items-start", collapsed ? "justify-center" : "gap-3")}>
-                      <div className="relative mt-0.5">
-                        <div
-                          className={cn(
-                            collapsed ? "w-10 h-10" : "w-8 h-8",
-                            "rounded-lg border flex items-center justify-center transition-all",
-                            "border-blue-300/30 bg-blue-500/10 text-blue-500 group-hover:scale-110 group-hover:bg-blue-500/15",
-                          )}
-                        >
-                          <FolderRoot className={cn(collapsed ? "w-5 h-5" : "w-4 h-4")} />
-                        </div>
-                      </div>
-
-                      {!collapsed && (
-                        <div className="flex-1 min-w-0 flex items-center justify-between">
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-medium text-sm">Projects</span> 
-                              <span className="px-1.5 py-0.5 text-[10px] leading-none font-medium rounded-full bg-blue-500/20 text-blue-600 border border-blue-500/20">
-                              BETA
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1.5 mt-1">
-                              <span className="text-xs text-muted-foreground">
-                                {projects.length} {projects.length === 1 ? 'project' : 'projects'}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="w-5 h-5 rounded-full bg-primary/5 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                            <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors" />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                </div>
-              </TooltipTrigger>
-              {collapsed && (
-                <TooltipContent side="right" className="max-w-[200px]">
-                  <p className="font-medium">Projects</p>
-                  <p className="text-xs text-muted-foreground mt-1">View all projects</p>
-                </TooltipContent>
-              )}
-            </Tooltip>
+            {ProjectsButton}
             
             {/* Recent Chats Header */}
             {!collapsed && threads.length > 0 && (
@@ -458,138 +708,42 @@ export function ChatThreadList({
               </div>
             )}
             
-            {/* Thread list */}
-            {threads.map((thread) => (
-              <Tooltip key={thread.id}>
-                <TooltipTrigger asChild>
-                  <div
-                    className={cn(
-                      "w-full text-left rounded-lg transition-all duration-200 group relative",
-                      collapsed ? "p-2" : "p-3",
-                      "hover:bg-muted/80",
-                      currentThreadId === thread.id && "bg-primary/10",
-                    )}
-                  >
-                    <button 
-                      onClick={() => onThreadSelect(thread.id)}
-                      className="w-full text-left"
-                      style={{ display: editingThreadId === thread.id ? 'none' : 'block' }}
-                    >
-                      <div className={cn("flex items-start", collapsed ? "justify-center" : "gap-3")}>
-                        <div className="relative mt-0.5">
-                          <div
-                            className={cn(
-                              collapsed ? "w-10 h-10" : "w-8 h-8",
-                              "rounded-lg border flex items-center justify-center transition-all",
-                              currentThreadId === thread.id
-                                ? "border-primary/30 bg-primary/10 text-primary"
-                                : "border-muted-foreground/20 text-muted-foreground group-hover:border-primary/20 group-hover:text-foreground",
-                            )}
-                          >
-                            <MessageSquare className={cn(collapsed ? "w-5 h-5" : "w-4 h-4")} />
-                          </div>
-                        </div>
-
-                        {!collapsed && (
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                                <span
-                                className={cn(
-                                  "font-medium text-sm truncate max-w-[170px] block overflow-hidden text-ellipsis whitespace-nowrap",
-                                  currentThreadId === thread.id && "text-primary",
-                                )}
-                                title={thread.title ?? "New Chat"}
-                                >
-                                {thread.title ?? "New Chat"}
-                                </span>
-                            </div>
-
-                            <div className="flex items-center gap-1.5 mt-1">
-                              <Clock className="w-3 h-3 text-muted-foreground" />
-                              <span className="text-xs text-muted-foreground">
-                                {formatThreadDate(thread.updatedAt)}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </button>
-                    
-                    {/* Inline editing input */}
-                    {!collapsed && editingThreadId === thread.id && (
-                      <div className="flex items-center gap-2">
-                        <div className="relative mt-0.5">
-                          <div
-                            className={cn(
-                              "w-8 h-8",
-                              "rounded-lg border flex items-center justify-center transition-all",
-                              "border-primary/30 bg-primary/10 text-primary"
-                            )}
-                          >
-                            <MessageSquare className="w-4 h-4" />
-                          </div>
-                        </div>
-                        
-                        <div className="flex-1 flex items-center gap-1">
-                          <Input
-                            ref={inputRef}
-                            value={editingTitle}
-                            onChange={(e) => setEditingTitle(e.target.value)}
-                            className="h-8 py-1 text-sm font-medium"
-                            onKeyDown={handleRenameKeyDown}
-                          />
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6" 
-                            onClick={saveRenaming}
-                          >
-                            <Check className="h-3 w-3" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6" 
-                            onClick={cancelRenaming}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-
-                    {!collapsed && !editingThreadId && (
-                      <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-background/80">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem onClick={() => startRenaming(thread.id)}>Rename</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onDuplicateThread(thread.id)}>Duplicate</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onDeleteThread(thread.id)} className="text-destructive">
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    )}
-                  </div>
-                </TooltipTrigger>
-                {collapsed && (
-                  <TooltipContent side="right" className="max-w-[200px]">
-                    <p className="font-medium">{thread.title ?? "New Chat"}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{formatThreadDate(thread.updatedAt)}</p>
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            ))}
+            {/* Virtual list implementation */}
+            {threads.length > 0 && (
+              <>
+                {/* Top spacer */}
+                {topSpacerHeight > 0 && <div style={{ height: topSpacerHeight }} />}
+                
+                {/* Visible threads */}
+                {visibleThreads.map((thread) => (
+                  <ThreadItem
+                    key={thread.id}
+                    thread={thread}
+                    currentThreadId={currentThreadId}
+                    collapsed={collapsed}
+                    editingThreadId={editingThreadId}
+                    editingTitle={editingTitle}
+                    inputRef={inputRef}
+                    formatThreadDate={formatThreadDate}
+                    onThreadSelect={onThreadSelect}
+                    startRenaming={startRenaming}
+                    saveRenaming={saveRenaming}
+                    cancelRenaming={cancelRenaming}
+                    handleRenameKeyDown={handleRenameKeyDown}
+                    setEditingTitle={setEditingTitle}
+                    onDuplicateThread={onDuplicateThread}
+                    onDeleteThread={onDeleteThread}
+                  />
+                ))}
+                
+                {/* Bottom spacer */}
+                {bottomSpacerHeight > 0 && <div style={{ height: bottomSpacerHeight }} />}
+              </>
+            )}
 
             {hasMore && !collapsed && (
               <div className="py-2 text-center">
-                <Button variant="ghost" size="sm" onClick={onLoadMore}>
+                <Button variant="ghost" size="sm" onClick={onLoadMore} className="h-8 text-xs">
                   Load More
                 </Button>
               </div>
