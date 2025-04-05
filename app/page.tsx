@@ -463,7 +463,7 @@ export default function Home() {
   }, [resetDialogStates]);
 
   // Template data organized by category
-  const templateCategories = useMemo<TemplateCategory[]>(() => [
+  const allTemplateCategories = useMemo<TemplateCategory[]>(() => [
     {
       id: "create",
       label: "Create",
@@ -473,6 +473,7 @@ export default function Home() {
       borderColor: "border-primary/30",
       icon: MessageSquarePlus,
       templates: [
+        // Set 1
         {
           title: "Write a short story about...",
           description: "Generate creative stories in any genre or style",
@@ -493,10 +494,47 @@ export default function Home() {
           description: "Professional communication for any situation",
           prompt: "Draft a professional email to schedule a meeting with a potential client"
         },
+        // Set 2
         {
           title: "Create a product description for...",
           description: "Compelling copy for products or services",
           prompt: "Create an engaging product description for a new smartwatch"
+        },
+        {
+          title: "Write a poem about...",
+          description: "Express emotions through creative poetry",
+          prompt: "Write a poem about the changing seasons"
+        },
+        {
+          title: "Create a social media post for...",
+          description: "Engaging content for any platform",
+          prompt: "Create an Instagram post announcing a new eco-friendly product line"
+        },
+        {
+          title: "Write a speech for...",
+          description: "Compelling presentations for any occasion",
+          prompt: "Write a 5-minute inspirational speech for a graduation ceremony"
+        },
+        // Set 3
+        {
+          title: "Create a business plan for...",
+          description: "Structured plans for new ventures",
+          prompt: "Create a one-page business plan for a mobile app startup"
+        },
+        {
+          title: "Write a script for...",
+          description: "Engaging scripts for videos or presentations",
+          prompt: "Write a script for a 2-minute product demonstration video"
+        },
+        {
+          title: "Generate a list of ideas for...",
+          description: "Creative brainstorming for any project",
+          prompt: "Generate 10 unique ideas for a children's birthday party"
+        },
+        {
+          title: "Create a resume for...",
+          description: "Professional CV tailored to specific roles",
+          prompt: "Create a resume for a software developer with 3 years of experience"
         }
       ]
     },
@@ -509,6 +547,7 @@ export default function Home() {
       borderColor: "border-blue-500/30",
       icon: Globe,
       templates: [
+        // Set 1
         {
           title: "Explain a complex topic...",
           description: "Get simple explanations for difficult concepts",
@@ -530,10 +569,53 @@ export default function Home() {
           description: "Get concise summaries of complex topics",
           prompt: "Summarize the key points of the latest IPCC climate report"
         },
+        // Set 2
         {
           title: "Find facts about...",
           description: "Research specific information on any topic",
           prompt: "Find interesting facts about deep sea creatures",
+          enableBrowse: true
+        },
+        {
+          title: "Analyze the impact of...",
+          description: "Understand consequences and implications",
+          prompt: "Analyze the impact of artificial intelligence on the job market",
+          enableBrowse: true
+        },
+        {
+          title: "Explore the history of...",
+          description: "Discover historical context and development",
+          prompt: "Explore the history of space exploration from 1950 to today",
+          enableBrowse: true
+        },
+        {
+          title: "Investigate solutions for...",
+          description: "Find practical approaches to challenges",
+          prompt: "Investigate sustainable solutions for urban transportation",
+          enableBrowse: true
+        },
+        // Set 3
+        {
+          title: "Discover innovations in...",
+          description: "Learn about cutting-edge developments",
+          prompt: "Discover recent innovations in battery technology",
+          enableBrowse: true
+        },
+        {
+          title: "Understand the science behind...",
+          description: "Get scientific explanations for phenomena",
+          prompt: "Explain the science behind climate change and its effects"
+        },
+        {
+          title: "Explore different perspectives on...",
+          description: "See multiple viewpoints on complex issues",
+          prompt: "Explore different perspectives on universal basic income",
+          enableBrowse: true
+        },
+        {
+          title: "Research the benefits of...",
+          description: "Discover advantages and positive impacts",
+          prompt: "Research the health benefits of meditation and mindfulness",
           enableBrowse: true
         }
       ]
@@ -547,6 +629,7 @@ export default function Home() {
       borderColor: "border-green-500/30",
       icon: Code,
       templates: [
+        // Set 1
         {
           title: "Write a component for...",
           description: "Generate code for specific UI components",
@@ -567,10 +650,47 @@ export default function Home() {
           description: "Improve performance and readability",
           prompt: "Optimize this JavaScript function for better performance"
         },
+        // Set 2
         {
           title: "Convert this code to...",
           description: "Translate between programming languages",
           prompt: "Convert this Python code to TypeScript"
+        },
+        {
+          title: "Create a data structure for...",
+          description: "Design efficient data structures",
+          prompt: "Design an efficient data structure for a social media feed"
+        },
+        {
+          title: "Write a test for...",
+          description: "Generate unit or integration tests",
+          prompt: "Write unit tests for this React component using Jest and React Testing Library"
+        },
+        {
+          title: "Refactor this code to...",
+          description: "Improve code quality and maintainability",
+          prompt: "Refactor this code to use modern JavaScript features"
+        },
+        // Set 3
+        {
+          title: "Create an algorithm for...",
+          description: "Develop efficient algorithms for specific tasks",
+          prompt: "Create an algorithm to find the shortest path in a graph"
+        },
+        {
+          title: "Explain this code snippet...",
+          description: "Get detailed explanations of how code works",
+          prompt: "Explain how this recursive function works step by step"
+        },
+        {
+          title: "Design a database schema for...",
+          description: "Create efficient database structures",
+          prompt: "Design a database schema for an e-commerce application"
+        },
+        {
+          title: "Implement a design pattern for...",
+          description: "Apply software design patterns",
+          prompt: "Implement the observer pattern for a notification system"
         }
       ]
     },
@@ -583,6 +703,7 @@ export default function Home() {
       borderColor: "border-amber-500/30",
       icon: BookOpen,
       templates: [
+        // Set 1
         {
           title: "Create a study plan for...",
           description: "Get personalized learning roadmaps",
@@ -603,14 +724,90 @@ export default function Home() {
           description: "Get curated learning materials",
           prompt: "Recommend the best resources for learning data science from scratch"
         },
+        // Set 2
         {
           title: "Quiz me on...",
           description: "Test your knowledge with interactive quizzes",
           prompt: "Create a quiz to test my knowledge of world geography"
+        },
+        {
+          title: "Summarize the key concepts of...",
+          description: "Get concise overviews of complex subjects",
+          prompt: "Summarize the key concepts of machine learning for beginners"
+        },
+        {
+          title: "Create flashcards for...",
+          description: "Generate study materials for any subject",
+          prompt: "Create 10 flashcards for learning Spanish vocabulary"
+        },
+        {
+          title: "Explain the difference between...",
+          description: "Understand distinctions between similar concepts",
+          prompt: "Explain the difference between REST and GraphQL APIs"
+        },
+        // Set 3
+        {
+          title: "Teach me how to...",
+          description: "Learn new skills step by step",
+          prompt: "Teach me how to analyze data using Python pandas"
+        },
+        {
+          title: "Create a cheat sheet for...",
+          description: "Quick reference guides for any topic",
+          prompt: "Create a cheat sheet for CSS flexbox and grid"
+        },
+        {
+          title: "Explain the history and evolution of...",
+          description: "Understand how concepts have developed",
+          prompt: "Explain the history and evolution of artificial intelligence"
+        },
+        {
+          title: "What are best practices for...",
+          description: "Learn industry standards and recommendations",
+          prompt: "What are the best practices for secure web development?"
         }
       ]
     }
   ], []);
+
+  // State to track the current template set for each category
+  const [templateSets, setTemplateSets] = useState<Record<string, number>>({
+    create: 0,
+    explore: 0,
+    code: 0,
+    learn: 0
+  });
+
+  // Function to get a subset of templates for each category
+  const getTemplateSubset = useCallback((categoryId: string, templates: Template[]) => {
+    const setIndex = templateSets[categoryId];
+    const templatesPerSet = 4; // Show 4 templates at a time
+
+    const startIndex = setIndex * templatesPerSet;
+    return templates.slice(startIndex, startIndex + templatesPerSet);
+  }, [templateSets]);
+
+  // Rotate templates when a category is selected
+  const rotateTemplates = useCallback((categoryId: string) => {
+    const category = allTemplateCategories.find(c => c.id === categoryId);
+    if (!category) return;
+
+    const templatesPerSet = 4;
+    const totalSets = Math.ceil(category.templates.length / templatesPerSet);
+
+    setTemplateSets(prev => ({
+      ...prev,
+      [categoryId]: (prev[categoryId] + 1) % totalSets
+    }));
+  }, [allTemplateCategories]);
+
+  // Derived template categories with subsets of templates
+  const templateCategories = useMemo(() => {
+    return allTemplateCategories.map(category => ({
+      ...category,
+      templates: getTemplateSubset(category.id, category.templates)
+    }));
+  }, [allTemplateCategories, getTemplateSubset]);
 
   // Load agents when agents view is shown
   useEffect(() => {
@@ -1224,173 +1421,305 @@ export default function Home() {
                 {/* Empty state with welcome message when no content is selected */}
                 {!showProjectsGrid && !showAgentsGrid && !currentProjectId && !currentThread?.id && (
                   <div className="flex flex-col items-center justify-center h-full py-8">
-                    <div className="relative">
-                      <div className="absolute -z-10 inset-0 bg-primary/5 blur-3xl rounded-full"></div>
-                      <div className="bg-gradient-to-b from-primary/20 to-primary/5 h-24 w-24 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <FolderRoot className="w-10 h-10 text-primary" />
+                    {/* Modern glass-morphism welcome card */}
+                    <div className="relative w-full max-w-4xl mx-auto mb-12">
+                      {/* Background glow effects */}
+                      <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-br from-primary/20 via-blue-500/10 to-purple-500/20 blur-3xl rounded-full opacity-70"></div>
+                      <div className="absolute -z-10 top-0 right-0 w-1/2 h-1/2 bg-gradient-to-br from-emerald-500/10 via-primary/5 to-pink-500/10 blur-2xl rounded-full opacity-50"></div>
+
+                      {/* Welcome card with glass effect */}
+                      <div className="relative backdrop-blur-sm bg-white/5 dark:bg-black/5 border border-white/10 dark:border-white/10 rounded-2xl p-8 overflow-hidden">
+                        {/* Subtle animated gradient overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_3s_infinite] will-change-transform"></div>
+
+                        {/* Welcome content */}
+                        <div className="flex flex-col items-center text-center">
+                          <div className="relative mb-6">
+                            <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 via-blue-500/20 to-purple-500/20 blur-xl rounded-full opacity-70"></div>
+                            <div className="relative h-20 w-20 rounded-full bg-gradient-to-br from-white/20 via-white/10 to-transparent backdrop-blur-sm border border-white/10 flex items-center justify-center">
+                              <FolderRoot className="w-10 h-10 text-primary" />
+                            </div>
+                          </div>
+
+                          <h2 className="text-3xl font-bold mb-3 bg-gradient-to-r from-primary via-blue-400 to-purple-500 bg-clip-text text-transparent">
+                            Welcome to Erzen AI
+                          </h2>
+
+                          <p className="text-muted-foreground text-center max-w-md mb-6 font-light">
+                            Create a new project or start a chat to begin working with AI
+                          </p>
+
+                          <div className="flex gap-4 mb-6">
+                            <Button
+                              onClick={() => setShowProjectDialog(true)}
+                              className="bg-primary/90 hover:bg-primary text-white shadow-sm transition-all duration-200 px-5 py-2 h-auto"
+                            >
+                              <FolderPlus className="w-4 h-4 mr-2 opacity-80" />
+                              Create Project
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => createThread()}
+                              className="border-primary/20 text-primary hover:bg-primary/10 transition-all duration-200 px-5 py-2 h-auto"
+                            >
+                              <MessageSquarePlus className="w-4 h-4 mr-2 opacity-80" />
+                              New Chat
+                            </Button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <h2 className="text-3xl font-bold mb-3">Welcome to Erzen AI</h2>
-                    <p className="text-muted-foreground text-center max-w-md mb-2">
-                      Create a new project or start a chat to begin working with AI
-                    </p>
-                    <div className="flex gap-3 mb-10">
-                      <Button onClick={() => setShowProjectDialog(true)}>
-                        <FolderPlus className="w-4 h-4 mr-2" />
-                        Create Project
-                      </Button>
-                      <Button variant="outline" onClick={() => createThread()}>
-                        <MessageSquarePlus className="w-4 h-4 mr-2" />
-                        New Chat
-                      </Button>
                     </div>
 
                     <div className="w-full max-w-4xl">
-                      <h3 className="text-xl font-semibold text-center mb-6">How can I help you?</h3>
+                      <h3 className="text-2xl font-medium text-center mb-8 flex flex-col items-center">
+                        <span className="text-sm text-primary/80 uppercase tracking-wider mb-2 font-light">Let&apos;s get started</span>
+                        <span className="relative">
+                          <span className="animate-typing-effect overflow-hidden whitespace-nowrap border-r-2 border-primary pr-1 text-foreground">
+                            Howdy{user?.name ? `, ${user.name}` : ""}! How can I help you?
+                          </span>
+                        </span>
+                      </h3>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         {/* Create Category */}
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Badge variant="outline" className="px-3 py-1 text-primary border-primary/30 bg-primary/5">
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Badge variant="outline" className="px-3 py-1.5 text-primary border-primary/30 bg-primary/5 rounded-full font-medium">
                               Create
                             </Badge>
                           </div>
 
-                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-primary/10 hover:border-primary/30"
+                          <Card
+                            className="group p-5 cursor-pointer border-primary/10 hover:border-primary/30 hover:shadow-sm transition-all duration-300 overflow-hidden relative"
                             onClick={() => {
                               createThread();
                               setMessage("Write a short story about a robot learning to love");
-                            }}>
-                            <p className="font-medium">Write a short story about...</p>
-                            <p className="text-sm text-muted-foreground">Generate creative stories in any genre or style</p>
+                            }}
+                          >
+                            {/* Subtle hover effect */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            <div className="relative z-10">
+                              <p className="font-medium text-base mb-1.5">Write a short story about...</p>
+                              <p className="text-sm text-muted-foreground">Generate creative stories in any genre or style</p>
+                            </div>
+                            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              <ArrowRight className="h-4 w-4 text-primary/70" />
+                            </div>
                           </Card>
 
-                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-primary/10 hover:border-primary/30"
+                          <Card
+                            className="group p-5 cursor-pointer border-primary/10 hover:border-primary/30 hover:shadow-sm transition-all duration-300 overflow-hidden relative"
                             onClick={() => {
                               createThread();
                               setMessage("Write a blog post about the future of AI");
-                            }}>
-                            <p className="font-medium">Write a blog post about...</p>
-                            <p className="text-sm text-muted-foreground">Create well-structured articles on any topic</p>
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            <div className="relative z-10">
+                              <p className="font-medium text-base mb-1.5">Write a blog post about...</p>
+                              <p className="text-sm text-muted-foreground">Create well-structured articles on any topic</p>
+                            </div>
+                            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              <ArrowRight className="h-4 w-4 text-primary/70" />
+                            </div>
                           </Card>
 
-                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-primary/10 hover:border-primary/30"
+                          <Card
+                            className="group p-5 cursor-pointer border-primary/10 hover:border-primary/30 hover:shadow-sm transition-all duration-300 overflow-hidden relative"
                             onClick={() => {
                               createThread();
                               setMessage("Generate 5 creative marketing slogans for a sustainable clothing brand");
-                            }}>
-                            <p className="font-medium">Generate marketing ideas for...</p>
-                            <p className="text-sm text-muted-foreground">Brainstorm creative marketing content</p>
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            <div className="relative z-10">
+                              <p className="font-medium text-base mb-1.5">Generate marketing ideas for...</p>
+                              <p className="text-sm text-muted-foreground">Brainstorm creative marketing content</p>
+                            </div>
+                            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              <ArrowRight className="h-4 w-4 text-primary/70" />
+                            </div>
                           </Card>
                         </div>
 
                         {/* Explore Category */}
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Badge variant="outline" className="px-3 py-1 text-blue-500 border-blue-500/30 bg-blue-500/5">
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Badge variant="outline" className="px-3 py-1.5 text-blue-500 border-blue-500/30 bg-blue-500/5 rounded-full font-medium">
                               Explore
                             </Badge>
                           </div>
 
-                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-blue-500/10 hover:border-blue-500/30"
+                          <Card
+                            className="group p-5 cursor-pointer border-blue-500/10 hover:border-blue-500/30 hover:shadow-sm transition-all duration-300 overflow-hidden relative"
                             onClick={() => {
                               createThread();
                               setMessage("Explain quantum computing in simple terms");
-                            }}>
-                            <p className="font-medium">Explain a complex topic...</p>
-                            <p className="text-sm text-muted-foreground">Get simple explanations for difficult concepts</p>
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-blue-500/10 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            <div className="relative z-10">
+                              <p className="font-medium text-base mb-1.5">Explain a complex topic...</p>
+                              <p className="text-sm text-muted-foreground">Get simple explanations for difficult concepts</p>
+                            </div>
+                            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              <ArrowRight className="h-4 w-4 text-blue-500/70" />
+                            </div>
                           </Card>
 
-                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-blue-500/10 hover:border-blue-500/30"
+                          <Card
+                            className="group p-5 cursor-pointer border-blue-500/10 hover:border-blue-500/30 hover:shadow-sm transition-all duration-300 overflow-hidden relative"
                             onClick={() => {
                               createThread();
                               setBrowseMode(true);
                               setMessage("What are the latest developments in renewable energy?");
-                            }}>
-                            <p className="font-medium">Research current trends in...</p>
-                            <p className="text-sm text-muted-foreground">Discover the latest information on any subject</p>
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-blue-500/10 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            <div className="relative z-10">
+                              <p className="font-medium text-base mb-1.5">Research current trends in...</p>
+                              <p className="text-sm text-muted-foreground">Discover the latest information on any subject</p>
+                            </div>
+                            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              <ArrowRight className="h-4 w-4 text-blue-500/70" />
+                            </div>
                           </Card>
 
-                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-blue-500/10 hover:border-blue-500/30"
+                          <Card
+                            className="group p-5 cursor-pointer border-blue-500/10 hover:border-blue-500/30 hover:shadow-sm transition-all duration-300 overflow-hidden relative"
                             onClick={() => {
                               createThread();
                               setMessage("Compare the pros and cons of React vs. Vue");
-                            }}>
-                            <p className="font-medium">Compare and contrast...</p>
-                            <p className="text-sm text-muted-foreground">Get balanced analysis of different options</p>
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-blue-500/10 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            <div className="relative z-10">
+                              <p className="font-medium text-base mb-1.5">Compare and contrast...</p>
+                              <p className="text-sm text-muted-foreground">Get balanced analysis of different options</p>
+                            </div>
+                            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              <ArrowRight className="h-4 w-4 text-blue-500/70" />
+                            </div>
                           </Card>
                         </div>
 
                         {/* Code Category */}
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Badge variant="outline" className="px-3 py-1 text-green-500 border-green-500/30 bg-green-500/5">
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Badge variant="outline" className="px-3 py-1.5 text-green-500 border-green-500/30 bg-green-500/5 rounded-full font-medium">
                               Code
                             </Badge>
                           </div>
 
-                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-green-500/10 hover:border-green-500/30"
+                          <Card
+                            className="group p-5 cursor-pointer border-green-500/10 hover:border-green-500/30 hover:shadow-sm transition-all duration-300 overflow-hidden relative"
                             onClick={() => {
                               createThread();
                               setMessage("Write a React component for a responsive image gallery");
-                            }}>
-                            <p className="font-medium">Write a component for...</p>
-                            <p className="text-sm text-muted-foreground">Generate code for specific UI components</p>
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-green-500/10 to-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            <div className="relative z-10">
+                              <p className="font-medium text-base mb-1.5">Write a component for...</p>
+                              <p className="text-sm text-muted-foreground">Generate code for specific UI components</p>
+                            </div>
+                            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              <ArrowRight className="h-4 w-4 text-green-500/70" />
+                            </div>
                           </Card>
 
-                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-green-500/10 hover:border-green-500/30"
+                          <Card
+                            className="group p-5 cursor-pointer border-green-500/10 hover:border-green-500/30 hover:shadow-sm transition-all duration-300 overflow-hidden relative"
                             onClick={() => {
                               createThread();
                               setMessage("Debug this code: [paste your code here]");
-                            }}>
-                            <p className="font-medium">Debug my code...</p>
-                            <p className="text-sm text-muted-foreground">Find and fix issues in your code</p>
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-green-500/10 to-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            <div className="relative z-10">
+                              <p className="font-medium text-base mb-1.5">Debug my code...</p>
+                              <p className="text-sm text-muted-foreground">Find and fix issues in your code</p>
+                            </div>
+                            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              <ArrowRight className="h-4 w-4 text-green-500/70" />
+                            </div>
                           </Card>
 
-                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-green-500/10 hover:border-green-500/30"
+                          <Card
+                            className="group p-5 cursor-pointer border-green-500/10 hover:border-green-500/30 hover:shadow-sm transition-all duration-300 overflow-hidden relative"
                             onClick={() => {
                               createThread();
                               setMessage("Explain how to implement authentication in a NextJS app");
-                            }}>
-                            <p className="font-medium">Explain how to implement...</p>
-                            <p className="text-sm text-muted-foreground">Get step-by-step coding instructions</p>
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-green-500/10 to-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            <div className="relative z-10">
+                              <p className="font-medium text-base mb-1.5">Explain how to implement...</p>
+                              <p className="text-sm text-muted-foreground">Get step-by-step coding instructions</p>
+                            </div>
+                            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              <ArrowRight className="h-4 w-4 text-green-500/70" />
+                            </div>
                           </Card>
                         </div>
 
                         {/* Learn Category */}
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Badge variant="outline" className="px-3 py-1 text-amber-500 border-amber-500/30 bg-amber-500/5">
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Badge variant="outline" className="px-3 py-1.5 text-amber-500 border-amber-500/30 bg-amber-500/5 rounded-full font-medium">
                               Learn
                             </Badge>
                           </div>
 
-                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-amber-500/10 hover:border-amber-500/30"
+                          <Card
+                            className="group p-5 cursor-pointer border-amber-500/10 hover:border-amber-500/30 hover:shadow-sm transition-all duration-300 overflow-hidden relative"
                             onClick={() => {
                               createThread();
                               setMessage("Create a study plan for learning machine learning in 3 months");
-                            }}>
-                            <p className="font-medium">Create a study plan for...</p>
-                            <p className="text-sm text-muted-foreground">Get personalized learning roadmaps</p>
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-r from-amber-500/5 via-amber-500/10 to-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            <div className="relative z-10">
+                              <p className="font-medium text-base mb-1.5">Create a study plan for...</p>
+                              <p className="text-sm text-muted-foreground">Get personalized learning roadmaps</p>
+                            </div>
+                            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              <ArrowRight className="h-4 w-4 text-amber-500/70" />
+                            </div>
                           </Card>
 
-                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-amber-500/10 hover:border-amber-500/30"
+                          <Card
+                            className="group p-5 cursor-pointer border-amber-500/10 hover:border-amber-500/30 hover:shadow-sm transition-all duration-300 overflow-hidden relative"
                             onClick={() => {
                               createThread();
                               setMessage("What are the most important concepts to understand in modern JavaScript?");
-                            }}>
-                            <p className="font-medium">What should I know about...</p>
-                            <p className="text-sm text-muted-foreground">Discover essential knowledge in any field</p>
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-r from-amber-500/5 via-amber-500/10 to-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            <div className="relative z-10">
+                              <p className="font-medium text-base mb-1.5">What should I know about...</p>
+                              <p className="text-sm text-muted-foreground">Discover essential knowledge in any field</p>
+                            </div>
+                            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              <ArrowRight className="h-4 w-4 text-amber-500/70" />
+                            </div>
                           </Card>
 
-                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-amber-500/10 hover:border-amber-500/30"
+                          <Card
+                            className="group p-5 cursor-pointer border-amber-500/10 hover:border-amber-500/30 hover:shadow-sm transition-all duration-300 overflow-hidden relative"
                             onClick={() => {
                               createThread();
                               setMessage("Explain TypeScript generics with practical examples");
-                            }}>
-                            <p className="font-medium">Explain with examples...</p>
-                            <p className="text-sm text-muted-foreground">Learn concepts with practical demonstrations</p>
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-r from-amber-500/5 via-amber-500/10 to-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            <div className="relative z-10">
+                              <p className="font-medium text-base mb-1.5">Explain with examples...</p>
+                              <p className="text-sm text-muted-foreground">Learn concepts with practical demonstrations</p>
+                            </div>
+                            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              <ArrowRight className="h-4 w-4 text-amber-500/70" />
+                            </div>
                           </Card>
                         </div>
                       </div>
@@ -1401,45 +1730,61 @@ export default function Home() {
                 {/* Show templates for a new chat thread */}
                 {currentThread?.id === 'new' && currentThread.messages.length === 0 && !showProjectsGrid && !showAgentsGrid && (
                   <div className="py-8">
-                    <div className="relative mb-8 text-center">
-                      <div className="absolute -z-10 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/5 blur-3xl rounded-full"></div>
-                      <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">How can I help you?</h2>
-                      <p className="text-muted-foreground mt-3 max-w-xl mx-auto">Select a template or type your own message below</p>
+                    <div className="relative mb-10 text-center">
+                      {/* Modern gradient background effects */}
+                      <div className="absolute -z-10 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-br from-primary/20 via-blue-500/10 to-purple-500/20 blur-3xl rounded-full opacity-70"></div>
+                      <div className="absolute -z-10 left-1/4 top-1/2 -translate-y-1/2 w-32 h-32 bg-gradient-to-br from-emerald-500/10 via-primary/5 to-pink-500/10 blur-2xl rounded-full opacity-50"></div>
+
+                      {/* Animated greeting with user name */}
+                      <div className="flex flex-col items-center">
+                        <h2 className="text-3xl md:text-4xl font-bold mb-2">
+                          <span className="relative inline-block">
+                            <span className="animate-typing-effect overflow-hidden whitespace-nowrap border-r-2 border-primary pr-1 text-foreground">
+                              Howdy{user?.name ? `, ${user.name}` : ""}!
+                            </span>
+                          </span>
+                        </h2>
+                        <h3 className="text-2xl md:text-3xl font-medium mb-3">How can I help you?</h3>
+                      </div>
                     </div>
 
-                    {/* Category tabs */}
-                    <div className="flex justify-center mb-8 bg-accent/30 backdrop-blur-sm p-1.5 rounded-xl max-w-lg mx-auto shadow-sm border border-border/50">
+                    {/* Category tabs - modern glass design */}
+                    <div className="flex justify-center mb-10 bg-background/30 backdrop-blur-md p-1.5 rounded-2xl max-w-lg mx-auto shadow-sm border border-white/10 dark:border-white/5">
                       {templateCategories.map((category) => (
                         <button
                           key={category.id}
-                          onClick={() => setSelectedTemplateCategory(category.id as any)}
-                          className={`px-4 py-2.5 rounded-lg font-medium transition-all duration-200 relative text-sm flex-1 flex items-center justify-center gap-2
+                          onClick={() => {
+                            setSelectedTemplateCategory(category.id as any);
+                            rotateTemplates(category.id);
+                          }}
+                          className={`px-5 py-3 rounded-xl font-medium transition-all duration-300 relative text-sm flex-1 flex items-center justify-center gap-2.5
                             ${selectedTemplateCategory === category.id
-                              ? `bg-background shadow-sm text-${category.color} dark:text-white dark:after:bg-${category.color}`
-                              : `text-muted-foreground hover:text-foreground ${category.hoverColor} hover:bg-background/50`
+                              ? `bg-white/10 dark:bg-black/20 shadow-sm text-${category.color} dark:text-white`
+                              : `text-muted-foreground hover:text-foreground ${category.hoverColor} hover:bg-white/5 dark:hover:bg-black/10`
                             }
                           `}
                         >
-                          <category.icon className={`w-4 h-4 ${selectedTemplateCategory === category.id ? `text-${category.color}` : ''}`} />
+                          <category.icon className={`w-4 h-4 ${selectedTemplateCategory === category.id ? 'text-' + category.color : 'opacity-70'}`} />
                           <span>{category.label}</span>
                           {selectedTemplateCategory === category.id && (
-                            <span className="absolute inset-0 rounded-lg ring-1 ring-border dark:ring-border/50"></span>
+                            <span className="absolute inset-0 rounded-xl ring-1 ring-white/20 dark:ring-white/10"></span>
                           )}
                           {selectedTemplateCategory === category.id && (
-                            <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/2 h-0.5 bg-gradient-to-r from-transparent via-current to-transparent"></span>
+                            <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/2 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent opacity-70"></span>
                           )}
                         </button>
                       ))}
                     </div>
 
+
                     {/* Templates grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
                       {templateCategories.find(c => c.id === selectedTemplateCategory)?.templates.map((template, index) => {
                         const category = templateCategories.find(c => c.id === selectedTemplateCategory)!;
                         return (
                           <Card
-                            key={index}
-                            className={`p-5 cursor-pointer hover:${category.bgColor} transition-all duration-200 border-muted/30 hover:${category.borderColor} hover:shadow-sm group`}
+                            key={`template-${selectedTemplateCategory}-${index}`}
+                            className="group p-6 cursor-pointer transition-all duration-300 border-muted/30 hover:shadow-md overflow-hidden relative rounded-xl hover:scale-[1.02] hover:border-primary/30"
                             onClick={() => {
                               if (template.enableBrowse) {
                                 setBrowseMode(true);
@@ -1447,19 +1792,29 @@ export default function Home() {
                               setMessage(template.prompt);
                             }}
                           >
-                            <div className="flex flex-col h-full">
-                              <div className="flex items-start justify-between mb-1">
-                                <p className={`font-medium text-base ${category.hoverColor} transition-colors`}>
+                            {/* Subtle hover effect */}
+                            <div className="absolute inset-0 bg-gradient-to-r opacity-0 group-hover:opacity-100 transition-opacity duration-300 from-primary/5 via-primary/10 to-primary/5"></div>
+
+                            <div className="relative z-10 flex flex-col h-full">
+                              <div className="flex items-start justify-between mb-2">
+                                <p className={`font-semibold text-base ${category.hoverColor} transition-colors`}>
                                   {template.title}
                                 </p>
                                 {template.enableBrowse && (
-                                  <Badge variant="outline" className={`ml-2 shrink-0 text-xs px-2 py-0.5 text-${category.color} ${category.borderColor} ${category.bgColor}`}>
+                                  <Badge variant="outline" className="ml-2 shrink-0 text-xs px-2.5 py-0.5 rounded-full text-primary border-primary/30 bg-primary/5">
                                     <Globe className="w-3 h-3 mr-1" />
                                     Web
                                   </Badge>
                                 )}
                               </div>
                               <p className="text-sm text-muted-foreground">{template.description}</p>
+                            </div>
+
+                            {/* Arrow indicator on hover */}
+                            <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-0 -translate-x-2">
+                              <div className="bg-primary/10 rounded-full p-1.5">
+                                <ArrowRight className="h-4 w-4 text-primary" />
+                              </div>
                             </div>
                           </Card>
                         );

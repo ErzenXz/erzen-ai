@@ -209,10 +209,15 @@ export function useChat() {
           });
 
           // Convert map back to array and sort by updatedAt
-          return Array.from(threadMap.values()).sort(
+          const updatedThreads = Array.from(threadMap.values()).sort(
             (a, b) =>
               new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
           );
+
+          console.log(
+            `Updated threads: ${updatedThreads.length} threads total`
+          );
+          return updatedThreads;
         });
       }
 
@@ -719,10 +724,20 @@ export function useChat() {
   );
 
   const loadMoreThreads = useCallback(async () => {
-    if (!hasMore || isLoading || isLoadingMoreRef.current || searchQuery)
+    if (!hasMore || isLoading || isLoadingMoreRef.current || searchQuery) {
+      console.log("Skipping loadMoreThreads:", {
+        hasMore,
+        isLoading,
+        isLoadingMore: isLoadingMoreRef.current,
+        searchQuery,
+      });
       return;
+    }
+
+    console.log("Loading more threads, current page:", page);
     await loadThreads(false);
-  }, [hasMore, isLoading, searchQuery]);
+    console.log("Loaded more threads, new page:", page);
+  }, [hasMore, isLoading, searchQuery, page]);
 
   const deleteThreadById = useCallback(
     async (threadId: string) => {

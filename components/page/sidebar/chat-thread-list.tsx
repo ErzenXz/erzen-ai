@@ -57,9 +57,9 @@ interface ChatThreadListProps {
 
 // Memoized thread item component to prevent re-renders of all threads
 const ThreadItem = memo(({
-  thread, 
-  currentThreadId, 
-  collapsed, 
+  thread,
+  currentThreadId,
+  collapsed,
   editingThreadId,
   editingTitle,
   inputRef,
@@ -90,7 +90,7 @@ const ThreadItem = memo(({
   onDeleteThread: (threadId: string) => void
 }) => {
   const isEditing = editingThreadId === thread.id;
-  
+
   // Memoize dropdown menu component to prevent rerenders
   const ThreadDropdownMenu = useMemo(() => {
     return (
@@ -110,12 +110,12 @@ const ThreadItem = memo(({
       </DropdownMenu>
     );
   }, [thread.id, startRenaming, onDuplicateThread, onDeleteThread]);
-  
+
   // Memoize thread date to prevent recalculation
   const formattedDate = useMemo(() => {
     return formatThreadDate(thread.updatedAt);
   }, [thread.updatedAt, formatThreadDate]);
-  
+
   // Memoize thread title
   const threadTitle = useMemo(() => thread.title ?? "New Chat", [thread.title]);
 
@@ -130,7 +130,7 @@ const ThreadItem = memo(({
             currentThreadId === thread.id && "bg-primary/10",
           )}
         >
-          <button 
+          <button
             onClick={() => onThreadSelect(thread.id)}
             className="w-full text-left"
             style={{ display: isEditing ? 'none' : 'block' }}
@@ -174,7 +174,7 @@ const ThreadItem = memo(({
               )}
             </div>
           </button>
-          
+
           {/* Inline editing input */}
           {!collapsed && isEditing && (
             <div className="flex items-center gap-2">
@@ -189,7 +189,7 @@ const ThreadItem = memo(({
                   <MessageSquare className="w-4 h-4" />
                 </div>
               </div>
-              
+
               <div className="flex-1 flex items-center gap-1">
                 <Input
                   ref={inputRef}
@@ -198,18 +198,18 @@ const ThreadItem = memo(({
                   className="h-8 py-1 text-sm font-medium"
                   onKeyDown={handleRenameKeyDown}
                 />
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-6 w-6" 
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
                   onClick={saveRenaming}
                 >
                   <Check className="h-3 w-3" />
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-6 w-6" 
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
                   onClick={cancelRenaming}
                 >
                   <X className="h-3 w-3" />
@@ -242,7 +242,7 @@ const ThreadItem = memo(({
     prevProps.currentThreadId === nextProps.currentThreadId &&
     prevProps.collapsed === nextProps.collapsed &&
     prevProps.editingThreadId === nextProps.editingThreadId &&
-    (prevProps.editingThreadId === prevProps.thread.id ? 
+    (prevProps.editingThreadId === prevProps.thread.id ?
       prevProps.editingTitle === nextProps.editingTitle : true)
   );
 });
@@ -250,20 +250,20 @@ const ThreadItem = memo(({
 ThreadItem.displayName = "ThreadItem";
 
 // Memoized button component for sidebar navigation
-const NavigationButton = memo(({ 
-  icon: Icon, 
-  title, 
-  description, 
-  badgeText, 
+const NavigationButton = memo(({
+  icon: Icon,
+  title,
+  description,
+  badgeText,
   badgeColor,
   colorClass,
   collapsed,
   onClick
-}: { 
-  icon: React.ElementType, 
-  title: string, 
-  description: string, 
-  badgeText?: string, 
+}: {
+  icon: React.ElementType,
+  title: string,
+  description: string,
+  badgeText?: string,
   badgeColor?: string,
   colorClass: string,
   collapsed: boolean,
@@ -299,7 +299,7 @@ const NavigationButton = memo(({
                 <div className="flex-1 min-w-0 flex items-center justify-between">
                   <div>
                     <div className="flex items-center gap-1.5">
-                      <span className="font-medium text-sm">{title}</span> 
+                      <span className="font-medium text-sm">{title}</span>
                       {badgeText && (
                         <span className={cn(
                           "px-1.5 py-0.5 text-[10px] leading-none font-medium rounded-full",
@@ -363,14 +363,14 @@ export function ChatThreadList({
   const inputRef = useRef<HTMLInputElement>(null);
   const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
   const threadListRef = useRef<HTMLDivElement>(null);
-  
+
   // Virtual scrolling variables
-  const visibleThreadsBuffer = 20; // Number of threads to keep in DOM
+  const visibleThreadsBuffer = 50; // Increased number of threads to keep in DOM
   const [visibleRange, setVisibleRange] = useState({
     start: 0,
     end: Math.min(threads.length, visibleThreadsBuffer)
   });
-  
+
   // Update local search state when prop changes
   useEffect(() => {
     setLocalSearchQuery(searchQuery);
@@ -389,7 +389,7 @@ export function ChatThreadList({
     setLocalSearchQuery(value);
     debouncedSearch(value);
   }, [debouncedSearch]);
-  
+
   // Focus the input when editing starts
   useEffect(() => {
     if (editingThreadId && inputRef.current) {
@@ -424,29 +424,39 @@ export function ChatThreadList({
     const target = e.target as HTMLDivElement;
     const scrollPosition = target.scrollTop;
     const viewportHeight = target.clientHeight;
-    
-    // Calculate which threads should be visible
-    const itemHeight = 60; // Approximate height of each thread item
-    const startIndex = Math.max(0, Math.floor(scrollPosition / itemHeight) - 5);
-    const endIndex = Math.min(
-      threads.length, 
-      Math.ceil((scrollPosition + viewportHeight) / itemHeight) + 5
-    );
-    
-    // Update visible range
-    setVisibleRange({
-      start: startIndex,
-      end: Math.min(endIndex, startIndex + visibleThreadsBuffer)
-    });
-    
+    const scrollHeight = target.scrollHeight;
+
+    // Only use virtual scrolling for large thread lists
+    if (threads.length > 150) {
+      // Calculate which threads should be visible
+      const itemHeight = 60; // Approximate height per item
+      const startIndex = Math.max(0, Math.floor(scrollPosition / itemHeight) - 5);
+      const endIndex = Math.min(
+        threads.length,
+        Math.ceil((scrollPosition + viewportHeight) / itemHeight) + 5
+      );
+
+      // Update visible range
+      setVisibleRange({
+        start: startIndex,
+        end: Math.min(endIndex, startIndex + visibleThreadsBuffer)
+      });
+    }
+
     // Check if we need to load more threads
     if (onLoadMore && hasMore) {
-      const isNearBottom = target.scrollHeight - scrollPosition - viewportHeight < 200;
-      if (isNearBottom) {
+      // Consider we're near bottom when within 200px of the bottom
+      const isNearBottom = scrollHeight - scrollPosition - viewportHeight < 200;
+
+      // Also check if we're showing threads near the end of our current list
+      const isShowingLastThreads = threads.length <= 150 || visibleRange.end >= threads.length - 5;
+
+      if (isNearBottom && isShowingLastThreads) {
+        console.log('Loading more threads...');
         onLoadMore();
       }
     }
-  }, [threads.length, onLoadMore, hasMore]);
+  }, [threads.length, onLoadMore, hasMore, visibleRange.end, visibleThreadsBuffer]);
 
   const toggleSidebar = useCallback(() => {
     setCollapsed(!collapsed)
@@ -488,12 +498,26 @@ export function ChatThreadList({
 
   // Only render visible threads within the current range
   const visibleThreads = useMemo(() => {
+    // For smaller thread counts, just show all threads without virtual scrolling
+    if (threads.length <= 150) {
+      return threads;
+    }
     return threads.slice(visibleRange.start, visibleRange.end);
   }, [threads, visibleRange.start, visibleRange.end]);
 
-  // Calculate empty space heights for virtual scrolling
-  const topSpacerHeight = visibleRange.start * 58; // Approximate height per item
-  const bottomSpacerHeight = Math.max(0, (threads.length - visibleRange.end) * 58);
+  // Update visible range when threads change
+  useEffect(() => {
+    console.log(`Threads length changed: ${threads.length}`);
+    setVisibleRange({
+      start: 0,
+      end: Math.min(threads.length, visibleThreadsBuffer)
+    });
+  }, [threads.length, visibleThreadsBuffer]);
+
+  // Calculate empty space heights for virtual scrolling (only when actually using virtual scrolling)
+  const isUsingVirtualScrolling = threads.length > 150;
+  const topSpacerHeight = isUsingVirtualScrolling ? visibleRange.start * 58 : 0; // Approximate height per item
+  const bottomSpacerHeight = isUsingVirtualScrolling ? Math.max(0, (threads.length - visibleRange.end) * 58) : 0;
 
   // Memoize navigation buttons to prevent unnecessary re-renders
   const AgentsButton = useMemo(() => (
@@ -695,10 +719,10 @@ export function ChatThreadList({
           <div className="space-y-1 p-2" ref={threadListRef}>
             {/* Agents Section */}
             {AgentsButton}
-            
+
             {/* Projects Section */}
             {ProjectsButton}
-            
+
             {/* Recent Chats Header */}
             {!collapsed && threads.length > 0 && (
               <div className="px-3 pt-4">
@@ -707,44 +731,54 @@ export function ChatThreadList({
                 </div>
               </div>
             )}
-            
-            {/* Virtual list implementation */}
+
+            {/* Thread list implementation */}
             {threads.length > 0 && (
               <>
-                {/* Top spacer */}
+                {/* Top spacer (only used when virtual scrolling is active) */}
                 {topSpacerHeight > 0 && <div style={{ height: topSpacerHeight }} />}
-                
+
                 {/* Visible threads */}
-                {visibleThreads.map((thread) => (
-                  <ThreadItem
-                    key={thread.id}
-                    thread={thread}
-                    currentThreadId={currentThreadId}
-                    collapsed={collapsed}
-                    editingThreadId={editingThreadId}
-                    editingTitle={editingTitle}
-                    inputRef={inputRef}
-                    formatThreadDate={formatThreadDate}
-                    onThreadSelect={onThreadSelect}
-                    startRenaming={startRenaming}
-                    saveRenaming={saveRenaming}
-                    cancelRenaming={cancelRenaming}
-                    handleRenameKeyDown={handleRenameKeyDown}
-                    setEditingTitle={setEditingTitle}
-                    onDuplicateThread={onDuplicateThread}
-                    onDeleteThread={onDeleteThread}
-                  />
-                ))}
-                
-                {/* Bottom spacer */}
+                <div className="space-y-1">
+                  {visibleThreads.map((thread) => (
+                    <ThreadItem
+                      key={`thread-${thread.id}`}
+                      thread={thread}
+                      currentThreadId={currentThreadId}
+                      collapsed={collapsed}
+                      editingThreadId={editingThreadId}
+                      editingTitle={editingTitle}
+                      inputRef={inputRef}
+                      formatThreadDate={formatThreadDate}
+                      onThreadSelect={onThreadSelect}
+                      startRenaming={startRenaming}
+                      saveRenaming={saveRenaming}
+                      cancelRenaming={cancelRenaming}
+                      handleRenameKeyDown={handleRenameKeyDown}
+                      setEditingTitle={setEditingTitle}
+                      onDuplicateThread={onDuplicateThread}
+                      onDeleteThread={onDeleteThread}
+                    />
+                  ))}
+                </div>
+
+                {/* Bottom spacer (only used when virtual scrolling is active) */}
                 {bottomSpacerHeight > 0 && <div style={{ height: bottomSpacerHeight }} />}
               </>
             )}
 
             {hasMore && !collapsed && (
-              <div className="py-2 text-center">
-                <Button variant="ghost" size="sm" onClick={onLoadMore} className="h-8 text-xs">
-                  Load More
+              <div className="py-3 text-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    console.log('Load More button clicked');
+                    if (onLoadMore) onLoadMore();
+                  }}
+                  className="h-8 text-xs w-full bg-muted/50 hover:bg-muted border-dashed"
+                >
+                  Load More Chats
                 </Button>
               </div>
             )}

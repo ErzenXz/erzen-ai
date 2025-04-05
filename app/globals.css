@@ -350,6 +350,27 @@
   }
 }
 
+/* Typing animation effect */
+@keyframes typing {
+  from { width: 0 }
+  to { width: 100% }
+}
+
+@keyframes blink-caret {
+  from, to { border-color: transparent }
+  50% { border-color: hsl(var(--primary)) }
+}
+
+.animate-typing-effect {
+  display: inline-block;
+  width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  animation:
+    typing 2.5s steps(40, end) forwards,
+    blink-caret .75s step-end infinite;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

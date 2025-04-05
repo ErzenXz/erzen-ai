@@ -9,7 +9,7 @@ const userCache = {
   data: null as UserInfo | null,
   timestamp: 0,
   loading: false,
-  promise: null as Promise<UserInfo | null> | null
+  promise: null as Promise<UserInfo | null> | null,
 };
 
 const USER_CACHE_DURATION = 60000; // 1 minute cache
@@ -19,18 +19,22 @@ export function useAuth() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
-  
+
   // Use a stable loadUser function with useCallback to prevent recreation on each render
   const loadUser = useCallback(async (forceRefresh = false) => {
     // Use the cache if we're not forcing a refresh
     const now = Date.now();
-    if (!forceRefresh && userCache.data && now - userCache.timestamp < USER_CACHE_DURATION) {
+    if (
+      !forceRefresh &&
+      userCache.data &&
+      now - userCache.timestamp < USER_CACHE_DURATION
+    ) {
       setUser(userCache.data);
       setIsLoading(false);
       setError(null);
       return userCache.data;
     }
-    
+
     // If another instance is already loading the user, use that promise
     if (userCache.loading && userCache.promise) {
       try {
@@ -44,13 +48,15 @@ export function useAuth() {
       } catch (err) {
         if (mountedRef.current) {
           setUser(null);
-          setError(err instanceof Error ? err.message : "Authentication failed");
+          setError(
+            err instanceof Error ? err.message : "Authentication failed"
+          );
           setIsLoading(false);
         }
         return null;
       }
     }
-    
+
     // Start a new loading operation
     userCache.loading = true;
     userCache.promise = (async () => {
@@ -65,7 +71,7 @@ export function useAuth() {
           // Update the user cache
           userCache.data = localUser as unknown as UserInfo;
           userCache.timestamp = now;
-          
+
           if (mountedRef.current) {
             setUser(localUser as unknown as UserInfo);
             setError(null);
@@ -82,7 +88,9 @@ export function useAuth() {
         console.error("Authentication error:", err);
         if (mountedRef.current) {
           setUser(null);
-          setError(err instanceof Error ? err.message : "Authentication failed");
+          setError(
+            err instanceof Error ? err.message : "Authentication failed"
+          );
         }
         return null;
       } finally {
@@ -93,7 +101,7 @@ export function useAuth() {
         }
       }
     })();
-    
+
     return await userCache.promise;
   }, []);
 
@@ -101,7 +109,7 @@ export function useAuth() {
   useEffect(() => {
     // Set mountedRef to true on mount
     mountedRef.current = true;
-    
+
     // Don't unnecessarily reload if we already have cached user data
     const now = Date.now();
     if (userCache.data && now - userCache.timestamp < USER_CACHE_DURATION) {
@@ -127,12 +135,15 @@ export function useAuth() {
   }, [loadUser, user]);
 
   // Memoize the return value to prevent unnecessary re-renders in consuming components
-  const authValue = useMemo(() => ({ 
-    user, 
-    isLoading, 
-    error,
-    refreshUser: loadUser 
-  }), [user, isLoading, error, loadUser]);
-  
+  const authValue = useMemo(
+    () => ({
+      user,
+      isLoading,
+      error,
+      refreshUser: loadUser,
+    }),
+    [user, isLoading, error, loadUser]
+  );
+
   return authValue;
 }
