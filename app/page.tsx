@@ -899,11 +899,18 @@ export default function Home() {
 
           // Set default model if none is selected
           if (!selectedModel && availableModels.length > 0) {
-            // Try to find Gemini Flash 2.0 as default, or use the first model
+            // Try to find Llama 4 Scout as the default model
+            const llamaScout = availableModels.find(
+              (model) => model.description.includes("Llama 4 Scout")
+            )
+            // Fallback to Gemini Flash 2.0 if Llama 4 Scout is not available
             const geminiFlash = availableModels.find(
               (model) => model.description === "Gemini Flash 2.0"
             )
-            setSelectedModel(geminiFlash ? geminiFlash.model : availableModels[0].model)
+            // Use Llama 4 Scout if available, otherwise Gemini Flash, otherwise first model
+            setSelectedModel(llamaScout ? llamaScout.model :
+              geminiFlash ? geminiFlash.model :
+              availableModels[0].model)
           }
         } catch (error) {
           console.error("Failed to load models:", error)
