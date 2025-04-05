@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useCallback, useEffect, useRef } from "react"
-import { 
-  Globe, Brain, Loader2, FolderRoot, ArrowLeft, Clock, MessageSquarePlus, 
+import {
+  Globe, Brain, Loader2, FolderRoot, ArrowLeft, Clock, MessageSquarePlus,
   FolderPlus, Code, BookOpen, Bot, Play, Check, ArrowRight
 } from "lucide-react"
 import { readFileAsText } from "@/lib/utils"
@@ -47,7 +47,7 @@ import { AgentRunDialog } from "@/components/agent/agent-run-dialog"
 import type { Agent } from "@/lib/types"
 import { useAgents } from "@/hooks/use-agents"
 import { cn } from "@/lib/utils"
-import { getTextInputCompletions } from "@/lib/api"
+import { getTextInputCompletions, fetchModels } from "@/lib/api"
 
 // Define types for template data
 interface Template {
@@ -100,6 +100,7 @@ export default function Home() {
   const [showFileUpload, setShowFileUpload] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
   const [isProcessingFiles, setIsProcessingFiles] = useState(false)
+  const [models, setModels] = useState<any[]>([])
   const [isEditingMessage, setIsEditingMessage] = useState<string | null>(null)
   const [showProjectsGrid, setShowProjectsGrid] = useState(false)
   const [showProjectDialog, setShowProjectDialog] = useState(false)
@@ -136,6 +137,10 @@ export default function Home() {
   const [selectedCompletionIndex, setSelectedCompletionIndex] = useState(-1)
   const completionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Chat input floating state
+  const [isInputHidden, setIsInputHidden] = useState(false)
+  const lastScrollPosition = useRef(0)
+
   // Reset states when dialog closes to prevent state inconsistency
   const resetDialogStates = useCallback(() => {
     setSelectedThreadId(null)
@@ -144,12 +149,12 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Use blocks for early returns
     if ((!message.trim() && uploadedFiles.length === 0) || !selectedModel || !user) {
       return;
     }
-    
+
     if (isProcessingFiles) {
       return;
     }
@@ -229,7 +234,7 @@ export default function Home() {
       title: "Regenerating response",
       description: "Please wait while we generate a new response",
     })
-    
+
     // In a real app, you would call an API to regenerate the response
     // For now, we'll just show a toast
     setTimeout(() => {
@@ -242,10 +247,10 @@ export default function Home() {
 
   const handleEditMessage = (messageId: string) => {
     if (!currentThread) return
-    
+
     const messageToEdit = currentThread.messages.find(msg => msg.id === messageId)
     if (!messageToEdit) return
-    
+
     setMessage(messageToEdit.content || "")
     setIsEditingMessage(messageId)
 
@@ -254,7 +259,7 @@ export default function Home() {
     if (inputElement) {
       inputElement.focus()
     }
-    
+
     toast({
       title: "Edit mode",
       description: "Edit your message and send it again",
@@ -328,42 +333,42 @@ export default function Home() {
     setShowAgentsGrid(false);
     setShowAgentDetails(false);
     await selectProject(projectId);
-    
+
     // Any messages or threads should also be cleared
     if (currentThread?.id) {
       setCurrentThread(null);
     }
-    
+
     // Make sure we're showing the project workspace view
     if (currentProjectThreadId) {
       selectProjectThread(null);
     }
   }
-  
+
   const handleProjectThreadSelect = (threadId: string) => {
     selectProjectThread(threadId);
   }
-  
+
   const handleBackToProjects = () => {
     selectProject(null);
     setShowProjectsGrid(true);
     setShowAgentsGrid(false);
     setShowAgentDetails(false);
   }
-  
+
   const handleViewProjects = () => {
     setShowProjectsGrid(true);
     setShowAgentsGrid(false);
     setShowAgentDetails(false);
-    
+
     if (currentThread?.id && currentThread.id !== 'new') {
       setCurrentThread(null);
     }
-    
+
     if (currentProjectId) {
       selectProject(null);
     }
-    
+
     if (currentProjectThreadId) {
       selectProjectThread(null);
     }
@@ -373,15 +378,15 @@ export default function Home() {
     setShowAgentsGrid(true);
     setShowAgentDetails(false);
     setShowProjectsGrid(false);
-    
+
     if (currentThread?.id && currentThread.id !== 'new') {
       setCurrentThread(null);
     }
-    
+
     if (currentProjectId) {
       selectProject(null);
     }
-    
+
     if (currentProjectThreadId) {
       selectProjectThread(null);
     }
@@ -459,9 +464,9 @@ export default function Home() {
 
   // Template data organized by category
   const templateCategories: TemplateCategory[] = [
-    { 
-      id: "create", 
-      label: "Create", 
+    {
+      id: "create",
+      label: "Create",
       color: "primary",
       bgColor: "bg-primary/10",
       hoverColor: "hover:text-primary",
@@ -495,9 +500,9 @@ export default function Home() {
         }
       ]
     },
-    { 
-      id: "explore", 
-      label: "Explore", 
+    {
+      id: "explore",
+      label: "Explore",
       color: "blue-500",
       bgColor: "bg-blue-500/10",
       hoverColor: "hover:text-blue-500",
@@ -533,9 +538,9 @@ export default function Home() {
         }
       ]
     },
-    { 
-      id: "code", 
-      label: "Code", 
+    {
+      id: "code",
+      label: "Code",
       color: "green-500",
       bgColor: "bg-green-500/10",
       hoverColor: "hover:text-green-500",
@@ -569,9 +574,9 @@ export default function Home() {
         }
       ]
     },
-    { 
-      id: "learn", 
-      label: "Learn", 
+    {
+      id: "learn",
+      label: "Learn",
       color: "amber-500",
       bgColor: "bg-amber-500/10",
       hoverColor: "hover:text-amber-500",
@@ -617,18 +622,18 @@ export default function Home() {
   // Handle text input changes with debounced completions
   const handleMessageChange = (newMessage: string) => {
     setMessage(newMessage)
-    
+
     // Clear any existing timeout
     if (completionTimeoutRef.current) {
       clearTimeout(completionTimeoutRef.current)
     }
-    
+
     // Reset completions if input is cleared
     if (!newMessage.trim()) {
       setSuggestedCompletions([])
       return
     }
-    
+
     // Set a new timeout for completion suggestions (500ms delay)
     completionTimeoutRef.current = setTimeout(async () => {
       // Only fetch completions if the message is long enough and a model is selected
@@ -649,33 +654,86 @@ export default function Home() {
       }
     }, 500)
   }
-  
+
   // Select a completion suggestion
   const handleSelectCompletion = (completion: string) => {
     // Trim the message and completion to avoid extra spaces
     const trimmedMessage = message.trimEnd();
-    
+
     // Check if the message already ends with a space
     const needsSpace = trimmedMessage.length > 0 && !trimmedMessage.endsWith(" ");
-    
+
     // Add the completion with a space only if needed
     setMessage(trimmedMessage + (needsSpace ? " " : "") + completion);
     setSuggestedCompletions([]);
     setSelectedCompletionIndex(-1);
   }
-  
+
+  // Handle scroll to show/hide chat input
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const currentScrollPosition = e.currentTarget.scrollTop
+    const isScrollingDown = currentScrollPosition > lastScrollPosition.current
+
+    // Only hide when scrolling down and not at the bottom
+    const isAtBottom = e.currentTarget.scrollHeight - currentScrollPosition <= e.currentTarget.clientHeight + 100
+
+    if (isScrollingDown && !isAtBottom && !isInputHidden) {
+      setIsInputHidden(true)
+    } else if ((!isScrollingDown || isAtBottom) && isInputHidden) {
+      setIsInputHidden(false)
+    }
+
+    lastScrollPosition.current = currentScrollPosition
+  }, [isInputHidden])
+
+  // Reset input visibility when thread changes
+  useEffect(() => {
+    setIsInputHidden(false)
+  }, [currentThread?.id])
+
+  // Fetch available models when component mounts
+  useEffect(() => {
+    // Only fetch models if we don't have any yet
+    if (models.length === 0) {
+      const loadModels = async () => {
+        try {
+          const availableModels = await fetchModels()
+          setModels(availableModels)
+
+          // Set default model if none is selected
+          if (!selectedModel && availableModels.length > 0) {
+            // Try to find Gemini Flash 2.0 as default, or use the first model
+            const geminiFlash = availableModels.find(
+              (model) => model.description === "Gemini Flash 2.0"
+            )
+            setSelectedModel(geminiFlash ? geminiFlash.model : availableModels[0].model)
+          }
+        } catch (error) {
+          console.error("Failed to load models:", error)
+          toast({
+            title: "Error",
+            description: "Failed to load AI models. Please refresh the page.",
+            variant: "destructive"
+          })
+        }
+      }
+
+      loadModels()
+    }
+  }, [models.length])
+
   // Handle keyboard navigation for completions
   const handleCompletionKeyDown = (e: React.KeyboardEvent) => {
     if (suggestedCompletions.length === 0) return
-    
+
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setSelectedCompletionIndex(prev => 
+      setSelectedCompletionIndex(prev =>
         prev < suggestedCompletions.length - 1 ? prev + 1 : 0
       )
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      setSelectedCompletionIndex(prev => 
+      setSelectedCompletionIndex(prev =>
         prev > 0 ? prev - 1 : suggestedCompletions.length - 1
       )
     } else if (e.key === 'Tab' || e.key === 'Enter') {
@@ -701,39 +759,74 @@ export default function Home() {
 
   if (!user) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-background">
-        <div className="relative">
-          {/* Animated background gradient */}
-          <div className="absolute inset-0 -z-10">
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 animate-gradient-x"></div>
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent animate-pulse"></div>
+      <div className="h-screen w-screen flex items-center justify-center bg-background overflow-hidden relative">
+        {/* Enhanced marble effect background */}
+        <div className="absolute inset-0 -z-10">
+          {/* Base marble texture - refined color gradients */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,_var(--tw-gradient-stops))] from-primary/40 via-primary/5 to-transparent animate-pulse [animation-duration:8s] will-change-opacity"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_70%,_var(--tw-gradient-stops))] from-blue-500/30 via-blue-500/5 to-transparent animate-pulse [animation-duration:12s] [animation-delay:2s] will-change-opacity"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_10%,_var(--tw-gradient-stops))] from-purple-500/30 via-purple-600/5 to-transparent animate-pulse [animation-duration:10s] [animation-delay:1s] will-change-opacity"></div>
+          
+          {/* Realistic marble veining - subtle overlays */}
+          <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(68,51,122,0.05)_25%,rgba(68,51,122,0.05)_50%,transparent_50%,transparent_75%,rgba(68,51,122,0.05)_75%)] bg-[length:100px_100px] animate-gradient-x [animation-duration:15s] transform will-change-transform"></div>
+          <div className="absolute inset-0 bg-[linear-gradient(135deg,transparent_40%,rgba(236,72,153,0.07)_40%,rgba(236,72,153,0.07)_45%,transparent_45%)] bg-[length:150px_150px] animate-gradient-y [animation-duration:18s]"></div>
+          <div className="absolute inset-0 bg-[linear-gradient(80deg,transparent_60%,rgba(16,185,129,0.05)_60%,rgba(16,185,129,0.05)_65%,transparent_65%)] bg-[length:120px_120px] animate-gradient-x [animation-duration:12s] [animation-delay:0.5s]"></div>
+          
+          {/* Optimized blur effect with subtle color diffusion */}
+          <div className="absolute inset-0 backdrop-blur-[100px]"></div>
+        </div>
+
+        {/* Perfectly centered content with grid */}
+        <div className="relative z-10 grid place-items-center w-full max-w-[90vw]">
+          {/* Enhanced marble sphere with more realistic effects */}
+          <div className="relative mb-16 p-1 rounded-full scale-[1.5]">
+            {/* Multi-layered glow with color variation */}
+            <div className="absolute -inset-8 bg-gradient-to-r from-primary/20 via-blue-500/20 to-purple-500/20 blur-xl rounded-full opacity-70 animate-pulse [animation-duration:5s] will-change-opacity"></div>
+            <div className="absolute -inset-10 bg-gradient-to-br from-emerald-500/10 via-primary/5 to-pink-500/10 blur-2xl rounded-full opacity-50 animate-pulse [animation-duration:7s] [animation-delay:0.5s]"></div>
+            
+            {/* Enhanced marble sphere with realistic texture and depth */}
+            <div className="relative h-48 w-48 rounded-full bg-gradient-to-br from-white/20 via-white/10 to-transparent backdrop-blur-sm border border-white/10 shadow-[inset_0_0_20px_rgba(255,255,255,0.15)] flex items-center justify-center overflow-hidden group">
+              {/* Main marble color with subtle swirl pattern */}
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_70%,_var(--tw-gradient-stops))] from-white/30 via-primary/10 to-blue-500/10"></div>
+              
+              {/* Realistic marble veins */}
+              <div className="absolute inset-0 bg-[linear-gradient(120deg,transparent_85%,rgba(255,255,255,0.2)_85%,rgba(255,255,255,0.2)_87%,transparent_87%)]"></div>
+              <div className="absolute inset-0 bg-[linear-gradient(30deg,transparent_80%,rgba(255,255,255,0.1)_80%,rgba(255,255,255,0.1)_82%,transparent_82%)]"></div>
+              <div className="absolute inset-0 bg-[linear-gradient(220deg,transparent_92%,rgba(255,255,255,0.15)_92%,rgba(255,255,255,0.15)_94%,transparent_94%)]"></div>
+              
+              {/* Optimized reflection highlights */}
+              <div className="absolute top-0 left-0 h-1/2 w-1/2 bg-gradient-to-br from-white/30 to-transparent rounded-tl-full"></div>
+              <div className="absolute -top-3 -left-3 h-1/4 w-1/4 bg-gradient-to-br from-white/40 to-transparent rounded-full blur-md"></div>
+              <div className="absolute bottom-5 right-5 h-1/4 w-1/4 bg-gradient-to-tl from-white/15 to-transparent rounded-full"></div>
+              
+              {/* Secondary reflections */}
+              <div className="absolute top-1/4 left-1/3 h-1/6 w-1/6 bg-gradient-to-br from-white/25 to-transparent rounded-full blur-sm"></div>
+              <div className="absolute bottom-1/3 right-1/4 h-1/6 w-1/6 bg-white/10 rounded-full blur-sm"></div>
+              
+              {/* Logo with adaptive colors for light/dark mode */}
+              <div className="relative transition-all transform scale-125 z-10">
+                <Brain className="w-24 h-24 text-white/90 dark:text-white/90 drop-shadow-lg" />
+              </div>
+              
+              {/* Optimized shine animation with hardware acceleration */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:translate-x-full transition-all duration-1500 ease-in-out will-change-transform"></div>
+            </div>
           </div>
 
-          {/* Main content */}
-          <div className="flex flex-col items-center">
-            {/* Logo/Icon */}
-            <div className="relative mb-8">
-              <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full"></div>
-              <div className="relative bg-gradient-to-b from-primary/20 to-primary/5 p-6 rounded-full border border-primary/10">
-                <Brain className="w-12 h-12 text-primary animate-pulse" />
-              </div>
-            </div>
-
-            {/* Loading text */}
-            <div className="space-y-2 text-center">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                Erzen AI
-              </h1>
-              <p className="text-muted-foreground text-sm">
-                Preparing your workspace...
-              </p>
-            </div>
-
-            {/* Loading dots */}
-            <div className="flex gap-1 mt-6">
-              <div className="w-2 h-2 rounded-full bg-primary/30 animate-bounce [animation-delay:-0.3s]"></div>
-              <div className="w-2 h-2 rounded-full bg-primary/30 animate-bounce [animation-delay:-0.15s]"></div>
-              <div className="w-2 h-2 rounded-full bg-primary/30 animate-bounce"></div>
+          {/* Text content with adaptive colors for light/dark mode */}
+          <div className="text-center relative -mt-6">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary via-blue-400 to-purple-500 bg-clip-text text-transparent drop-shadow-sm dark:from-primary dark:via-blue-400 dark:to-purple-400">
+              Erzen AI
+            </h1>
+            <p className="mt-5 text-foreground/80 dark:text-foreground/80 backdrop-blur-sm px-6 py-3 rounded-full bg-white/5 dark:bg-black/5 border border-white/10 dark:border-white/10">
+              Preparing your workspace...
+            </p>
+            
+            {/* Loading animation dots */}
+            <div className="mt-8 flex gap-2 justify-center">
+              <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-r from-primary to-blue-400 animate-bounce [animation-delay:-0.3s]"></div>
+              <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 animate-bounce [animation-delay:-0.15s]"></div>
+              <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 animate-bounce"></div>
             </div>
           </div>
         </div>
@@ -772,54 +865,18 @@ export default function Home() {
         />
 
         <div className="flex-1 flex flex-col">
-          <header className="border-b p-4">
-            {/* Chat mode header with model selector */}
+          {/* Hide header in chat mode, show in other modes */}
+          {(!currentThread?.id || showProjectsGrid || showAgentsGrid || currentProjectId) && (
+            <header className="border-b p-4">
+            {/* Chat mode header - simplified */}
             {!showProjectsGrid && !showAgentsGrid && !currentProjectId && (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <ModelSelector value={selectedModel} onChange={setSelectedModel} />
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center">
-                      <button
-                        onClick={() => {
-                          setBrowseMode(!browseMode);
-                          if (!browseMode) {
-                            // Do nothing
-                          } else {
-                            setReasoning(false);
-                          }
-                        }}
-                        className={`relative flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 
-                          ${browseMode ? 
-                            'bg-primary/10 text-primary ring-1 ring-primary/20 shadow-sm' : 
-                            'hover:bg-accent/50 text-muted-foreground hover:text-foreground'}
-                        `}
-                      >
-                        <Globe className={`w-4 h-4 transition-colors ${browseMode ? 'text-primary' : ''}`} />
-                        <span className="text-sm font-medium">Web Search</span>
-                      </button>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <button
-                        onClick={() => browseMode && setReasoning(!reasoning)}
-                        className={`relative flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 
-                          ${!browseMode ? 'opacity-50 cursor-not-allowed' : 
-                            reasoning ? 
-                              'bg-primary/10 text-primary ring-1 ring-primary/20 shadow-sm' : 
-                              'hover:bg-accent/50 text-muted-foreground hover:text-foreground'}
-                        `}
-                        disabled={!browseMode}
-                      >
-                        <Brain className={`w-4 h-4 transition-colors ${reasoning ? 'text-primary' : ''}`} />
-                        <span className="text-sm font-medium">Reasoning</span>
-                      </button>
-                    </div>
-                  </div>
+                  <h2 className="text-lg font-semibold">Chat</h2>
                 </div>
               </div>
             )}
-            
+
             {/* Projects view header - simple title */}
             {showProjectsGrid && (
               <div className="flex items-center justify-between">
@@ -831,9 +888,9 @@ export default function Home() {
             {showAgentsGrid && !showAgentDetails && (
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold">Agents</h2>
-                <Button 
-                  size="sm" 
-                  onClick={handleCreateAgent} 
+                <Button
+                  size="sm"
+                  onClick={handleCreateAgent}
                   className="bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 hover:text-purple-600"
                 >
                   <Bot className="h-4 w-4 mr-2" />
@@ -846,9 +903,9 @@ export default function Home() {
             {showAgentDetails && currentAgent && (
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="mr-2"
                     onClick={handleBackToAgents}
                   >
@@ -858,15 +915,15 @@ export default function Home() {
                   <h2 className="text-lg font-semibold">{currentAgent.name}</h2>
                 </div>
                 <div className="flex gap-2">
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     variant="outline"
                     onClick={() => handleEditAgent(currentAgent.id)}
                   >
                     Edit Agent
                   </Button>
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     className="bg-purple-500 hover:bg-purple-600 text-white"
                     onClick={handleRunAgent}
                   >
@@ -881,7 +938,7 @@ export default function Home() {
             {currentProjectId && !currentProjectThreadId && !showProjectsGrid && !showAgentsGrid && (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Button variant="ghost" size="sm" onClick={handleBackToProjects} 
+                  <Button variant="ghost" size="sm" onClick={handleBackToProjects}
                     className="hover:bg-primary/5 transition-colors">
                     <ArrowLeft className="h-4 w-4 mr-2" />
                     Back to Projects
@@ -901,10 +958,10 @@ export default function Home() {
             {currentProjectId && currentProjectThreadId && (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => selectProjectThread(null)} 
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => selectProjectThread(null)}
                     className="hover:bg-primary/5 transition-colors"
                   >
                     <ArrowLeft className="h-4 w-4 mr-2" />
@@ -914,10 +971,10 @@ export default function Home() {
                     {projectThreads.find(t => t.id === currentProjectThreadId)?.title ?? "Untitled Thread"}
                   </h2>
                 </div>
-                <ModelSelector value={selectedModel} onChange={setSelectedModel} />
               </div>
             )}
           </header>
+          )}
 
           {/* Show project workspace when a project is selected */}
           {currentProjectId && !currentProjectThreadId && !showProjectsGrid && !showAgentsGrid && !showAgentDetails ? (
@@ -925,12 +982,15 @@ export default function Home() {
               <ProjectWorkspace />
             </ProjectProvider>
           ) : (
-            <ScrollArea className="flex-1 p-4">
+            <ScrollArea
+              className={`flex-1 ${currentThread?.id && !showProjectsGrid && !showAgentsGrid && !currentProjectId ? 'pt-6' : 'p-4'}`}
+              onScrollCapture={handleScroll}
+            >
               <div className="max-w-5xl mx-auto">
                 {/* Show projects grid if requested */}
                 {showProjectsGrid && !showAgentsGrid && !showAgentDetails && (
                   <div className="space-y-8">
-                    <ProjectGrid 
+                    <ProjectGrid
                       projects={projects}
                       onProjectSelect={handleProjectSelect}
                       onCreateProject={() => {
@@ -950,7 +1010,7 @@ export default function Home() {
                     />
                   </div>
                 )}
-                
+
                 {/* Show agents grid if requested */}
                 {showAgentsGrid && !showAgentDetails && !showProjectsGrid && (
                   <div className="max-w-5xl mx-auto">
@@ -969,7 +1029,7 @@ export default function Home() {
                         </Button>
                       </div>
                     ) : (
-                      <AgentGrid 
+                      <AgentGrid
                         agents={agents}
                         onAgentSelect={handleAgentSelect}
                         onCreateAgent={handleCreateAgent}
@@ -980,7 +1040,7 @@ export default function Home() {
                     )}
                   </div>
                 )}
-                
+
                 {/* Show agent details if an agent is selected */}
                 {showAgentDetails && currentAgent && showAgentsGrid && !showProjectsGrid && (
                   <div className="max-w-5xl mx-auto">
@@ -1009,7 +1069,7 @@ export default function Home() {
                     {/* Agent steps section */}
                     <div className="border rounded-lg p-4 mb-6">
                       <h3 className="text-lg font-medium mb-4">Workflow Steps</h3>
-                      
+
                       {!currentAgent.steps || currentAgent.steps.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
                           This agent doesn&apos;t have any steps defined yet.
@@ -1025,7 +1085,7 @@ export default function Home() {
                                 <div className="flex-1">
                                   <div className="flex items-center mb-2">
                                     <h4 className="font-medium">{step.name}</h4>
-                                    <Badge 
+                                    <Badge
                                       className={cn(
                                         "ml-2 border-none",
                                         step.type === "API_CALL" && "bg-blue-500/10 text-blue-600",
@@ -1040,11 +1100,11 @@ export default function Home() {
                                       {step.type?.replace(/_/g, ' ')}
                                     </Badge>
                                   </div>
-                                  
+
                                   {step.description && (
                                     <p className="text-sm text-muted-foreground mb-3">{step.description}</p>
                                   )}
-                                  
+
                                   {/* Display step configuration based on type */}
                                   <div className="mt-3 text-xs bg-muted/50 rounded-md p-3 font-mono">
                                     {step.type === "SET_VARIABLE" && (
@@ -1053,7 +1113,7 @@ export default function Home() {
                                         <div><span className="text-blue-600">Expression:</span> {step.config.expression}</div>
                                       </div>
                                     )}
-                                    
+
                                     {step.type === "API_CALL" && (
                                       <div className="space-y-1">
                                         <div><span className="text-blue-600">Method:</span> {step.config.method}</div>
@@ -1061,7 +1121,7 @@ export default function Home() {
                                         <div><span className="text-blue-600">Output Variable:</span> {step.config.outputVariable}</div>
                                       </div>
                                     )}
-                                    
+
                                     {step.type === "TRANSFORMATION" && step.config.transformation && (
                                       <div className="space-y-1">
                                         <div><span className="text-blue-600">Input:</span> {step.config.inputVariable}</div>
@@ -1079,7 +1139,7 @@ export default function Home() {
                                         </div>
                                       </div>
                                     )}
-                                    
+
                                     {step.type === "PROMPT" && (
                                       <div className="space-y-1">
                                         <div><span className="text-blue-600">Prompt:</span> {step.config.prompt}</div>
@@ -1089,7 +1149,7 @@ export default function Home() {
                                         )}
                                       </div>
                                     )}
-                                    
+
                                     {/* Fallback for other step types */}
                                     {!["SET_VARIABLE", "API_CALL", "TRANSFORMATION", "PROMPT"].includes(step.type) && (
                                       <pre className="overflow-auto max-h-40">{JSON.stringify(step.config, null, 2)}</pre>
@@ -1106,7 +1166,7 @@ export default function Home() {
                     {/* Variables section */}
                     <div className="border rounded-lg p-4 mb-6">
                       <h3 className="text-lg font-medium mb-4">Variables</h3>
-                      
+
                       {!currentAgent.variables || currentAgent.variables.length === 0 ? (
                         <div className="text-center py-4 text-muted-foreground">
                           This agent doesn&apos;t have any variables defined.
@@ -1135,7 +1195,7 @@ export default function Home() {
                     {/* Credentials section */}
                     <div className="border rounded-lg p-4">
                       <h3 className="text-lg font-medium mb-4">Credentials</h3>
-                      
+
                       {!currentAgent.credentials || currentAgent.credentials.length === 0 ? (
                         <div className="text-center py-4 text-muted-foreground">
                           This agent doesn&apos;t have any credentials defined.
@@ -1160,7 +1220,7 @@ export default function Home() {
                     </div>
                   </div>
                 )}
-                
+
                 {/* Empty state with welcome message when no content is selected */}
                 {!showProjectsGrid && !showAgentsGrid && !currentProjectId && !currentThread?.id && (
                   <div className="flex flex-col items-center justify-center h-full py-8">
@@ -1184,10 +1244,10 @@ export default function Home() {
                         New Chat
                       </Button>
                     </div>
-                    
+
                     <div className="w-full max-w-4xl">
                       <h3 className="text-xl font-semibold text-center mb-6">How can I help you?</h3>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         {/* Create Category */}
                         <div className="space-y-3">
@@ -1196,8 +1256,8 @@ export default function Home() {
                               Create
                             </Badge>
                           </div>
-                          
-                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-primary/10 hover:border-primary/30" 
+
+                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-primary/10 hover:border-primary/30"
                             onClick={() => {
                               createThread();
                               setMessage("Write a short story about a robot learning to love");
@@ -1205,8 +1265,8 @@ export default function Home() {
                             <p className="font-medium">Write a short story about...</p>
                             <p className="text-sm text-muted-foreground">Generate creative stories in any genre or style</p>
                           </Card>
-                          
-                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-primary/10 hover:border-primary/30" 
+
+                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-primary/10 hover:border-primary/30"
                             onClick={() => {
                               createThread();
                               setMessage("Write a blog post about the future of AI");
@@ -1214,8 +1274,8 @@ export default function Home() {
                             <p className="font-medium">Write a blog post about...</p>
                             <p className="text-sm text-muted-foreground">Create well-structured articles on any topic</p>
                           </Card>
-                          
-                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-primary/10 hover:border-primary/30" 
+
+                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-primary/10 hover:border-primary/30"
                             onClick={() => {
                               createThread();
                               setMessage("Generate 5 creative marketing slogans for a sustainable clothing brand");
@@ -1224,7 +1284,7 @@ export default function Home() {
                             <p className="text-sm text-muted-foreground">Brainstorm creative marketing content</p>
                           </Card>
                         </div>
-                        
+
                         {/* Explore Category */}
                         <div className="space-y-3">
                           <div className="flex items-center gap-2 mb-2">
@@ -1232,8 +1292,8 @@ export default function Home() {
                               Explore
                             </Badge>
                           </div>
-                          
-                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-blue-500/10 hover:border-blue-500/30" 
+
+                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-blue-500/10 hover:border-blue-500/30"
                             onClick={() => {
                               createThread();
                               setMessage("Explain quantum computing in simple terms");
@@ -1241,8 +1301,8 @@ export default function Home() {
                             <p className="font-medium">Explain a complex topic...</p>
                             <p className="text-sm text-muted-foreground">Get simple explanations for difficult concepts</p>
                           </Card>
-                          
-                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-blue-500/10 hover:border-blue-500/30" 
+
+                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-blue-500/10 hover:border-blue-500/30"
                             onClick={() => {
                               createThread();
                               setBrowseMode(true);
@@ -1251,8 +1311,8 @@ export default function Home() {
                             <p className="font-medium">Research current trends in...</p>
                             <p className="text-sm text-muted-foreground">Discover the latest information on any subject</p>
                           </Card>
-                          
-                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-blue-500/10 hover:border-blue-500/30" 
+
+                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-blue-500/10 hover:border-blue-500/30"
                             onClick={() => {
                               createThread();
                               setMessage("Compare the pros and cons of React vs. Vue");
@@ -1261,7 +1321,7 @@ export default function Home() {
                             <p className="text-sm text-muted-foreground">Get balanced analysis of different options</p>
                           </Card>
                         </div>
-                        
+
                         {/* Code Category */}
                         <div className="space-y-3">
                           <div className="flex items-center gap-2 mb-2">
@@ -1269,8 +1329,8 @@ export default function Home() {
                               Code
                             </Badge>
                           </div>
-                          
-                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-green-500/10 hover:border-green-500/30" 
+
+                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-green-500/10 hover:border-green-500/30"
                             onClick={() => {
                               createThread();
                               setMessage("Write a React component for a responsive image gallery");
@@ -1278,8 +1338,8 @@ export default function Home() {
                             <p className="font-medium">Write a component for...</p>
                             <p className="text-sm text-muted-foreground">Generate code for specific UI components</p>
                           </Card>
-                          
-                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-green-500/10 hover:border-green-500/30" 
+
+                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-green-500/10 hover:border-green-500/30"
                             onClick={() => {
                               createThread();
                               setMessage("Debug this code: [paste your code here]");
@@ -1287,8 +1347,8 @@ export default function Home() {
                             <p className="font-medium">Debug my code...</p>
                             <p className="text-sm text-muted-foreground">Find and fix issues in your code</p>
                           </Card>
-                          
-                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-green-500/10 hover:border-green-500/30" 
+
+                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-green-500/10 hover:border-green-500/30"
                             onClick={() => {
                               createThread();
                               setMessage("Explain how to implement authentication in a NextJS app");
@@ -1297,7 +1357,7 @@ export default function Home() {
                             <p className="text-sm text-muted-foreground">Get step-by-step coding instructions</p>
                           </Card>
                         </div>
-                        
+
                         {/* Learn Category */}
                         <div className="space-y-3">
                           <div className="flex items-center gap-2 mb-2">
@@ -1305,8 +1365,8 @@ export default function Home() {
                               Learn
                             </Badge>
                           </div>
-                          
-                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-amber-500/10 hover:border-amber-500/30" 
+
+                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-amber-500/10 hover:border-amber-500/30"
                             onClick={() => {
                               createThread();
                               setMessage("Create a study plan for learning machine learning in 3 months");
@@ -1314,8 +1374,8 @@ export default function Home() {
                             <p className="font-medium">Create a study plan for...</p>
                             <p className="text-sm text-muted-foreground">Get personalized learning roadmaps</p>
                           </Card>
-                          
-                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-amber-500/10 hover:border-amber-500/30" 
+
+                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-amber-500/10 hover:border-amber-500/30"
                             onClick={() => {
                               createThread();
                               setMessage("What are the most important concepts to understand in modern JavaScript?");
@@ -1323,8 +1383,8 @@ export default function Home() {
                             <p className="font-medium">What should I know about...</p>
                             <p className="text-sm text-muted-foreground">Discover essential knowledge in any field</p>
                           </Card>
-                          
-                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-amber-500/10 hover:border-amber-500/30" 
+
+                          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors border-amber-500/10 hover:border-amber-500/30"
                             onClick={() => {
                               createThread();
                               setMessage("Explain TypeScript generics with practical examples");
@@ -1346,7 +1406,7 @@ export default function Home() {
                       <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">How can I help you?</h2>
                       <p className="text-muted-foreground mt-3 max-w-xl mx-auto">Select a template or type your own message below</p>
                     </div>
-                    
+
                     {/* Category tabs */}
                     <div className="flex justify-center mb-8 bg-accent/30 backdrop-blur-sm p-1.5 rounded-xl max-w-lg mx-auto shadow-sm border border-border/50">
                       {templateCategories.map((category) => (
@@ -1354,8 +1414,8 @@ export default function Home() {
                           key={category.id}
                           onClick={() => setSelectedTemplateCategory(category.id as any)}
                           className={`px-4 py-2.5 rounded-lg font-medium transition-all duration-200 relative text-sm flex-1 flex items-center justify-center gap-2
-                            ${selectedTemplateCategory === category.id 
-                              ? `bg-background shadow-sm text-${category.color} dark:text-white dark:after:bg-${category.color}` 
+                            ${selectedTemplateCategory === category.id
+                              ? `bg-background shadow-sm text-${category.color} dark:text-white dark:after:bg-${category.color}`
                               : `text-muted-foreground hover:text-foreground ${category.hoverColor} hover:bg-background/50`
                             }
                           `}
@@ -1371,13 +1431,13 @@ export default function Home() {
                         </button>
                       ))}
                     </div>
-                    
+
                     {/* Templates grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
                       {templateCategories.find(c => c.id === selectedTemplateCategory)?.templates.map((template, index) => {
                         const category = templateCategories.find(c => c.id === selectedTemplateCategory)!;
                         return (
-                          <Card 
+                          <Card
                             key={index}
                             className={`p-5 cursor-pointer hover:${category.bgColor} transition-all duration-200 border-muted/30 hover:${category.borderColor} hover:shadow-sm group`}
                             onClick={() => {
@@ -1407,7 +1467,7 @@ export default function Home() {
                     </div>
                   </div>
                 )}
-                
+
                 {/* Show thread messages */}
                 {(currentThread?.id || currentProjectThreadId) && (
                   <div className="space-y-4">
@@ -1420,11 +1480,11 @@ export default function Home() {
                         Back to Project Threads
                       </Button>
                     )}
-                    
+
                     {currentThread?.messages.map((msg, index) => (
-                      <ChatMessage 
-                        key={msg.id} 
-                        message={msg} 
+                      <ChatMessage
+                        key={msg.id}
+                        message={msg}
                         isLast={index === currentThread.messages.length - 1}
                         onRegenerate={msg.role === "assistant" ? handleRegenerateMessage : undefined}
                         onEdit={msg.role === "user" ? handleEditMessage : undefined}
@@ -1432,18 +1492,18 @@ export default function Home() {
                         onPlay={handlePlayMessage}
                       />
                     ))}
-                    
+
                     {error && <div className="p-4 text-sm text-destructive bg-destructive/10 rounded-lg">{error}</div>}
                   </div>
-                )} 
+                )}
               </div>
             </ScrollArea>
           )}
-          
+
           {/* Chat input footer - only show when in chat mode */}
           {!showProjectsGrid && !showAgentsGrid && (!currentProjectId || currentProjectThreadId) && (currentThread?.id || !currentProjectId) && (
-            <footer className="border-t p-4">
-              <div className="max-w-5xl mx-auto">
+            <footer className={`border-t p-4 sticky bottom-0 bg-background/80 backdrop-blur-md shadow-soft z-10 transition-all duration-300 ease-in-out animate-apple-fade floating-chat-input ${isInputHidden ? 'hidden' : ''}`}>
+              <div className="max-w-5xl mx-auto relative chat-input-container">
                 {showFileUpload && <FileUpload onFilesChange={handleFilesChange} />}
 
                 {/* Show completion suggestions if available */}
@@ -1455,8 +1515,8 @@ export default function Home() {
                         size="sm"
                         variant="outline"
                         className={`text-xs py-1 px-2 h-auto flex items-center gap-1 transition-all ${
-                          index === selectedCompletionIndex 
-                            ? 'bg-primary/10 text-primary border-primary/30' 
+                          index === selectedCompletionIndex
+                            ? 'bg-primary/10 text-primary border-primary/30'
                             : 'bg-muted/50 hover:bg-primary/5 hover:text-primary'
                         }`}
                         onClick={() => handleSelectCompletion(completion)}
@@ -1496,6 +1556,17 @@ export default function Home() {
                   }
                   onCommandExecute={handleCommandExecute}
                   onKeyDown={handleCompletionKeyDown}
+
+                  // Model selector props
+                  selectedModel={selectedModel}
+                  onModelChange={setSelectedModel}
+                  models={models}
+
+                  // Web search and reasoning props
+                  browseMode={browseMode}
+                  onBrowseModeChange={setBrowseMode}
+                  reasoning={reasoning}
+                  onReasoningChange={setReasoning}
                 />
               </div>
             </footer>
@@ -1518,7 +1589,7 @@ export default function Home() {
                 {dialogAction === "delete-thread" ? "Delete Thread?" : "Report Message?"}
               </AlertDialogTitle>
               <AlertDialogDescription>
-                {dialogAction === "delete-thread" 
+                {dialogAction === "delete-thread"
                   ? "This action cannot be undone. This will permanently delete the chat and all its messages."
                   : "Thank you for helping us maintain quality. Please confirm you want to report this message."}
               </AlertDialogDescription>
@@ -1527,7 +1598,7 @@ export default function Home() {
               <AlertDialogCancel onClick={resetDialogStates}>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={confirmAction}
-                className={dialogAction === "delete-thread" 
+                className={dialogAction === "delete-thread"
                   ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   : ""}
               >
@@ -1541,16 +1612,16 @@ export default function Home() {
 
       {/* Project Creation Dialog */}
       <ProjectProvider>
-        <ProjectCreationDialog 
-          open={showProjectDialog} 
+        <ProjectCreationDialog
+          open={showProjectDialog}
           onOpenChange={setShowProjectDialog}
           onProjectCreated={(projectId) => {
             // Close the dialog
             setShowProjectDialog(false);
-            
+
             // Select the new project
             handleProjectSelect(projectId);
-            
+
             toast({
               title: "Project created",
               description: "Your new project has been created successfully.",
@@ -1560,8 +1631,8 @@ export default function Home() {
       </ProjectProvider>
 
       {/* Agent Creation Dialog */}
-      <AgentCreationDialog 
-        open={showAgentDialog} 
+      <AgentCreationDialog
+        open={showAgentDialog}
         onOpenChange={setShowAgentDialog}
         onAgentCreated={handleAgentCreated}
         agent={currentAgent || undefined}
@@ -1575,7 +1646,7 @@ export default function Home() {
           onOpenChange={(open) => {
             setShowAgentRunDialog(open);
             if (!open) {
-              // Give a small delay before fully unmounting 
+              // Give a small delay before fully unmounting
               // to prevent state issues during unmounting
               setTimeout(() => {
                 // cleanup if needed

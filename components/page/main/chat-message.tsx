@@ -14,6 +14,7 @@ import {
   AudioLines,
   ChevronDown,
   ChevronRight,
+  ChevronUp,
 } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
@@ -178,18 +179,16 @@ MarkdownRenderer.displayName = "MarkdownRenderer"
 
 // Enhanced text streaming effect component
 const StreamingText = memo(({ content }: { content: string }) => {
-  const isDarkTheme = typeof document !== "undefined" ? document.documentElement.classList.contains("dark") : false
-  const [copied, setCopied] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [useDirectHtml, setUseDirectHtml] = useState(true)
-  
+  const [renderMode, setRenderMode] = useState<'direct' | 'markdown'>('direct')
+
   // Force styles to apply immediately after mount
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    
+
     // Create a unique ID for this instance
     const uniqueId = `streaming-styles-${Math.random().toString(36).substring(2, 9)}`;
-    
+
     // Create dynamic style tag for immediate styling with higher specificity
     const styleTag = document.createElement('style');
     styleTag.textContent = `
@@ -201,7 +200,7 @@ const StreamingText = memo(({ content }: { content: string }) => {
         transition: none !important;
         display: block !important;
       }
-      
+
       body #__next .urgent-streaming-styles[data-id="${uniqueId}"] h1,
       body #__next .urgent-streaming-styles[data-id="${uniqueId}"] .urgent-md-h1 {
         font-size: 1.5rem !important;
@@ -212,7 +211,7 @@ const StreamingText = memo(({ content }: { content: string }) => {
         border-bottom: 1px solid hsl(var(--border) / 0.4) !important;
         color: hsl(var(--foreground)) !important;
       }
-      
+
       body #__next .urgent-streaming-styles[data-id="${uniqueId}"] h2,
       body #__next .urgent-streaming-styles[data-id="${uniqueId}"] .urgent-md-h2 {
         font-size: 1.25rem !important;
@@ -223,7 +222,7 @@ const StreamingText = memo(({ content }: { content: string }) => {
         border-bottom: 1px solid hsl(var(--border) / 0.3) !important;
         color: hsl(var(--foreground)) !important;
       }
-      
+
       body #__next .urgent-streaming-styles[data-id="${uniqueId}"] h3,
       body #__next .urgent-streaming-styles[data-id="${uniqueId}"] .urgent-md-h3 {
         font-size: 1.125rem !important;
@@ -232,32 +231,32 @@ const StreamingText = memo(({ content }: { content: string }) => {
         margin-bottom: 0.5rem !important;
         color: hsl(var(--foreground)) !important;
       }
-      
+
       body #__next .urgent-streaming-styles[data-id="${uniqueId}"] p {
         margin-bottom: 1rem !important;
         white-space: pre-wrap !important;
       }
-      
+
       body #__next .urgent-streaming-styles[data-id="${uniqueId}"] ul,
       body #__next .urgent-streaming-styles[data-id="${uniqueId}"] ol {
         padding-left: 1.5rem !important;
         margin-bottom: 1rem !important;
         display: block !important;
       }
-      
+
       body #__next .urgent-streaming-styles[data-id="${uniqueId}"] ul {
         list-style-type: disc !important;
       }
-      
+
       body #__next .urgent-streaming-styles[data-id="${uniqueId}"] ol {
         list-style-type: decimal !important;
       }
-      
+
       body #__next .urgent-streaming-styles[data-id="${uniqueId}"] li {
         margin-bottom: 0.25rem !important;
         display: list-item !important;
       }
-      
+
       body #__next .urgent-streaming-styles[data-id="${uniqueId}"] blockquote {
         margin: 1rem 0 !important;
         padding-left: 1rem !important;
@@ -265,7 +264,7 @@ const StreamingText = memo(({ content }: { content: string }) => {
         color: hsl(var(--muted-foreground)) !important;
         font-style: italic !important;
       }
-      
+
       body #__next .urgent-streaming-styles[data-id="${uniqueId}"] code {
         background-color: hsl(var(--muted)) !important;
         padding: 0.125rem 0.375rem !important;
@@ -274,7 +273,7 @@ const StreamingText = memo(({ content }: { content: string }) => {
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
         display: inline !important;
       }
-      
+
       body #__next .urgent-streaming-styles[data-id="${uniqueId}"] pre {
         padding: 1rem !important;
         border-radius: 0.5rem !important;
@@ -283,73 +282,75 @@ const StreamingText = memo(({ content }: { content: string }) => {
         font-size: 0.875rem !important;
         margin: 1rem 0 !important;
       }
-      
+
       body #__next .urgent-streaming-styles[data-id="${uniqueId}"] pre code {
         background-color: transparent !important;
         padding: 0 !important;
         display: block !important;
       }
-      
+
       body #__next .urgent-streaming-styles[data-id="${uniqueId}"] strong {
         font-weight: bold !important;
         display: inline !important;
       }
-      
+
       body #__next .urgent-streaming-styles[data-id="${uniqueId}"] em {
         font-style: italic !important;
         display: inline !important;
       }
     `;
     document.head.appendChild(styleTag);
-    
+
     // Function defined outside of blocks to satisfy strict mode
     const applyStylesToMarkdown = () => {
       if (containerRef.current) {
         const elements = containerRef.current.querySelectorAll('h1, h2, h3, h4, h5, h6, p, ul, ol, li, blockquote, code, pre');
         elements.forEach(el => {
           // Force visibility
-          (el as HTMLElement).style.display = el.tagName === 'LI' ? 'list-item' : 
-                                             (el.tagName === 'CODE' && el.parentElement?.tagName !== 'PRE') ? 'inline' : 'block';
+          // Determine display style based on element type
+          let displayStyle = 'block';
+          if (el.tagName === 'LI') {
+            displayStyle = 'list-item';
+          } else if (el.tagName === 'CODE' && el.parentElement?.tagName !== 'PRE') {
+            displayStyle = 'inline';
+          }
+          (el as HTMLElement).style.display = displayStyle;
           (el as HTMLElement).style.visibility = 'visible';
           (el as HTMLElement).style.opacity = '1';
         });
       }
     };
-    
+
     // Apply styles immediately
     applyStylesToMarkdown();
-    
+
     // Switch to ReactMarkdown after a delay
     const timer1 = setTimeout(applyStylesToMarkdown, 100);
     const timer2 = setTimeout(() => {
-      setUseDirectHtml(false);
+      setRenderMode('markdown');
     }, 1000);
-    
+
     return () => {
       document.head.removeChild(styleTag);
       clearTimeout(timer1);
       clearTimeout(timer2);
     };
   }, []);
-  
-  const copyToClipboard = useCallback((text: string) => {
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }, [])
-  
+
+  // No need for copyToClipboard in StreamingText
+
   // Normalize content before rendering
   const normalizedContent = useMemo(() => {
     return dedent(content)
       .replace(/\n{3,}/g, "\n\n")
       .replace(/\n+$/, "\n")
   }, [content])
-  
+
   // Create HTML directly instead of using ReactMarkdown for streaming
   // This will be more immediately styled by the browser
   const createMarkdownHtml = useMemo(() => {
     // Simple markdown parser for immediate display
-    let html = normalizedContent
+    return normalizedContent
       // Headers
       .replace(/^# (.*$)/gim, '<h1 class="urgent-md-h1">$1</h1>')
       .replace(/^## (.*$)/gim, '<h2 class="urgent-md-h2">$1</h2>')
@@ -358,7 +359,7 @@ const StreamingText = memo(({ content }: { content: string }) => {
       // Bold and italic
       .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
       .replace(/\*(.*)\*/gim, '<em>$1</em>')
-      .replace(/\_(.*)\_/gim, '<em>$1</em>')
+      .replace(/_(.*?)_/gim, '<em>$1</em>')
       // Lists
       .replace(/^\s*\n\* (.*)/gim, '<ul>\n<li>$1</li>\n</ul>')
       .replace(/^\s*\n\d\. (.*)/gim, '<ol>\n<li>$1</li>\n</ol>')
@@ -369,7 +370,7 @@ const StreamingText = memo(({ content }: { content: string }) => {
       .replace(/^\* (.*)/gim, '<li>$1</li>')
       .replace(/^\d\. (.*)/gim, '<li>$1</li>')
       // Blockquotes
-      .replace(/^\> (.*$)/gim, '<blockquote>$1</blockquote>')
+      .replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>')
       // Code blocks
       .replace(/```([^`]+)```/gim, '<pre><code>$1</code></pre>')
       // Inline code
@@ -382,21 +383,21 @@ const StreamingText = memo(({ content }: { content: string }) => {
       .replace(/^<p><\/p>/gim, '')
       // Fix multiple paragraph tags
       .replace(/<\/p><p>/gim, '</p>\n<p>');
-    
-    return html;
+
+
   }, [normalizedContent]);
 
   // Generate a unique ID for this component instance
   const uniqueId = useMemo(() => `streaming-${Math.random().toString(36).substring(2, 9)}`, []);
-  
+
   return (
-    <div className="relative streaming-markdown-container urgent-streaming-styles" 
-      ref={containerRef} 
+    <div className="relative streaming-markdown-container urgent-streaming-styles"
+      ref={containerRef}
       data-id={uniqueId}>
       <div className="prose-content streaming-content custom-streaming-markdown">
-        {useDirectHtml ? (
-          <div 
-            className="urgent-streaming-styles" 
+        {renderMode === 'direct' ? (
+          <div
+            className="urgent-streaming-styles"
             data-id={uniqueId}
             dangerouslySetInnerHTML={{ __html: createMarkdownHtml }}
           />
@@ -440,7 +441,7 @@ const ThinkingContent = memo(({ content }: { content: string }) => {
     } else {
       // Show last 3 lines for better context
       const lastLines = lines.slice(-3);
-      return lastLines.map(line => 
+      return lastLines.map(line =>
         line.length > 50 ? line.substring(0, 50) + "..." : line
       ).join("\n");
     }
@@ -484,15 +485,19 @@ const ThinkingContent = memo(({ content }: { content: string }) => {
         <CollapsibleContent className="mt-3 overflow-hidden transition-all duration-300 ease-in-out">
           <div className="border-l-2 border-primary/20 pl-4 py-1 space-y-2">
             <div className="text-sm text-foreground/90 font-light leading-relaxed space-y-2">
-              {cleanedContent.split("\n").map((line, i) => (
-                <p key={i} className={line.trim() === "" ? "h-2" : ""}>
-                  {line}
-                </p>
-              ))}
+              {cleanedContent.split("\n").map((line, i) => {
+                // Use a unique key based on content and index
+                const lineKey = `line-${i}-${line.substring(0, 10)}`;
+                return (
+                  <p key={lineKey} className={line.trim() === "" ? "h-2" : ""}>
+                    {line}
+                  </p>
+                );
+              })}
             </div>
           </div>
         </CollapsibleContent>
-        
+
         {/* Decorative elements */}
         <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-primary/5 to-transparent rounded-full -z-10 opacity-60 blur-xl"></div>
         <div className="absolute bottom-0 left-0 w-16 h-16 bg-gradient-to-tr from-primary/5 to-transparent rounded-full -z-10 opacity-60 blur-lg"></div>
@@ -527,13 +532,9 @@ const ContentRenderer = memo(
     const [mainStreamingContent, setMainStreamingContent] = useState<string>("");
     // Add ref to store the position and type of the opening tag
     const openingTagRef = useRef<{pos: number, type: string}>({pos: -1, type: ""});
-    // Add state to track if the component is mounted
-    const [isMounted, setIsMounted] = useState(false);
-    
-    // Set mounted state on initial render
+    // Set up effect for component lifecycle
     useEffect(() => {
-      setIsMounted(true);
-      return () => setIsMounted(false);
+      return () => {}; // Cleanup function
     }, []);
 
     // Process streaming thinking content in real-time
@@ -546,31 +547,33 @@ const ContentRenderer = memo(
         openingTagRef.current = {pos: -1, type: ""};
         return;
       }
-      
+
       if (!isInThinkingBlock) {
         // Look for opening tags
-        const thinkMatch = content.match(/<think>/i);
-        const reasoningMatch = content.match(/<reasoning>/i);
-        
+        const thinkRegex = /<think>/i;
+        const reasoningRegex = /<reasoning>/i;
+        const thinkMatch = thinkRegex.exec(content);
+        const reasoningMatch = reasoningRegex.exec(content);
+
         // Determine which tag comes first (if any)
         let openingTag = null;
-        if (thinkMatch && (!reasoningMatch || thinkMatch.index! < reasoningMatch.index!)) {
-          openingTag = {pos: thinkMatch.index!, type: "think"};
+        if (thinkMatch && (!reasoningMatch || (thinkMatch.index !== undefined && reasoningMatch.index !== undefined && thinkMatch.index < reasoningMatch.index))) {
+          openingTag = {pos: thinkMatch.index ?? 0, type: "think"};
         } else if (reasoningMatch) {
-          openingTag = {pos: reasoningMatch.index!, type: "reasoning"};
+          openingTag = {pos: reasoningMatch.index ?? 0, type: "reasoning"};
         }
-        
+
         if (openingTag) {
           // We found an opening tag - enter thinking block state
           openingTagRef.current = openingTag;
           setIsInThinkingBlock(true);
-          
+
           // Extract content before the tag and the thinking content so far
           const beforeThinking = content.substring(0, openingTag.pos);
           const tagLength = openingTag.type.length + 2; // +2 for "<" and ">"
           const thinkingStart = openingTag.pos + tagLength;
           const thinkingContent = content.substring(thinkingStart);
-          
+
           setMainStreamingContent(beforeThinking);
           setStreamingThinkingContent(thinkingContent);
         } else {
@@ -582,26 +585,26 @@ const ContentRenderer = memo(
         // We're already in a thinking block
         const { pos: openPos, type: openType } = openingTagRef.current;
         const closingTagPattern = new RegExp(`</${openType}>`, 'i');
-        const closingMatch = content.match(closingTagPattern);
-        
-        if (closingMatch && closingMatch.index! > openPos) {
+        const closingMatch = closingTagPattern.exec(content);
+
+        if (closingMatch && closingMatch.index !== undefined && closingMatch.index > openPos) {
           // Found closing tag - extract the complete thinking content
           const tagLength = openType.length + 2; // +2 for "<" and ">"
           const thinkingStart = openPos + tagLength;
-          const thinkingEnd = closingMatch.index!;
+          const thinkingEnd = closingMatch.index;
           const closingTagLength = openType.length + 3; // +3 for "</>"
-          
+
           // Extract thinking content
           const extractedThinking = content.substring(thinkingStart, thinkingEnd);
-          
+
           // Reconstruct main content by removing the thinking block
           const beforeBlock = content.substring(0, openPos);
           const afterBlock = content.substring(thinkingEnd + closingTagLength);
           const newMainContent = beforeBlock + afterBlock;
-          
+
           setStreamingThinkingContent(extractedThinking);
           setMainStreamingContent(newMainContent);
-          
+
           // Exit thinking block state
           setIsInThinkingBlock(false);
           openingTagRef.current = {pos: -1, type: ""};
@@ -610,34 +613,40 @@ const ContentRenderer = memo(
           const tagLength = openType.length + 2; // +2 for "<" and ">"
           const thinkingStart = openPos + tagLength;
           const currentThinking = content.substring(thinkingStart);
-          
+
           setStreamingThinkingContent(currentThinking);
           setMainStreamingContent(content.substring(0, openPos));
         }
       }
     }, [content, isStreaming, isInThinkingBlock]);
 
-    // Process content to extract file attachments - moved useMemo BEFORE any conditional returns
+    // Split the content processing into smaller functions for better performance
+    // Handle streaming content separately
+    const renderStreamingContent = useCallback(() => {
+      if (streamingThinkingContent) {
+        return (
+          <>
+            {thinkingContent && <ThinkingContent content={thinkingContent} />}
+            <ThinkingContent content={streamingThinkingContent} />
+            {mainStreamingContent && <StreamingText content={mainStreamingContent} />}
+          </>
+        );
+      }
+      return <StreamingText content={content} />
+    }, [streamingThinkingContent, thinkingContent, mainStreamingContent, content]);
+
+    // Process content to extract file attachments
     const processedContent = useMemo(() => {
-      // For streaming content with active thinking tags, render with special handling
+      // For streaming content, use the dedicated renderer
       if (isStreaming) {
-        if (streamingThinkingContent) {
-          return (
-            <>
-              {thinkingContent && <ThinkingContent content={thinkingContent} />}
-              <ThinkingContent content={streamingThinkingContent} />
-              {mainStreamingContent && <StreamingText content={mainStreamingContent} />}
-            </>
-          );
-        }
-        return <StreamingText content={content} />
+        return renderStreamingContent();
       }
 
       // Extract thinking content from tags like <think> or <reasoning>
       const thinkingTagRegex = /<(think|reasoning)>([\s\S]*?)<\/\1>/gi
       let mainContent = content
       const thinkingBlocks: string[] = []
-      
+
       // Find all thinking/reasoning blocks
       let match
       while ((match = thinkingTagRegex.exec(content)) !== null) {
@@ -645,21 +654,23 @@ const ContentRenderer = memo(
         // Remove the thinking block from main content to avoid duplication
         mainContent = mainContent.replace(match[0], '')
       }
-      
+
       // Combine extracted thinking blocks with existing thinkingContent
       let finalThinkingBlocks: JSX.Element[] = []
-      
+
       // Add existing thinking content if provided
       if (thinkingContent) {
         finalThinkingBlocks.push(
           <ThinkingContent key="thinking-existing" content={thinkingContent} />
         )
       }
-      
+
       // Add newly extracted thinking blocks
       thinkingBlocks.forEach((block, index) => {
+        // Use a unique key based on content and index
+        const blockKey = `thinking-extracted-${index}-${block.substring(0, 10)}`;
         finalThinkingBlocks.push(
-          <ThinkingContent key={`thinking-extracted-${index}`} content={block} />
+          <ThinkingContent key={blockKey} content={block} />
         )
       })
 
@@ -752,14 +763,14 @@ const ContentRenderer = memo(
           {parts}
         </>
       )
-    }, [content, isDarkTheme, isStreaming, remarkPlugins, copyToClipboard, copied, thinkingContent, streamingThinkingContent, mainStreamingContent, isInThinkingBlock, isMounted]);
+    }, [content, isDarkTheme, isStreaming, remarkPlugins, copyToClipboard, copied, thinkingContent, renderStreamingContent]);
 
     return processedContent
   },
 )
 ContentRenderer.displayName = "ContentRenderer"
 
-export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, onPlay }: Readonly<ChatMessageProps>) {
+export const ChatMessage = memo(function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, onPlay }: Readonly<ChatMessageProps>) {
   const messageRef = useRef<HTMLDivElement>(null)
   const [copied, setCopied] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -786,12 +797,12 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
   // Helper function to split text into reasonable chunks for TTS
   const splitTextIntoChunks = useCallback((text: string, maxChunkLength: number = 300): string[] => {
     if (!text) return [];
-    
+
     // Ensure there's always at least one chunk even for very short text
     if (text.trim().length <= maxChunkLength) {
       return [text.trim()];
     }
-    
+
     // Remove markdown syntax for better TTS experience
     const cleanText = text
       .replace(/```[\s\S]*?```/g, '') // Remove code blocks
@@ -808,15 +819,15 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
     }
 
     const sentences = cleanText.match(/[^.!?]+[.!?]+|\s*\n\s*|\s*\n\s*\n\s*/g) || [];
-    
+
     // If no sentences found, just return the whole text as one chunk if it's short enough
     if (sentences.length === 0) {
       return [cleanText.trim()];
     }
-    
+
     const chunks: string[] = [];
     let currentChunk = '';
-    
+
     for (const sentence of sentences) {
       // If adding this sentence would make the chunk too long, start a new chunk
       if (currentChunk.length + sentence.length > maxChunkLength && currentChunk.length > 0) {
@@ -825,78 +836,79 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
       } else {
         currentChunk += sentence;
       }
-      
+
       // If the current sentence ends with a paragraph break or is very long, force a chunk break
-      if (sentence.match(/\n\s*\n/) || currentChunk.length >= maxChunkLength) {
+      const paragraphBreakRegex = /\n\s*\n/;
+      if (paragraphBreakRegex.exec(sentence) || currentChunk.length >= maxChunkLength) {
         chunks.push(currentChunk.trim());
         currentChunk = '';
       }
     }
-    
+
     // Add any remaining text as the final chunk
     if (currentChunk.trim().length > 0) {
       chunks.push(currentChunk.trim());
     }
-    
+
     // Add safeguard to ensure we have at least one chunk
     if (chunks.length === 0) {
       return [text.trim().substring(0, Math.min(text.trim().length, maxChunkLength))];
     }
-    
+
     return chunks;
   }, []);
 
   // Function to fetch and play TTS audio for a text chunk
   const fetchTtsAudio = useCallback(async (text: string): Promise<string> => {
     setIsTtsLoading(true);
-    
+
     try {
       console.log("Fetching TTS audio for text:", text.substring(0, 20) + "...");
-      
+
       // Create a new abort controller for this request - make sure it's not prematurely aborted
       const controller = new AbortController();
       abortControllerRef.current = controller;
-      
+
       // Request TTS audio
       const response = await fetch('/api/transcribe/tts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           text,
-          voice: "Arista-PlayAI" 
+          voice: "Arista-PlayAI"
         }),
         signal: controller.signal,
         cache: 'no-store'
       });
-      
+
       if (!response.ok) {
         const errorMessage = `Failed to generate speech: ${response.status} ${response.statusText}`;
         console.error(errorMessage);
         throw new Error(errorMessage);
       }
-      
+
       console.log("Received response from TTS API");
-      
+
       // Parse the JSON response which now contains base64 data
       const data = await response.json();
-      
+
       if (!data.audio) {
         console.error("Invalid response - missing audio data");
         throw new Error("Invalid response - missing audio data");
       }
-      
+
       // Add to visible debug player
       if (debugAudioPlayerRef.current) {
         debugAudioPlayerRef.current.src = data.audio;
       }
-      
+
       console.log("Got audio data URL of length:", data.audio.length);
-      
+
       // Return the data URL directly - no need to create a blob
       return data.audio;
-      
+
     } catch (error) {
       if ((error as Error).name === 'AbortError') {
         console.log('TTS request was cancelled');
@@ -1047,42 +1059,42 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
       console.log("Stopping current playback");
       setIsPlaying(false);
       setCurrentTtsChunk(0);
-      
+
       // Cancel any ongoing TTS request
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
       }
-      
+
       if (speechRef.current) {
         // Store the current audio element
         const audioToStop = speechRef.current;
-        
+
         // Clear the reference first to prevent any new operations on it
         speechRef.current = null;
-        
+
         // Set onended to null to prevent any callbacks
         audioToStop.onended = null;
-        
+
         // Then pause the audio
         setTimeout(() => {
           audioToStop.pause();
         }, 50);
       }
-      
+
       // Clean up audio URLs
       audioQueue.forEach(url => {
         if (url.startsWith('blob:')) {
           URL.revokeObjectURL(url);
         }
       });
-      
+
       setAudioQueue([]);
       return;
     }
 
     console.log("Starting TTS process");
-    
+
     // Play a test sound first to verify audio is working
     try {
       const testAudio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA");
@@ -1094,62 +1106,62 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
       console.log("Test beep failed - autoplay may be blocked:", error);
       // Continue anyway
     }
-    
+
     // Start TTS process
     try {
       // Split the message content into manageable chunks
-      const contentToSpeak = cleanedContent || message.content;
+      const contentToSpeak = cleanedContent ?? message.content;
       console.log("Content length to speak:", contentToSpeak.length);
-      
+
       const textChunks = splitTextIntoChunks(contentToSpeak);
       console.log("Split into chunks:", textChunks.length);
-      
+
       if (textChunks.length === 0) {
         console.error("No text chunks to speak");
         return;
       }
-      
+
       // Set playing state immediately for better UX
       setIsPlaying(true);
-      
+
       // Create a new Audio element for each playback session
       // This helps avoid state conflicts
       const audio = new Audio();
-      
+
       // Explicitly set volume to maximum
       audio.volume = 1.0;
-      
+
       // Debug audio capabilities
       audio.onerror = (e) => {
         console.error("Audio element error:", e);
       };
-      
+
       // Setup audio event listeners for debugging
       audio.addEventListener('canplay', () => {
         console.log("Audio can play now");
       });
-      
+
       audio.addEventListener('playing', () => {
         console.log("Audio is now playing");
         console.log("Audio duration:", audio.duration);
         console.log("Audio volume:", audio.volume);
         console.log("Audio muted:", audio.muted);
       });
-      
+
       speechRef.current = audio;
-      
+
       // Fetch the first chunk's audio
       try {
         console.log("Fetching first chunk");
         const firstUrl = await fetchTtsAudio(textChunks[0]);
         console.log("Setting audio queue with first URL");
-        
+
         // Log the first few characters of the data URL to verify format
         console.log("Data URL prefix:", firstUrl.substring(0, 30));
-        
+
         setAudioQueue([firstUrl]);
         setCurrentTtsChunk(0);
-        
+
         // Set up event handlers for auto-advancing
         audio.onended = () => {
           console.log("Audio ended, advancing to next chunk");
@@ -1158,23 +1170,23 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
             console.log("Not advancing: isPlaying=", isPlaying, "speechRef.current=", !!speechRef.current);
             return;
           }
-          
+
           // Auto-advance to next chunk when one finishes
           if (currentTtsChunk < textChunks.length - 1) {
             const nextChunk = currentTtsChunk + 1;
             console.log("Moving to next chunk:", nextChunk);
-            
+
             // Fetch next chunk if not already fetched
             (async () => {
               try {
                 if (!isPlaying) return;
-                
+
                 // Get or fetch next audio chunk
                 let nextUrl = audioQueue[nextChunk];
                 if (!nextUrl) {
                   console.log("Fetching next chunk:", nextChunk);
                   nextUrl = await fetchTtsAudio(textChunks[nextChunk]);
-                  
+
                   // Update queue with new URL
                   setAudioQueue(prev => {
                     const newQueue = [...prev];
@@ -1182,44 +1194,43 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
                     return newQueue;
                   });
                 }
-                
+
                 // Advance to next chunk
                 setCurrentTtsChunk(nextChunk);
-                
+
                 // Only proceed if we're still playing
                 if (!isPlaying || !speechRef.current) return;
-                
+
                 // Create a new Audio element for cleaner playback
                 const nextAudio = new Audio();
                 nextAudio.volume = 1.0; // Full volume
                 nextAudio.src = nextUrl;
-                
+
                 // Debug listeners
                 nextAudio.addEventListener('canplay', () => {
                   console.log("Next audio can play now");
                 });
-                
+
                 nextAudio.addEventListener('playing', () => {
                   console.log("Next audio is now playing");
                   console.log("Next audio duration:", nextAudio.duration);
                 });
-                
+
                 // Set up the onended handler
                 nextAudio.onended = audio.onended;
-                
+
                 // Replace the reference
                 speechRef.current = nextAudio;
-                
+
                 // Play next chunk
                 console.log("Starting to play next chunk");
-                const playPromise = nextAudio.play();
-                if (playPromise) {
-                  playPromise.catch(err => {
-                    console.error("Error playing next chunk:", err);
-                    if (err.name !== 'AbortError') {
-                      setIsPlaying(false);
-                    }
-                  });
+                try {
+                  await nextAudio.play();
+                } catch (err: any) {
+                  console.error("Error playing next chunk:", err);
+                  if (err.name !== 'AbortError') {
+                    setIsPlaying(false);
+                  }
                 }
               } catch (error) {
                 console.error("Error in next chunk processing:", error);
@@ -1236,11 +1247,11 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
             setAudioQueue([]);
           }
         };
-        
+
         // Set source
         console.log("Setting up audio source");
         audio.src = firstUrl;
-        
+
         // Try immediately playing to test if it works
         try {
           console.log("Attempting immediate playback");
@@ -1248,37 +1259,35 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
           console.log("Immediate playback successful");
         } catch (error) {
           console.log("Immediate playback failed, will try with delay:", error);
-          
+
           // Wait a moment to ensure the component is stable before trying again
           console.log("Scheduling playback with delay");
-          setTimeout(() => {
+          setTimeout(async () => {
             // Only play if we're still in playing state
             if (isPlaying && speechRef.current === audio) {
               console.log("Starting delayed playback");
-              const playPromise = audio.play();
-              if (playPromise) {
-                playPromise.then(() => {
-                  console.log("Playback started successfully");
-                }).catch(error => {
-                  console.error("Initial playback error:", error);
-                  if (error.name !== 'AbortError') {
-                    setIsPlaying(false);
-                  }
-                });
+              try {
+                await audio.play();
+                console.log("Playback started successfully");
+              } catch (error: any) {
+                console.error("Initial playback error:", error);
+                if (error.name !== 'AbortError') {
+                  setIsPlaying(false);
+                }
               }
             } else {
               console.log("Not starting playback - state changed");
             }
           }, 100);
         }
-        
+
         // Start prefetching next chunks in background
         if (textChunks.length > 1) {
           setTimeout(() => {
             (async () => {
               try {
                 if (!isPlaying) return;
-                
+
                 // Prefetch next chunk
                 console.log("Prefetching second chunk");
                 const secondUrl = await fetchTtsAudio(textChunks[1]);
@@ -1302,7 +1311,7 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
         }
         return;
       }
-      
+
       // Notify the parent component about the play action
       if (onPlay && message.id) {
         onPlay(message.id);
@@ -1329,17 +1338,17 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
       const thinkingTagRegex = /<(think|reasoning)>([\s\S]*?)<\/\1>/gi;
       let mainContent = message.content;
       const thinkingBlocks: string[] = [];
-      
+
       // Find all thinking/reasoning blocks
       let match;
-      let hasFoundThinking = false;
+
       while ((match = thinkingTagRegex.exec(message.content)) !== null) {
         thinkingBlocks.push(match[2].trim());
         // Remove the thinking block from main content
         mainContent = mainContent.replace(match[0], '');
-        hasFoundThinking = true;
+
       }
-      
+
       // Only update if we found embedded thinking content
       if (thinkingBlocks.length > 0) {
         // Update local state instead of modifying message directly
@@ -1352,62 +1361,191 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
     }
   }, [message.content, message.thinking]);
 
-  // Memoize the message content component to prevent unnecessary re-renders
-  const messageContent = useMemo(() => {
-    if (!message.content && !message.thinkingContent) {
-      return (
-        <div className="relative py-4 px-5 rounded-lg bg-gradient-to-br from-muted/40 to-muted/20 backdrop-blur-sm border border-primary/10 shadow-sm">
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-3">
-              <div className="flex gap-1.5">
-                <span
-                  className="w-2.5 h-2.5 rounded-full bg-primary/40 animate-pulse"
-                  style={{ animationDelay: "0ms", animationDuration: "1.2s" }}
-                />
-                <span
-                  className="w-2.5 h-2.5 rounded-full bg-primary/40 animate-pulse"
-                  style={{ animationDelay: "300ms", animationDuration: "1.2s" }}
-                />
-                <span
-                  className="w-2.5 h-2.5 rounded-full bg-primary/40 animate-pulse"
-                  style={{ animationDelay: "600ms", animationDuration: "1.2s" }}
-                />
-              </div>
-              <span className="text-sm font-medium text-primary/90">Processing your request...</span>
+  // Loading state component extracted for better performance
+  const LoadingIndicator = memo(() => {
+    return (
+      <div className="relative py-4 px-5 rounded-lg bg-gradient-to-br from-muted/40 to-muted/20 backdrop-blur-sm border border-primary/10 shadow-sm">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3">
+            <div className="flex gap-1.5">
+              <span
+                className="w-2.5 h-2.5 rounded-full bg-primary/40 animate-pulse"
+                style={{ animationDelay: "0ms", animationDuration: "1.2s" }}
+              />
+              <span
+                className="w-2.5 h-2.5 rounded-full bg-primary/40 animate-pulse"
+                style={{ animationDelay: "300ms", animationDuration: "1.2s" }}
+              />
+              <span
+                className="w-2.5 h-2.5 rounded-full bg-primary/40 animate-pulse"
+                style={{ animationDelay: "600ms", animationDuration: "1.2s" }}
+              />
             </div>
-            <div className="pl-6 text-sm text-muted-foreground">
-              <span className="animate-pulse inline-block">Analyzing input and generating a thoughtful response</span>
-            </div>
+            <span className="text-sm font-medium text-primary/90">Processing your request...</span>
           </div>
-          <div className="absolute left-0 right-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-primary/20 to-transparent">
-            <div className="absolute top-0 left-0 h-full w-1/3 bg-gradient-to-r from-transparent via-primary/40 to-transparent animate-slider" />
+          <div className="pl-6 text-sm text-muted-foreground">
+            <span className="animate-pulse inline-block">Analyzing input and generating a thoughtful response</span>
           </div>
         </div>
-      )
+        <div className="absolute left-0 right-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-primary/20 to-transparent">
+          <div className="absolute top-0 left-0 h-full w-1/3 bg-gradient-to-r from-transparent via-primary/40 to-transparent animate-slider" />
+        </div>
+      </div>
+    );
+  });
+  LoadingIndicator.displayName = "LoadingIndicator";
+
+  // Collapsible User Message component for long user messages
+const CollapsibleUserMessage = memo(({ content, isDarkTheme, remarkPlugins, copyToClipboard, copied }: {
+  content: string
+  isDarkTheme: boolean
+  remarkPlugins: any[]
+  copyToClipboard: (text: string) => void
+  copied: boolean
+}) => {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const contentLength = content.length
+
+  // Define thresholds for collapsing
+  const COLLAPSE_THRESHOLD = 800 // Characters
+  const PREVIEW_LENGTH = 400 // Characters for preview
+
+  // Only collapse if content is longer than threshold
+  const shouldCollapse = contentLength > COLLAPSE_THRESHOLD
+
+  // Create preview content - try to end at a sentence or paragraph break
+  const previewContent = useMemo(() => {
+    if (!shouldCollapse) return content
+
+    let preview = content.substring(0, PREVIEW_LENGTH)
+
+    // Try to end at a sentence or paragraph break
+    const lastPeriod = preview.lastIndexOf('.')
+    const lastNewline = preview.lastIndexOf('\n')
+
+    // Find the best breakpoint - prefer sentence end, then paragraph break
+    let breakpoint = PREVIEW_LENGTH
+    if (lastPeriod > breakpoint * 0.7) { // At least 70% of desired length
+      breakpoint = lastPeriod + 1 // Include the period
+    } else if (lastNewline > breakpoint * 0.7) {
+      breakpoint = lastNewline
+    }
+
+    return content.substring(0, breakpoint) + (shouldCollapse ? '...' : '')
+  }, [content, shouldCollapse])
+
+  if (!shouldCollapse) {
+    // If content is short, just render it normally
+    return (
+      <MarkdownRenderer
+        content={content}
+        isDarkTheme={isDarkTheme}
+        remarkPlugins={remarkPlugins}
+        copyToClipboard={copyToClipboard}
+        copied={copied}
+      />
+    )
+  }
+
+  return (
+    <Collapsible
+      open={isExpanded}
+      onOpenChange={setIsExpanded}
+      className="relative transition-all duration-300"
+    >
+      <div className="relative">
+        {/* Preview content when collapsed */}
+        {!isExpanded && (
+          <div className="relative">
+            <MarkdownRenderer
+              content={previewContent}
+              isDarkTheme={isDarkTheme}
+              remarkPlugins={remarkPlugins}
+              copyToClipboard={copyToClipboard}
+              copied={copied}
+            />
+            <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none"></div>
+          </div>
+        )}
+
+        {/* Full content when expanded */}
+        <CollapsibleContent className="transition-all duration-300 ease-in-out">
+          <MarkdownRenderer
+            content={content}
+            isDarkTheme={isDarkTheme}
+            remarkPlugins={remarkPlugins}
+            copyToClipboard={copyToClipboard}
+            copied={copied}
+          />
+        </CollapsibleContent>
+
+        {/* Toggle button */}
+        <div className="flex justify-center mt-2">
+          <CollapsibleTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 px-3 rounded-full text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all"
+            >
+              {isExpanded ? (
+                <>
+                  <ChevronUp className="h-3.5 w-3.5 mr-1" />
+                  Show less
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-3.5 w-3.5 mr-1" />
+                  Show more ({Math.round(contentLength / 100) / 10}k characters)
+                </>
+              )}
+            </Button>
+          </CollapsibleTrigger>
+        </div>
+      </div>
+    </Collapsible>
+  )
+})
+CollapsibleUserMessage.displayName = "CollapsibleUserMessage"
+
+// Memoize the message content component to prevent unnecessary re-renders
+  const messageContent = useMemo(() => {
+    if (!message.content && !message.thinkingContent) {
+      return <LoadingIndicator />
     }
 
     // Use extractedThinking if available, otherwise use message.thinkingContent
-    const thinkingContentToShow = extractedThinking || message.thinkingContent;
-    
+    const thinkingContentToShow = extractedThinking ?? message.thinkingContent;
+
     // Use cleanedContent if available (when we found thinking tags), otherwise use message.content
-    const contentToShow = cleanedContent || message.content;
+    const contentToShow = cleanedContent ?? message.content;
 
     return (
       <>
         {thinkingContentToShow && (
           <ThinkingContent content={thinkingContentToShow} />
         )}
-        
+
         {contentToShow && (
           <div className="transform transition-opacity duration-300 ease-in-out">
-            <ContentRenderer
-              content={contentToShow}
-              isDarkTheme={isDarkTheme}
-              isStreaming={isStreaming}
-              remarkPlugins={remarkPlugins}
-              copyToClipboard={copyToClipboard}
-              copied={copied}
-            />
+            {/* Use CollapsibleUserMessage for user messages only */}
+            {message.role === "user" ? (
+              <CollapsibleUserMessage
+                content={contentToShow}
+                isDarkTheme={isDarkTheme}
+                remarkPlugins={remarkPlugins}
+                copyToClipboard={copyToClipboard}
+                copied={copied}
+              />
+            ) : (
+              <ContentRenderer
+                content={contentToShow}
+                isDarkTheme={isDarkTheme}
+                isStreaming={isStreaming}
+                remarkPlugins={remarkPlugins}
+                copyToClipboard={copyToClipboard}
+                copied={copied}
+              />
+            )}
           </div>
         )}
       </>
@@ -1415,13 +1553,15 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
   }, [
     message.content,
     message.thinkingContent,
+    message.role,
     isDarkTheme,
     isStreaming,
-    remarkPlugins,
     copyToClipboard,
     copied,
     extractedThinking,
-    cleanedContent
+    cleanedContent,
+    LoadingIndicator,
+    CollapsibleUserMessage
   ])
 
   // Cleanup effect for audio resources when component unmounts
@@ -1432,7 +1572,7 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
       }
-      
+
       // Stop audio playback
       if (speechRef.current) {
         speechRef.current.pause();
@@ -1440,7 +1580,7 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
         speechRef.current.onerror = null;
         speechRef.current = null;
       }
-      
+
       // Clean up audio URLs
       audioQueue.forEach(url => {
         if (url.startsWith('blob:')) {
@@ -1471,8 +1611,9 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
         </div>
       )}
 
-      <div
+      <article
         ref={messageRef}
+        aria-label={`${message.role} message`}
         className={cn(
           "flex gap-4 px-2 py-6 relative group transition-all duration-300",
           isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2",
@@ -1547,7 +1688,13 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
                     <span className="sr-only">{isPlaying ? "Pause" : "Play"}</span>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>{isPlaying ? "Pause" : (isTtsLoading ? "Loading..." : "Play")}</TooltipContent>
+                <TooltipContent>
+                  {(() => {
+                    if (isPlaying) return "Pause";
+                    if (isTtsLoading) return "Loading...";
+                    return "Play";
+                  })()}
+                </TooltipContent>
               </Tooltip>
 
               {/* Copy button */}
@@ -1613,19 +1760,23 @@ export function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, o
             {isPlaying && (
               <div className="mt-4 p-3 bg-muted rounded-md">
                 <p className="text-xs text-muted-foreground mb-2">Debug audio player (can you hear this?):</p>
-                <audio 
-                  ref={debugAudioPlayerRef} 
-                  controls 
-                  autoPlay 
-                  className="w-full" 
+                <audio
+                  ref={debugAudioPlayerRef}
+                  controls
+                  autoPlay
+                  className="w-full"
                   onError={(e) => console.error("Audio player error:", e)}
-                />
+                >
+                  <track kind="captions" src="" label="No captions available" />
+                </audio>
               </div>
             )}
           </div>
         </div>
-      </div>
+      </article>
     </TooltipProvider>
   )
-}
+});
+
+ChatMessage.displayName = "ChatMessage";
 

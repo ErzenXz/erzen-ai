@@ -24,6 +24,7 @@ export interface AIModel {
   description: string;
   model: string;
   type: string;
+  createdAt: string;
 }
 
 export interface AuthResponse {

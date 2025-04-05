@@ -87,19 +87,19 @@ import {
 import { cn } from "@/lib/utils"
 
 export function ProjectWorkspace() {
-  const { 
-    currentProject, 
-    projectFiles, 
-    saveFile, 
-    loadFile, 
-    currentThread, 
-    fetchFileVersions, 
-    revertToVersion, 
-    processAIInstruction, 
-    createFile, 
-    renameFile, 
+  const {
+    currentProject,
+    projectFiles,
+    saveFile,
+    loadFile,
+    currentThread,
+    fetchFileVersions,
+    revertToVersion,
+    processAIInstruction,
+    createFile,
+    renameFile,
     deleteFile,
-    isLoading: projectIsLoading 
+    isLoading: projectIsLoading
   } = useProject()
   const { theme, setTheme } = useTheme()
   const [activeFilePath, setActiveFilePath] = React.useState<string | undefined>()
@@ -137,7 +137,7 @@ export function ProjectWorkspace() {
   // Unsaved changes tracking
   const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false)
   const [originalContent, setOriginalContent] = React.useState("")
-  
+
   // Theme state
   const [selectedEditorTheme, setSelectedEditorTheme] = React.useState<ThemeOption>(
     editorThemes.find(t => t.value === "black") || editorThemes[0]
@@ -279,10 +279,10 @@ export function ProjectWorkspace() {
       const pathParts = activeFilePath.split("/")
       pathParts.pop() // Remove the filename
       const parentPath = pathParts.join("/")
-      
+
       // Construct new path
       const newFilePath = parentPath ? `${parentPath}/${newPath}` : newPath
-      
+
       // Use renameFile from useProject
       await renameFile(activeFilePath, newFilePath)
 
@@ -357,7 +357,7 @@ export function ProjectWorkspace() {
     try {
       // Use the new revertToVersion function from useProject hook
       await revertToVersion(activeFilePath, Number.parseInt(versionId));
-      
+
       // Refresh the file content (will be handled by revertToVersion)
       const file = projectFiles.find((f) => f.path === activeFilePath);
       if (file) {
@@ -558,17 +558,14 @@ export function ProjectWorkspace() {
   // Show loading state while project data is being prepared
   if (isLoading) {
     return (
-      <div className="flex h-full w-full items-center justify-center bg-background/60 backdrop-blur-sm">
+      <div className="flex h-full w-full items-center justify-center bg-background">
         <div className="text-center flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="absolute -inset-10 bg-primary/5 blur-xl rounded-full"></div>
-            <div className="relative flex items-center justify-center w-20 h-20 rounded-xl bg-primary/10 backdrop-blur-sm">
-              <Loader2 className="h-10 w-10 text-primary animate-spin" />
-            </div>
+          <div className="w-16 h-16 rounded-md bg-muted/50 flex items-center justify-center">
+            <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
           </div>
           <div>
             <h3 className="text-xl font-medium mb-1">Loading {currentProject.name}</h3>
-            <p className="text-muted-foreground text-sm">Preparing your workspace...</p>
+            <p className="text-muted-foreground">Preparing your workspace...</p>
           </div>
         </div>
       </div>
@@ -580,14 +577,11 @@ export function ProjectWorkspace() {
 
   return (
     <div className="h-full flex flex-col bg-background">
-      <div className="border-b bg-muted/10 backdrop-blur-sm">
+      <div className="border-b bg-background/80 backdrop-blur-sm">
         <div className="flex items-center justify-between px-4 py-2.5">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-primary"></div>
-              <h2 className="text-lg font-semibold truncate max-w-[200px]">{currentProject.name}</h2>
-            </div>
-            <Badge variant="outline" className="text-xs bg-primary/5 text-primary border-primary/20">
+            <h2 className="text-lg font-medium truncate max-w-[200px]">{currentProject.name}</h2>
+            <Badge variant="outline" className="text-xs bg-muted/50 text-muted-foreground border-border">
               {fileCount} files
             </Badge>
           </div>
@@ -597,29 +591,35 @@ export function ProjectWorkspace() {
             onValueChange={(value) => handleSwitchTab(value as "editor" | "threads")}
             className="mx-auto"
           >
-            <TabsList className="grid w-[320px] grid-cols-2 p-1 bg-muted/20 backdrop-blur-sm">
-              <TabsTrigger value="editor" className="flex items-center gap-1.5 px-3 rounded-md data-[state=active]:bg-background/80">
+            <TabsList className="grid w-[280px] grid-cols-2 p-1 border rounded-md">
+              <TabsTrigger
+                value="editor"
+                className="flex items-center gap-1.5 px-3 rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+              >
                 <FileSymlink className="h-3.5 w-3.5" />
-                Code Editor
+                Editor
               </TabsTrigger>
-              <TabsTrigger value="threads" className="flex items-center gap-1.5 px-3 rounded-md data-[state=active]:bg-background/80">
+              <TabsTrigger
+                value="threads"
+                className="flex items-center gap-1.5 px-3 rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+              >
                 <MessageSquare className="h-3.5 w-3.5" />
-                AI Threads
+                Threads
               </TabsTrigger>
             </TabsList>
           </Tabs>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Popover open={showThemeMenu} onOpenChange={setShowThemeMenu}>
                     <PopoverTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md">
                         <Palette className="h-4 w-4" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="p-0 w-48" side="bottom" align="center">
+                    <PopoverContent className="p-0 w-48 shadow-md border" side="bottom" align="center">
                       <CommandUI>
                         <CommandInput placeholder="Search themes..." />
                         <CommandList>
@@ -646,16 +646,16 @@ export function ProjectWorkspace() {
                     </PopoverContent>
                   </Popover>
                 </TooltipTrigger>
-                <TooltipContent>Editor Theme</TooltipContent>
+                <TooltipContent>Theme</TooltipContent>
               </Tooltip>
 
               {activeFilePath && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button 
+                    <Button
                       variant={isPreviewMode ? "default" : "ghost"}
-                      size="icon" 
-                      className="h-8 w-8 rounded-full"
+                      size="icon"
+                      className="h-8 w-8 rounded-md"
                       onClick={togglePreviewMode}
                     >
                       {isPreviewMode ? (
@@ -671,36 +671,20 @@ export function ProjectWorkspace() {
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md">
                     <Terminal className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Terminal</TooltipContent>
               </Tooltip>
+              <div className="h-4 w-px bg-border mx-1"></div>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                    <Github className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>GitHub Repository</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                    <UserPlus className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Add Collaborator</TooltipContent>
-              </Tooltip>
-              <div className="h-4 w-px bg-border/50 mx-1"></div>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md">
                     <Settings className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Project Settings</TooltipContent>
+                <TooltipContent>Settings</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>
@@ -711,13 +695,15 @@ export function ProjectWorkspace() {
         {activeTab === "editor" ? (
           <ResizablePanelGroup direction="horizontal" className="h-full">
             <ResizablePanel defaultSize={20} minSize={15} maxSize={30} className="border-r bg-background">
-              <div className="p-2 border-b bg-muted/10 flex items-center justify-between">
-                <div className="text-xs font-medium text-muted-foreground">Project Files</div>
+              <div className="p-2 border-b flex items-center justify-between">
+                <div className="text-xs font-medium">
+                  Files
+                </div>
                 <div className="flex items-center gap-1">
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md">
+                        <Button variant="ghost" size="icon" className="h-6 w-6 rounded-sm">
                           <Plus className="h-3.5 w-3.5" />
                         </Button>
                       </TooltipTrigger>
@@ -727,7 +713,7 @@ export function ProjectWorkspace() {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md">
+                        <Button variant="ghost" size="icon" className="h-6 w-6 rounded-sm">
                           <FolderPlus className="h-3.5 w-3.5" />
                         </Button>
                       </TooltipTrigger>
@@ -736,15 +722,17 @@ export function ProjectWorkspace() {
                   </TooltipProvider>
                 </div>
               </div>
-              <FileTree
-                files={projectFiles}
-                activeFile={activeFilePath}
-                onSelectFile={setActiveFilePath}
-                onCreateFile={handleShowNewFileDialog}
-                onCreateFolder={handleShowNewFolderDialog}
-                onDeleteFile={handleShowDeleteDialog}
-                onRenameFile={handleShowRenameDialog}
-              />
+              <div className="overflow-hidden">
+                <FileTree
+                  files={projectFiles}
+                  activeFile={activeFilePath}
+                  onSelectFile={setActiveFilePath}
+                  onCreateFile={handleShowNewFileDialog}
+                  onCreateFolder={handleShowNewFolderDialog}
+                  onDeleteFile={handleShowDeleteDialog}
+                  onRenameFile={handleShowRenameDialog}
+                />
+              </div>
             </ResizablePanel>
 
             <ResizableHandle withHandle className="bg-transparent before:bg-border" />
@@ -752,10 +740,10 @@ export function ProjectWorkspace() {
             <ResizablePanel defaultSize={80} className="flex flex-col">
               {activeFilePath ? (
                 <div className="flex flex-col h-full">
-                  <div className="flex items-center justify-between border-b p-2 bg-muted/10 backdrop-blur-sm">
+                  <div className="flex items-center justify-between border-b p-2">
                     <div className="flex items-center gap-2 text-sm">
-                      <div className="flex items-center justify-center h-5 w-5 rounded-md bg-blue-500/10">
-                        <FileCode className="w-3.5 h-3.5 text-blue-500" />
+                      <div className="flex items-center justify-center h-5 w-5 rounded-sm bg-muted/50">
+                        <FileCode className="w-3.5 h-3.5" />
                       </div>
                       <span className="font-medium truncate max-w-[260px] md:max-w-[400px] lg:max-w-[500px]">
                         {activeFilePath}
@@ -772,41 +760,23 @@ export function ProjectWorkspace() {
                     <div className="flex items-center gap-2">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs rounded-md">
-                            <Code className="h-3.5 w-3.5" />
+                          <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs rounded-sm">
                             <span>Actions</span>
                             <ChevronDown className="h-3 w-3 opacity-50" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-52">
-                          <DropdownMenuLabel>File Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={handleFileSave}
                             disabled={!hasUnsavedChanges || isSaving}
-                            className={hasUnsavedChanges ? "text-primary font-medium" : ""}
                           >
-                            {isSaving ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : hasUnsavedChanges ? (
-                              <Save className="h-4 w-4 mr-2 text-primary" />
-                            ) : (
-                              <Check className="h-4 w-4 mr-2" />
-                            )}
-                            {isSaving ? "Saving..." : hasUnsavedChanges ? "Save" : "Saved"}
+                            <Save className="h-4 w-4 mr-2" />
+                            Save
                             <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={handleShowVersionHistory}>
                             <History className="h-4 w-4 mr-2" />
                             Version History
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Copy className="h-4 w-4 mr-2" />
-                            Duplicate
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Download className="h-4 w-4 mr-2" />
-                            Download
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => handleShowRenameDialog(activeFilePath)}>
@@ -829,7 +799,7 @@ export function ProjectWorkspace() {
                           size="sm"
                           onClick={handleFileSave}
                           disabled={isSaving}
-                          className="h-7 px-3 rounded-md bg-primary/80 hover:bg-primary"
+                          className="h-7 px-3 rounded-sm"
                         >
                           {isSaving ? (
                             <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
@@ -866,28 +836,28 @@ export function ProjectWorkspace() {
                   </div>
 
                   {/* AI Assistant Input */}
-                  <div className="border-t p-3 px-4 bg-muted/5 backdrop-blur-sm">
+                  <div className="border-t p-3 px-4">
                     <form onSubmit={handleAgentSubmit} className="flex gap-2 w-full max-w-5xl mx-auto">
                       <div className="relative flex-1 min-w-0">
-                        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 flex items-center justify-center w-5 h-5 rounded-md bg-primary/10">
-                          <Cpu className="h-3 w-3 text-primary" />
+                        <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+                          <Cpu className="h-4 w-4 text-muted-foreground" />
                         </div>
                         <Input
-                          placeholder="Ask AI to help with your code... (e.g., 'Create a login form')"
+                          placeholder="Ask AI to help with your code..."
                           value={agentInstruction}
                           onChange={(e) => setAgentInstruction(e.target.value)}
-                          className="flex-1 min-w-0 text-sm border-primary/10 focus-visible:ring-primary/20 pl-9 pr-16 py-2 h-10 rounded-xl shadow-sm"
+                          className="flex-1 min-w-0 text-sm pl-9 pr-10 py-2 h-9 rounded-md"
                         />
                         <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                          <kbd className="hidden md:inline-flex items-center gap-1 px-2 border rounded text-xs font-mono text-muted-foreground bg-muted/30">
+                          <kbd className="hidden md:inline-flex items-center gap-1 px-1.5 border rounded text-xs font-mono text-muted-foreground">
                             <LucideCommand className="h-3 w-3" />
-                            <span>Enter</span>
+                            <span>↵</span>
                           </kbd>
                         </div>
                       </div>
                       <Button
                         type="submit"
-                        className="flex-shrink-0 bg-primary/80 hover:bg-primary transition-colors shadow-md rounded-xl"
+                        className="flex-shrink-0 rounded-md h-9"
                         disabled={isProcessing || !agentInstruction.trim()}
                       >
                         {isProcessing ? (
@@ -903,10 +873,9 @@ export function ProjectWorkspace() {
               ) : (
                 <div className="flex h-full w-full items-center justify-center">
                   <div className="text-center max-w-md px-6">
-                    <div className="relative mb-6">
-                      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/10 to-primary/20 blur-3xl rounded-full opacity-50"></div>
-                      <div className="bg-gradient-to-br from-muted/20 to-muted/40 backdrop-blur-md w-20 h-20 rounded-2xl flex items-center justify-center mx-auto shadow-xl shadow-primary/5">
-                        <FileX className="h-10 w-10 text-primary/70" />
+                    <div className="mb-6">
+                      <div className="w-20 h-20 bg-muted/50 rounded-md flex items-center justify-center mx-auto">
+                        <FileX className="h-10 w-10 text-muted-foreground" />
                       </div>
                     </div>
                     <h3 className="text-xl font-medium mb-3">No file selected</h3>
@@ -916,12 +885,16 @@ export function ProjectWorkspace() {
                     <div className="flex justify-center gap-3">
                       <Button
                         onClick={() => handleShowNewFileDialog("")}
-                        className="rounded-xl bg-primary/80 hover:bg-primary transition-colors shadow-md"
+                        className="rounded-md"
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         New File
                       </Button>
-                      <Button variant="outline" onClick={() => handleShowNewFolderDialog("")} className="rounded-xl">
+                      <Button
+                        variant="outline"
+                        onClick={() => handleShowNewFolderDialog("")}
+                        className="rounded-md"
+                      >
                         <FolderPlus className="h-4 w-4 mr-2" />
                         New Folder
                       </Button>

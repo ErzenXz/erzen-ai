@@ -18,7 +18,6 @@ import {
   MessageSquare,
   Plus,
   ArrowUpRight,
-  Sparkles,
   Loader2,
   Filter,
   SortAsc,
@@ -108,48 +107,31 @@ export function ProjectGrid({
     }, 800)
   }
 
-  // Generate a gradient based on project name
-  const getProjectGradient = (name: string) => {
-    // Simple hash function to generate consistent colors for the same name
-    const hash = name.split("").reduce((acc, char) => {
-      return char.charCodeAt(0) + ((acc << 5) - acc)
-    }, 0)
 
-    const h1 = Math.abs(hash % 360)
-    const h2 = (h1 + 40) % 360
-    const s = 75 + (hash % 15)
-    const l = 60 + (hash % 15)
 
-    return `linear-gradient(135deg, hsl(${h1}, ${s}%, ${l}%), hsl(${h2}, ${s}%, ${l - 10}%))`
-  }
-
-  // Enhanced placeholder loading projects
+  // Simple placeholder loading projects
   const loadingPlaceholders = Array(6)
     .fill(0)
     .map((_, i) => (
-      <Card 
-        key={`placeholder-${i}`} 
-        className="overflow-hidden border group bg-card/50 backdrop-blur-sm"
+      <Card
+        key={`placeholder-${i}`}
+        className="overflow-hidden border"
       >
-        <div className="h-2 bg-muted/60 animate-pulse"></div>
-        <CardContent className="p-5 flex flex-col gap-3 h-full">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-lg bg-muted/80 animate-pulse"></div>
-            <div className="space-y-2 flex-1">
-              <div className="h-5 w-3/4 bg-muted/80 animate-pulse rounded-md"></div>
-            </div>
-            <div className="w-6 h-6 rounded-full bg-muted/60 animate-pulse"></div>
+        <CardContent className="p-6 flex flex-col gap-4 h-full">
+          <div className="flex items-center justify-between">
+            <div className="h-6 w-1/2 bg-muted/40 animate-pulse rounded-md"></div>
+            <div className="w-6 h-6 rounded-full bg-muted/40 animate-pulse"></div>
           </div>
           <div className="space-y-2 mt-1">
-            <div className="h-4 w-full bg-muted/60 animate-pulse rounded-md"></div>
-            <div className="h-4 w-3/4 bg-muted/60 animate-pulse rounded-md"></div>
+            <div className="h-4 w-full bg-muted/40 animate-pulse rounded-md"></div>
+            <div className="h-4 w-3/4 bg-muted/40 animate-pulse rounded-md"></div>
           </div>
           <div className="mt-auto pt-4 flex flex-col gap-3">
             <div className="flex gap-2">
-              <div className="h-5 w-20 bg-muted/60 animate-pulse rounded-full"></div>
-              <div className="h-5 w-20 bg-muted/60 animate-pulse rounded-full"></div>
+              <div className="h-5 w-20 bg-muted/40 animate-pulse rounded-md"></div>
+              <div className="h-5 w-20 bg-muted/40 animate-pulse rounded-md"></div>
             </div>
-            <div className="h-4 w-28 bg-muted/60 animate-pulse rounded-md"></div>
+            <div className="h-4 w-28 bg-muted/40 animate-pulse rounded-md"></div>
           </div>
         </CardContent>
       </Card>
@@ -157,38 +139,41 @@ export function ProjectGrid({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b bg-muted/10 backdrop-blur-sm sticky top-0 z-10">
+      <div className="p-6 border-b sticky top-0 z-10 bg-background/80 backdrop-blur-sm">
         <div className="flex flex-col gap-4 max-w-7xl mx-auto">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">Projects</h1>
-            <Button onClick={onCreateProject} className="gap-2 rounded-xl bg-primary/90 hover:bg-primary shadow-sm transition-all duration-150 hover:shadow">
+            <h1 className="text-3xl font-bold">Projects</h1>
+            <Button
+              onClick={onCreateProject}
+              className="gap-2 rounded-xl bg-primary hover:bg-primary/90 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 px-5 py-2.5 h-auto"
+            >
               <Plus className="h-4 w-4" />
               New Project
             </Button>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-            <Tabs 
-              value={filter} 
-              onValueChange={(v) => setFilter(v as any)} 
+            <Tabs
+              value={filter}
+              onValueChange={(v) => setFilter(v as any)}
               className="w-full sm:w-auto"
             >
-              <TabsList className="grid w-full sm:w-auto grid-cols-3 bg-muted/20 backdrop-blur-sm p-1 rounded-xl">
-                <TabsTrigger 
-                  value="all" 
-                  className="px-4 data-[state=active]:bg-background/80 data-[state=active]:shadow-sm rounded-lg transition-all duration-150"
+              <TabsList className="grid w-full sm:w-auto grid-cols-3 bg-muted/5 p-1 rounded-lg border">
+                <TabsTrigger
+                  value="all"
+                  className="px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all duration-200"
                 >
                   All
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="recent" 
-                  className="px-4 data-[state=active]:bg-background/80 data-[state=active]:shadow-sm rounded-lg transition-all duration-150"
+                <TabsTrigger
+                  value="recent"
+                  className="px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all duration-200"
                 >
                   Recent
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="starred" 
-                  className="px-4 data-[state=active]:bg-background/80 data-[state=active]:shadow-sm rounded-lg transition-all duration-150"
+                <TabsTrigger
+                  value="starred"
+                  className="px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all duration-200"
                 >
                   Starred
                 </TabsTrigger>
@@ -202,30 +187,36 @@ export function ProjectGrid({
                   placeholder="Search projects..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 w-full bg-background/60 backdrop-blur-sm border-muted focus-visible:ring-primary/20 rounded-xl"
+                  className="pl-9 w-full border rounded-md focus-visible:ring-1 focus-visible:ring-primary"
                 />
               </div>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    className="bg-background/60 backdrop-blur-sm border-muted hover:bg-background/80 rounded-xl"
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="rounded-md border"
                   >
                     <Filter className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="rounded-xl border-muted/50 shadow-lg">
-                  <DropdownMenuItem onClick={() => setSortBy("updated")}>
+                <DropdownMenuContent align="end" className="rounded-md border shadow-md">
+                  <DropdownMenuItem
+                    onClick={() => setSortBy("updated")}
+                  >
                     <SortAsc className="mr-2 h-4 w-4" />
                     <span>Sort by Last Updated</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSortBy("name")}>
+                  <DropdownMenuItem
+                    onClick={() => setSortBy("name")}
+                  >
                     <SortAsc className="mr-2 h-4 w-4" />
                     <span>Sort by Name</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSortBy("created")}>
+                  <DropdownMenuItem
+                    onClick={() => setSortBy("created")}
+                  >
                     <SortAsc className="mr-2 h-4 w-4" />
                     <span>Sort by Created Date</span>
                   </DropdownMenuItem>
@@ -256,11 +247,13 @@ export function ProjectGrid({
                   exit={{ opacity: 0, y: 20 }}
                   className="flex flex-col items-center justify-center py-16 text-center"
                 >
-                  <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-muted/30 to-muted/10 flex items-center justify-center mb-4 shadow-xl shadow-primary/5 border border-border/50 backdrop-blur-sm">
-                    <FolderRoot className="h-12 w-12 text-muted-foreground opacity-70" />
+                  <div className="mb-6">
+                    <div className="w-20 h-20 rounded-md bg-muted/50 flex items-center justify-center">
+                      <FolderRoot className="h-10 w-10 text-muted-foreground" />
+                    </div>
                   </div>
-                  <h3 className="text-2xl font-medium mb-2 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">No projects found</h3>
-                  <p className="text-muted-foreground max-w-md mb-8">
+                  <h3 className="text-2xl font-medium mb-3">No projects found</h3>
+                  <p className="text-muted-foreground max-w-md mb-6">
                     {searchQuery
                       ? `No projects matching "${searchQuery}"`
                       : filter === "starred"
@@ -269,11 +262,11 @@ export function ProjectGrid({
                           ? "No recent projects found"
                           : "Create your first project to get started"}
                   </p>
-                  <Button 
+                  <Button
                     onClick={onCreateProject}
-                    className="rounded-xl shadow-sm transition-all duration-150 gap-2 px-6 py-6 h-auto text-base font-medium hover:shadow bg-primary/90 hover:bg-primary"
+                    className="gap-2"
                   >
-                    <Plus className="mr-2 h-5 w-5" />
+                    <Plus className="mr-1 h-4 w-4" />
                     Create Project
                   </Button>
                 </motion.div>
@@ -288,51 +281,30 @@ export function ProjectGrid({
                     <motion.div
                       key={project.id}
                       initial={{ opacity: 0, y: 20 }}
-                      animate={{ 
-                        opacity: 1, 
+                      animate={{
+                        opacity: 1,
                         y: 0,
-                        transition: { delay: index * 0.05 } 
+                        transition: { delay: index * 0.05 }
                       }}
                     >
-                      <Card 
+                      <Card
                         className={cn(
                           "h-full overflow-hidden border group cursor-pointer transition-all duration-200",
-                          "hover:shadow-md hover:border-primary/20 hover:bg-accent/30 hover:-translate-y-0.5",
-                          "dark:hover:bg-accent/10 dark:hover:shadow-md dark:hover:shadow-primary/5",
+                          "hover:shadow hover:border-primary/20 hover:-translate-y-0.5",
                           isLoadingProject === project.id && "pointer-events-none opacity-80"
                         )}
                         onClick={() => handleProjectClick(project.id)}
                       >
-                        <div 
-                          className="h-2.5 w-full" 
-                          style={{ 
-                            background: project.thumbnail 
-                              ? `url(${project.thumbnail})` 
-                              : getProjectGradient(project.name)
-                          }}
-                        />
-                        <CardContent className="p-5 flex flex-col gap-3 h-full relative">
+                        <CardContent className="p-6 flex flex-col gap-4 h-full relative">
                           {isLoadingProject === project.id && (
-                            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
-                              <div className="relative">
-                                <div className="absolute inset-0 bg-primary/5 blur-xl rounded-full"></div>
-                                <Loader2 className="h-8 w-8 animate-spin text-primary relative z-10" />
-                              </div>
+                            <div className="absolute inset-0 bg-background/80 z-10 flex items-center justify-center">
+                              <Loader2 className="h-6 w-6 animate-spin text-primary" />
                             </div>
                           )}
-                          
+
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3 truncate">
-                              <div 
-                                className="w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center"
-                                style={{ 
-                                  background: getProjectGradient(project.name),
-                                  boxShadow: "0 8px 16px -2px rgba(0,0,0,0.1)"
-                                }}
-                              >
-                                <FolderRoot className="text-white w-6 h-6 drop-shadow-sm" />
-                              </div>
-                              <div className="font-medium text-lg truncate overflow-hidden">{project.name}</div>
+                            <div className="truncate">
+                              <div className="font-medium text-xl truncate overflow-hidden">{project.name}</div>
                             </div>
 
                             {onToggleStar && (
@@ -341,10 +313,10 @@ export function ProjectGrid({
                                   e.stopPropagation()
                                   onToggleStar(project.id, !project.starred)
                                 }}
-                                className="text-muted-foreground hover:text-amber-400 transition-colors focus:outline-none flex-shrink-0 ml-2"
+                                className="text-muted-foreground hover:text-amber-400 transition-colors focus:outline-none flex-shrink-0 ml-2 p-1.5 rounded-full hover:bg-amber-500/10"
                               >
                                 {project.starred ? (
-                                  <Star className="h-5 w-5 fill-amber-400 text-amber-400 drop-shadow-sm" />
+                                  <Star className="h-5 w-5 fill-amber-400 text-amber-400 drop-shadow-sm animate-pulse-soft" />
                                 ) : (
                                   <StarOff className="h-5 w-5" />
                                 )}
@@ -353,21 +325,21 @@ export function ProjectGrid({
                           </div>
 
                           <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem] break-words">
-                            {project.description || "No description provided for this project"}
+                            {project.description ?? "No description provided for this project"}
                           </p>
 
                           <div className="mt-auto pt-4 flex flex-col gap-3">
                             <div className="flex flex-wrap gap-2">
-                              <div className="rounded-full px-2.5 py-0.5 text-xs bg-primary/10 text-primary flex items-center gap-1.5">
+                              <div className="rounded-md px-2 py-0.5 text-xs bg-muted/50 text-muted-foreground flex items-center gap-1.5">
                                 <MessageSquare className="h-3 w-3" />
                                 {project._count?.threads ?? 0} threads
                               </div>
-                              <div className="rounded-full px-2.5 py-0.5 text-xs bg-primary/5 text-foreground/70 flex items-center gap-1.5">
+                              <div className="rounded-md px-2 py-0.5 text-xs bg-muted/50 text-muted-foreground flex items-center gap-1.5">
                                 <FileCode className="h-3 w-3" />
                                 {project._count?.files ?? 0} files
                               </div>
                               {project.collaborators && project.collaborators > 0 && (
-                                <div className="rounded-full px-2.5 py-0.5 text-xs bg-primary/10 text-primary flex items-center gap-1.5">
+                                <div className="rounded-md px-2 py-0.5 text-xs bg-muted/50 text-muted-foreground flex items-center gap-1.5">
                                   <Users className="h-3 w-3" />
                                   {project.collaborators} collaborator{project.collaborators > 1 ? "s" : ""}
                                 </div>
@@ -378,13 +350,13 @@ export function ProjectGrid({
                               Updated {new Date(project.updatedAt).toLocaleDateString()}
                             </div>
                           </div>
-                          
-                          <div 
-                            className="absolute right-3 bottom-3 opacity-0 group-hover:opacity-100 transition-all duration-200"
+
+                          <div
+                            className="absolute right-4 bottom-4 opacity-0 group-hover:opacity-100 transition-all duration-200"
                           >
-                            <div className="w-8 h-8 rounded-full bg-primary/10 hover:bg-primary/20 flex items-center justify-center transition-colors">
-                              <ArrowUpRight className="h-4 w-4 text-primary" />
-                            </div>
+                            <Button size="sm" className="rounded-md h-8 w-8 p-0">
+                              <ArrowUpRight className="h-4 w-4" />
+                            </Button>
                           </div>
                         </CardContent>
                       </Card>
@@ -393,31 +365,34 @@ export function ProjectGrid({
 
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
-                    animate={{ 
-                      opacity: 1, 
+                    animate={{
+                      opacity: 1,
                       y: 0,
-                      transition: { delay: filteredProjects.length * 0.05 } 
+                      transition: { delay: filteredProjects.length * 0.05 }
                     }}
                   >
                     <Card
-                      className="h-full overflow-hidden border-dashed border-2 hover:border-primary/30 cursor-pointer transition-all hover:shadow-md group bg-muted/5 hover:bg-primary/5 hover:-translate-y-0.5"
+                      className="h-full overflow-hidden border-dashed border cursor-pointer transition-all hover:shadow group hover:-translate-y-0.5"
                       onClick={onCreateProject}
                     >
                       <div className="flex items-center justify-center h-full p-8">
                         <div className="text-center">
-                          <div className="bg-gradient-to-br from-primary/20 to-primary/5 h-20 w-20 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-md">
-                            <Plus className="h-10 w-10 text-primary group-hover:text-primary/90 transition-colors" />
-                          </div>
-                          <h3 className="text-xl font-medium mb-3 text-foreground">Create New Project</h3>
-                          <p className="text-sm text-muted-foreground mb-5">
-                            Start a new AI-assisted project
-                          </p>
-                          <div className="opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-y-0">
-                            <div className="inline-flex items-center text-sm text-primary gap-1.5 font-medium">
-                              <span>Get started</span>
-                              <ArrowUpRight className="h-3.5 w-3.5" />
+                          <div className="mb-4">
+                            <div className="bg-muted/50 h-16 w-16 rounded-md flex items-center justify-center mx-auto">
+                              <Plus className="h-8 w-8 text-muted-foreground" />
                             </div>
                           </div>
+                          <h3 className="text-xl font-medium mb-2">Create New Project</h3>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Start a new AI-assisted project
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="opacity-0 group-hover:opacity-100 transition-all duration-200"
+                          >
+                            Get started
+                          </Button>
                         </div>
                       </div>
                     </Card>
