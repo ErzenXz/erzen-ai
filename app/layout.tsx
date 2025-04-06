@@ -18,8 +18,34 @@ const robotoMono = Roboto_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'ErzenAI - AI-powered content generation',
-  description: 'ErzenAI is a powerful AI tool that helps you generate content, code, and more with ease.',
+  title: {
+    default: 'ErzenAI',
+    template: '%s | ErzenAI'
+  },
+  description: 'Create professional content, generate high-quality code, and streamline your workflow with ErzenAI - the intelligent AI assistant for productivity and creativity.',
+  keywords: ['AI content generation', 'AI code assistant', 'productivity tool', 'ErzenAI', 'machine learning'],
+  creator: 'ErzenAI Team',
+  publisher: 'ErzenAI',
+  icons: {
+    icon: [
+      { url: '/icon0.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: 'any' }
+    ],
+    apple: [
+      { url: '/apple-icon.png', sizes: '180x180' },
+    ],
+    shortcut: '/favicon.ico',
+  },
+  manifest: '/manifest.json',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#171717' }
+  ],
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1
+  }
 };
 
 export default function RootLayout({
@@ -37,6 +63,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>
