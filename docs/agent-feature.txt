@@ -1,0 +1,1012 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  Put,
+} from '@nestjs/common';
+import { AgentService } from './agent.service';
+import { IHttpContext } from 'src/auth/models';
+import {
+  CreateAgentDto,
+  UpdateAgentDto,
+  CreateAgentStepDto,
+  UpdateAgentStepDto,
+  CreateAgentCredentialDto,
+  UpdateAgentCredentialDto,
+  CreateAgentVariableDto,
+  UpdateAgentVariableDto,
+  ExecuteAgentDto,
+  AgentExecutionResponseDto,
+} from './dto';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Auth } from 'src/auth/decorators/auth.decorator';
+import { HttpContext } from 'src/auth/decorators/headers.decorator';
+
+@ApiTags('Agents')
+@Controller('agents')
+export class AgentController {
+  constructor(private readonly agentService: AgentService) {}
+
+  @Post()
+  @ApiOperation({ summary: 'Create a new agent' })
+  @ApiResponse({ status: 201, description: 'The agent has been created' })
+  @Auth()
+  async createAgent(
+    @Body() createAgentDto: CreateAgentDto,
+    @HttpContext() context: IHttpContext,
+  ) {
+    return this.agentService.createAgent(createAgentDto, context.user.id);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Get all agents for the current user' })
+  @ApiResponse({ status: 200, description: 'List of agents' })
+  @Auth()
+  async getAgents(@HttpContext() context: IHttpContext) {
+    return this.agentService.getAgents(context.user.id);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get a specific agent by ID' })
+  @ApiResponse({ status: 200, description: 'Agent found' })
+  @ApiResponse({ status: 404, description: 'Agent not found' })
+  @Auth()
+  async getAgent(
+    @Param('id') id: string,
+    @HttpContext() context: IHttpContext,
+  ) {
+    return this.agentService.getAgent(id, context.user.id);
+  }
+
+  @Put(':id')
+  @ApiOperation({ summary: 'Update an existing agent' })
+  @ApiResponse({ status: 200, description: 'Agent updated' })
+  @ApiResponse({ status: 404, description: 'Agent not found' })
+  @Auth()
+  async updateAgent(
+    @Param('id') id: string,
+    @Body() updateAgentDto: UpdateAgentDto,
+    @HttpContext() context: IHttpContext,
+  ) {
+    return this.agentService.updateAgent(id, updateAgentDto, context.user.id);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete an agent' })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiResponse({ status: 204, description: 'Agent deleted' })
+  @ApiResponse({ status: 404, description: 'Agent not found' })
+  @Auth()
+  async deleteAgent(
+    @Param('id') id: string,
+    @HttpContext() context: IHttpContext,
+  ) {
+    await this.agentService.deleteAgent(id, context.user.id);
+  }
+
+  // Steps endpoints
+  @Post(':agentId/steps')
+  @ApiOperation({ summary: 'Add a step to an agent' })
+  @ApiResponse({ status: 201, description: 'Step added' })
+  @Auth()
+  async addStep(
+    @Param('agentId') agentId: string,
+    @Body() createStepDto: CreateAgentStepDto,
+    @HttpContext() context: IHttpContext,
+  ) {
+    return this.agentService.addStep(agentId, createStepDto, context.user.id);
+  }
+
+  @Put(':agentId/steps/:stepId')
+  @ApiOperation({ summary: 'Update a step' })
+  @ApiResponse({ status: 200, description: 'Step updated' })
+  @Auth()
+  async updateStep(
+    @Param('agentId') agentId: string,
+    @Param('stepId') stepId: string,
+    @Body() updateStepDto: UpdateAgentStepDto,
+    @HttpContext() context: IHttpContext,
+  ) {
+    return this.agentService.updateStep(
+      agentId,
+      stepId,
+      updateStepDto,
+      context.user.id,
+    );
+  }
+
+  @Delete(':agentId/steps/:stepId')
+  @ApiOperation({ summary: 'Delete a step' })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiResponse({ status: 204, description: 'Step deleted' })
+  @Auth()
+  async deleteStep(
+    @Param('agentId') agentId: string,
+    @Param('stepId') stepId: string,
+    @HttpContext() context: IHttpContext,
+  ) {
+    await this.agentService.deleteStep(agentId, stepId, context.user.id);
+  }
+
+  // Credentials endpoints
+  @Post(':agentId/credentials')
+  @ApiOperation({ summary: 'Add a credential to an agent' })
+  @ApiResponse({ status: 201, description: 'Credential added' })
+  @Auth()
+  async addCredential(
+    @Param('agentId') agentId: string,
+    @Body() createCredentialDto: CreateAgentCredentialDto,
+    @HttpContext() context: IHttpContext,
+  ) {
+    return this.agentService.addCredential(
+      agentId,
+      createCredentialDto,
+      context.user.id,
+    );
+  }
+
+  @Put(':agentId/credentials/:credentialId')
+  @ApiOperation({ summary: 'Update a credential' })
+  @ApiResponse({ status: 200, description: 'Credential updated' })
+  @Auth()
+  async updateCredential(
+    @Param('agentId') agentId: string,
+    @Param('credentialId') credentialId: string,
+    @Body() updateCredentialDto: UpdateAgentCredentialDto,
+    @HttpContext() context: IHttpContext,
+  ) {
+    return this.agentService.updateCredential(
+      agentId,
+      credentialId,
+      updateCredentialDto,
+      context.user.id,
+    );
+  }
+
+  @Delete(':agentId/credentials/:credentialId')
+  @ApiOperation({ summary: 'Delete a credential' })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiResponse({ status: 204, description: 'Credential deleted' })
+  @Auth()
+  async deleteCredential(
+    @Param('agentId') agentId: string,
+    @Param('credentialId') credentialId: string,
+    @HttpContext() context: IHttpContext,
+  ) {
+    await this.agentService.deleteCredential(
+      agentId,
+      credentialId,
+      context.user.id,
+    );
+  }
+
+  // Variables endpoints
+  @Post(':agentId/variables')
+  @ApiOperation({ summary: 'Add a variable to an agent' })
+  @ApiResponse({ status: 201, description: 'Variable added' })
+  @Auth()
+  async addVariable(
+    @Param('agentId') agentId: string,
+    @Body() createVariableDto: CreateAgentVariableDto,
+    @HttpContext() context: IHttpContext,
+  ) {
+    return this.agentService.addVariable(
+      agentId,
+      createVariableDto,
+      context.user.id,
+    );
+  }
+
+  @Put(':agentId/variables/:variableId')
+  @ApiOperation({ summary: 'Update a variable' })
+  @ApiResponse({ status: 200, description: 'Variable updated' })
+  @Auth()
+  async updateVariable(
+    @Param('agentId') agentId: string,
+    @Param('variableId') variableId: string,
+    @Body() updateVariableDto: UpdateAgentVariableDto,
+    @HttpContext() context: IHttpContext,
+  ) {
+    return this.agentService.updateVariable(
+      agentId,
+      variableId,
+      updateVariableDto,
+      context.user.id,
+    );
+  }
+
+  @Delete(':agentId/variables/:variableId')
+  @ApiOperation({ summary: 'Delete a variable' })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiResponse({ status: 204, description: 'Variable deleted' })
+  @Auth()
+  async deleteVariable(
+    @Param('agentId') agentId: string,
+    @Param('variableId') variableId: string,
+    @HttpContext() context: IHttpContext,
+  ) {
+    await this.agentService.deleteVariable(
+      agentId,
+      variableId,
+      context.user.id,
+    );
+  }
+
+  // Execution endpoint
+  @Post(':id/execute')
+  @ApiOperation({ summary: 'Execute an agent' })
+  @ApiResponse({
+    status: 200,
+    description: 'Agent executed successfully',
+    type: AgentExecutionResponseDto,
+  })
+  @Auth()
+  async executeAgent(
+    @Param('id') id: string,
+    @Body() executeAgentDto: ExecuteAgentDto,
+    @HttpContext() context: IHttpContext,
+  ): Promise<AgentExecutionResponseDto> {
+    return this.agentService.executeAgent(id, executeAgentDto, context.user.id);
+  }
+
+  // Execution history endpoints
+  @Get(':id/executions')
+  @ApiOperation({ summary: 'Get execution history for an agent' })
+  @ApiResponse({ status: 200, description: 'List of executions' })
+  @Auth()
+  async getExecutions(
+    @Param('id') id: string,
+    @HttpContext() context: IHttpContext,
+  ) {
+    return this.agentService.getExecutions(id, context.user.id);
+  }
+
+  @Get(':id/executions/:executionId')
+  @ApiOperation({ summary: 'Get a specific execution' })
+  @ApiResponse({ status: 200, description: 'Execution found' })
+  @Auth()
+  async getExecution(
+    @Param('id') id: string,
+    @Param('executionId') executionId: string,
+    @HttpContext() context: IHttpContext,
+  ) {
+    return this.agentService.getExecution(id, executionId, context.user.id);
+  }
+}
+
+
+--------------------------
+
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { AgentExecutionService } from './services/agent-execution.service';
+import { CredentialManagerService } from './services/credential-manager.service';
+import {
+  CreateAgentDto,
+  UpdateAgentDto,
+  CreateAgentStepDto,
+  UpdateAgentStepDto,
+  CreateAgentCredentialDto,
+  UpdateAgentCredentialDto,
+  CreateAgentVariableDto,
+  UpdateAgentVariableDto,
+  ExecuteAgentDto,
+  AgentExecutionResponseDto,
+} from './dto';
+
+@Injectable()
+export class AgentService {
+  private readonly logger = new Logger(AgentService.name);
+
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly agentExecutionService: AgentExecutionService,
+    private readonly credentialManagerService: CredentialManagerService,
+  ) {}
+
+  async createAgent(createAgentDto: CreateAgentDto, userId: string) {
+    return this.prismaService.agent.create({
+      data: {
+        name: createAgentDto.name,
+        description: createAgentDto.description,
+        userId,
+      },
+    });
+  }
+
+  async getAgents(userId: string) {
+    return this.prismaService.agent.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getAgent(id: string, userId: string) {
+    const agent = await this.prismaService.agent.findFirst({
+      where: { id, userId },
+      include: {
+        steps: {
+          orderBy: { order: 'asc' },
+        },
+        variables: true,
+        credentials: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            updatedAt: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+
+    if (!agent) {
+      throw new NotFoundException(`Agent with ID ${id} not found`);
+    }
+
+    return agent;
+  }
+
+  async updateAgent(
+    id: string,
+    updateAgentDto: UpdateAgentDto,
+    userId: string,
+  ) {
+    await this.verifyAgentOwnership(id, userId);
+
+    return this.prismaService.agent.update({
+      where: { id },
+      data: {
+        name: updateAgentDto.name,
+        description: updateAgentDto.description,
+      },
+    });
+  }
+
+  async deleteAgent(id: string, userId: string) {
+    await this.verifyAgentOwnership(id, userId);
+
+    // Delete in order to respect foreign key constraints
+    await this.prismaService.$transaction([
+      this.prismaService.agentCredential.deleteMany({
+        where: { agentId: id },
+      }),
+      this.prismaService.agentVariable.deleteMany({
+        where: { agentId: id },
+      }),
+      this.prismaService.agentStep.deleteMany({
+        where: { agentId: id },
+      }),
+      this.prismaService.agent.delete({
+        where: { id },
+      }),
+    ]);
+  }
+
+  // Steps management
+  async addStep(
+    agentId: string,
+    createStepDto: CreateAgentStepDto,
+    userId: string,
+  ) {
+    await this.verifyAgentOwnership(agentId, userId);
+
+    return this.prismaService.agentStep.create({
+      data: {
+        name: createStepDto.name,
+        description: createStepDto.description,
+        type: createStepDto.type,
+        config: createStepDto.config,
+        order: createStepDto.order,
+        nextOnSuccess: createStepDto.nextOnSuccess,
+        nextOnFailure: createStepDto.nextOnFailure,
+        agentId,
+      },
+    });
+  }
+
+  async updateStep(
+    agentId: string,
+    stepId: string,
+    updateStepDto: UpdateAgentStepDto,
+    userId: string,
+  ) {
+    await this.verifyAgentOwnership(agentId, userId);
+    await this.verifyStepExists(stepId, agentId);
+
+    return this.prismaService.agentStep.update({
+      where: { id: stepId },
+      data: {
+        name: updateStepDto.name,
+        description: updateStepDto.description,
+        type: updateStepDto.type,
+        config: updateStepDto.config,
+        order: updateStepDto.order,
+        nextOnSuccess: updateStepDto.nextOnSuccess,
+        nextOnFailure: updateStepDto.nextOnFailure,
+      },
+    });
+  }
+
+  async deleteStep(agentId: string, stepId: string, userId: string) {
+    await this.verifyAgentOwnership(agentId, userId);
+    await this.verifyStepExists(stepId, agentId);
+
+    return this.prismaService.agentStep.delete({
+      where: { id: stepId },
+    });
+  }
+
+  // Credentials management
+  async addCredential(
+    agentId: string,
+    createCredentialDto: CreateAgentCredentialDto,
+    userId: string,
+  ) {
+    await this.verifyAgentOwnership(agentId, userId);
+
+    // Use credential manager to securely store the credential
+    return this.credentialManagerService.storeCredential(
+      userId,
+      agentId,
+      createCredentialDto.name,
+      createCredentialDto.value,
+      createCredentialDto.type,
+    );
+  }
+
+  async updateCredential(
+    agentId: string,
+    credentialId: string,
+    updateCredentialDto: UpdateAgentCredentialDto,
+    userId: string,
+  ) {
+    await this.verifyAgentOwnership(agentId, userId);
+    await this.verifyCredentialExists(credentialId, agentId);
+
+    // Delete existing credential and create a new one
+    await this.credentialManagerService.deleteCredential(agentId, credentialId);
+
+    return this.credentialManagerService.storeCredential(
+      userId,
+      agentId,
+      updateCredentialDto.name,
+      updateCredentialDto.value,
+      updateCredentialDto.type,
+    );
+  }
+
+  async deleteCredential(
+    agentId: string,
+    credentialId: string,
+    userId: string,
+  ) {
+    await this.verifyAgentOwnership(agentId, userId);
+    await this.verifyCredentialExists(credentialId, agentId);
+
+    return this.credentialManagerService.deleteCredential(
+      agentId,
+      credentialId,
+    );
+  }
+
+  // Variables management
+  async addVariable(
+    agentId: string,
+    createVariableDto: CreateAgentVariableDto,
+    userId: string,
+  ) {
+    await this.verifyAgentOwnership(agentId, userId);
+
+    return this.prismaService.agentVariable.create({
+      data: {
+        name: createVariableDto.name,
+        defaultValue: createVariableDto.defaultValue,
+        description: createVariableDto.description,
+        agentId,
+      },
+    });
+  }
+
+  async updateVariable(
+    agentId: string,
+    variableId: string,
+    updateVariableDto: UpdateAgentVariableDto,
+    userId: string,
+  ) {
+    await this.verifyAgentOwnership(agentId, userId);
+    await this.verifyVariableExists(variableId, agentId);
+
+    return this.prismaService.agentVariable.update({
+      where: { id: variableId },
+      data: {
+        name: updateVariableDto.name,
+        defaultValue: updateVariableDto.defaultValue,
+        description: updateVariableDto.description,
+      },
+    });
+  }
+
+  async deleteVariable(agentId: string, variableId: string, userId: string) {
+    await this.verifyAgentOwnership(agentId, userId);
+    await this.verifyVariableExists(variableId, agentId);
+
+    return this.prismaService.agentVariable.delete({
+      where: { id: variableId },
+    });
+  }
+
+  // Agent execution
+  async executeAgent(
+    agentId: string,
+    executeAgentDto: ExecuteAgentDto,
+    userId: string,
+  ): Promise<AgentExecutionResponseDto> {
+    await this.verifyAgentOwnership(agentId, userId);
+
+    try {
+      const result = await this.agentExecutionService.executeAgent(
+        agentId,
+        executeAgentDto.input,
+        userId,
+      );
+
+      return {
+        id: result.id,
+        status: result.status,
+        output: result.output,
+        error: result.error,
+        executionPath: result.executionPath,
+        startTime: result.startTime.toISOString(),
+        endTime: result.endTime ? result.endTime.toISOString() : null,
+        tokenUsage: result.tokenUsage,
+      };
+    } catch (error) {
+      this.logger.error(`Error executing agent ${agentId}:`, error);
+
+      // Return a structured error response
+      return {
+        id: '', // ID will be empty for failed executions that couldn't be saved
+        status: 'FAILED',
+        output: {},
+        error: error instanceof Error ? error.message : String(error),
+        executionPath: [],
+        startTime: new Date().toISOString(),
+        endTime: new Date().toISOString(),
+        tokenUsage: 0,
+      };
+    }
+  }
+
+  /**
+   * Execute an agent with API key authentication
+   */
+  async executeAgentWithApiKey(
+    agentId: string,
+    executeAgentDto: ExecuteAgentDto,
+    apiKey: string,
+  ): Promise<AgentExecutionResponseDto> {
+    // 1. Verify API key and get application
+    const application = await this.prismaService.application.findFirst({
+      where: { apiKey },
+    });
+
+    if (!application) {
+      throw new NotFoundException('Invalid API key');
+    }
+
+    // 2. Find the agent (regardless of owner)
+    const agent = await this.prismaService.agent.findUnique({
+      where: { id: agentId },
+    });
+
+    if (!agent) {
+      throw new NotFoundException(`Agent with ID ${agentId} not found`);
+    }
+
+    try {
+      // 3. Execute the agent using the agent owner's user ID
+      const result = await this.agentExecutionService.executeAgent(
+        agentId,
+        executeAgentDto.input,
+        agent.userId,
+      );
+
+      // 4. Calculate and record usage if tokens were used
+      if (result.tokenUsage > 0) {
+        await this.recordAgentUsage(
+          application.id,
+          result.tokenUsage,
+          agent.id,
+        );
+      }
+
+      return {
+        id: result.id,
+        status: result.status,
+        output: result.output,
+        error: result.error,
+        executionPath: result.executionPath,
+        startTime: result.startTime.toISOString(),
+        endTime: result.endTime ? result.endTime.toISOString() : null,
+        tokenUsage: result.tokenUsage,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error executing agent ${agentId} with API key:`,
+        error,
+      );
+
+      // Return a structured error response
+      return {
+        id: '',
+        status: 'FAILED',
+        output: {},
+        error: error instanceof Error ? error.message : String(error),
+        executionPath: [],
+        startTime: new Date().toISOString(),
+        endTime: new Date().toISOString(),
+        tokenUsage: 0,
+      };
+    }
+  }
+
+  /**
+   * Record agent usage and calculate cost
+   */
+  private async recordAgentUsage(
+    applicationId: string,
+    tokenUsage: number,
+    agentId: string,
+  ): Promise<void> {
+    try {
+      // Find appropriate pricing model - use a suitable default model for agents
+      const pricingData = await this.prismaService.aIModelPricing.findFirst({
+        where: {
+          model: 'gemini-1.0-pro', // Adjust to match your preferred model for billing
+          active: true,
+        },
+      });
+
+      if (!pricingData) {
+        this.logger.warn('No pricing model found for agent execution');
+        return;
+      }
+
+      // Calculate cost based on token usage
+      const pricePerUnit = pricingData.pricePerUnit;
+      const quantity = pricingData.quantity || 1000; // Tokens per unit
+      const cost = (tokenUsage / quantity) * pricePerUnit;
+
+      // Record usage and update balance
+      await this.prismaService.$transaction([
+        this.prismaService.applicationUsage.create({
+          data: {
+            applicationId,
+            aiModelPricingId: pricingData.id,
+            tokensUsed: tokenUsage,
+            cost,
+          },
+        }),
+        this.prismaService.application.update({
+          where: { id: applicationId },
+          data: {
+            balance: {
+              decrement: cost,
+            },
+          },
+        }),
+      ]);
+
+      this.logger.log(
+        `Recorded agent usage: ${tokenUsage} tokens, cost: ${cost}, application: ${applicationId}`,
+      );
+    } catch (error) {
+      this.logger.error('Error recording agent usage:', error);
+    }
+  }
+
+  // Execution history
+  async getExecutions(agentId: string, userId: string) {
+    await this.verifyAgentOwnership(agentId, userId);
+
+    return this.prismaService.agentExecution.findMany({
+      where: {
+        agentId,
+        userId,
+      },
+      orderBy: {
+        startTime: 'desc',
+      },
+      select: {
+        id: true,
+        status: true,
+        input: true,
+        output: true,
+        executionPath: true,
+        startTime: true,
+        endTime: true,
+        errorMessage: true,
+        tokenUsage: true,
+      },
+    });
+  }
+
+  async getExecution(agentId: string, executionId: string, userId: string) {
+    await this.verifyAgentOwnership(agentId, userId);
+
+    const execution = await this.prismaService.agentExecution.findFirst({
+      where: {
+        id: executionId,
+        agentId,
+        userId,
+      },
+      select: {
+        id: true,
+        status: true,
+        input: true,
+        output: true,
+        executionPath: true,
+        startTime: true,
+        endTime: true,
+        stepResults: true,
+        errorMessage: true,
+        tokenUsage: true,
+      },
+    });
+
+    if (!execution) {
+      throw new NotFoundException(`Execution with ID ${executionId} not found`);
+    }
+
+    return execution;
+  }
+
+  // Helper methods
+  private async verifyAgentOwnership(agentId: string, userId: string) {
+    const agent = await this.prismaService.agent.findFirst({
+      where: {
+        id: agentId,
+        userId,
+      },
+    });
+
+    if (!agent) {
+      throw new NotFoundException(`Agent with ID ${agentId} not found`);
+    }
+  }
+
+  private async verifyStepExists(stepId: string, agentId: string) {
+    const step = await this.prismaService.agentStep.findFirst({
+      where: {
+        id: stepId,
+        agentId,
+      },
+    });
+
+    if (!step) {
+      throw new NotFoundException(`Step with ID ${stepId} not found`);
+    }
+  }
+
+  private async verifyCredentialExists(credentialId: string, agentId: string) {
+    const credential = await this.prismaService.agentCredential.findFirst({
+      where: {
+        id: credentialId,
+        agentId,
+      },
+    });
+
+    if (!credential) {
+      throw new NotFoundException(
+        `Credential with ID ${credentialId} not found`,
+      );
+    }
+  }
+
+  private async verifyVariableExists(variableId: string, agentId: string) {
+    const variable = await this.prismaService.agentVariable.findFirst({
+      where: {
+        id: variableId,
+        agentId,
+      },
+    });
+
+    if (!variable) {
+      throw new NotFoundException(`Variable with ID ${variableId} not found`);
+    }
+  }
+}
+
+
+
+--------------------------------
+
+import { StepType } from '@prisma/client';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsEnum,
+  IsJSON,
+  IsNotEmpty,
+  IsNumber,
+  IsObject,
+  IsOptional,
+  IsString,
+  IsUUID,
+  ValidateNested,
+} from 'class-validator';
+
+export class CreateAgentDto {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+}
+
+export class UpdateAgentDto {
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+}
+
+export class CreateAgentStepDto {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @IsEnum(StepType)
+  type: StepType;
+
+  @IsObject()
+  config: any;
+
+  @IsNumber()
+  order: number;
+
+  @IsString()
+  @IsOptional()
+  nextOnSuccess?: string;
+
+  @IsString()
+  @IsOptional()
+  nextOnFailure?: string;
+}
+
+export class UpdateAgentStepDto {
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @IsEnum(StepType)
+  @IsOptional()
+  type?: StepType;
+
+  @IsObject()
+  @IsOptional()
+  config?: any;
+
+  @IsNumber()
+  @IsOptional()
+  order?: number;
+
+  @IsString()
+  @IsOptional()
+  nextOnSuccess?: string;
+
+  @IsString()
+  @IsOptional()
+  nextOnFailure?: string;
+}
+
+export class CreateAgentCredentialDto {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsString()
+  @IsNotEmpty()
+  type: string;
+
+  @IsString()
+  @IsNotEmpty()
+  value: string;
+}
+
+export class UpdateAgentCredentialDto {
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  type?: string;
+
+  @IsString()
+  @IsOptional()
+  value?: string;
+}
+
+export class CreateAgentVariableDto {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsString()
+  @IsOptional()
+  defaultValue?: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+}
+
+export class UpdateAgentVariableDto {
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  defaultValue?: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+}
+
+export class ExecuteAgentDto {
+  @IsObject()
+  input: Record<string, any>;
+}
+
+export class AgentExecutionResponseDto {
+  @IsUUID()
+  id: string;
+
+  @IsString()
+  status: 'RUNNING' | 'COMPLETED' | 'FAILED';
+
+  @IsObject()
+  @IsOptional()
+  output?: any;
+
+  @IsString()
+  @IsOptional()
+  error?: string;
+
+  @IsArray()
+  executionPath: string[];
+
+  @IsString()
+  startTime: string;
+
+  @IsString()
+  @IsOptional()
+  endTime?: string;
+
+  @IsNumber()
+  @IsOptional()
+  tokenUsage?: number;
+}

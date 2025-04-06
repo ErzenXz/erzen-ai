@@ -6,9 +6,23 @@ import {
   ChatMemory,
   UserInstruction,
   Message,
+  SingleProject,
+  Project,
+  ProjectFile,
+  ProjectFileCreateDto,
+  CurrentVersion,
+  Agent,
+  AgentStep,
+  AgentVariable,
+  AgentCredential,
+  AgentExecution,
+  AgentStepResult,
 } from "./types";
 
 const API_BASE_URL = "https://apis.erzen.tk";
+
+// Add the environment variable reference
+const GROQ_API_KEY = process.env.NEXT_PUBLIC_GROQ_API_KEY || "";
 
 class APIError extends Error {
   constructor(public status: number, message: string) {
@@ -66,9 +80,9 @@ const tokenEventManager = new TokenEventManager();
 class TokenManager {
   private refreshPromise: Promise<boolean> | null = null;
   private tokenExpiration: number = 0;
-  private refreshBuffer = 2 * 60 * 1000; // 2 minutes in milliseconds
+  private readonly refreshBuffer = 2 * 60 * 1000; // 2 minutes in milliseconds
   private lastRefreshAttempt: number = 0;
-  private minRefreshInterval = 10 * 1000; // Minimum 10 seconds between refresh attempts
+  private readonly minRefreshInterval = 10 * 1000; // Minimum 10 seconds between refresh attempts
 
   constructor() {
     if (isBrowser) {
@@ -646,5 +660,466 @@ export async function deleteLocalUser(id: string) {
   } catch (error) {
     console.error(`Error deleting user ${id}:`, error);
     throw error;
+  }
+}
+
+export async function fetchProjects(): Promise<Project[]> {
+  const response = await fetchWithAuth(`${API_BASE_URL}/intelligence/projects`);
+  return response.json();
+}
+
+export async function fetchProject(projectId: string): Promise<SingleProject> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/projects/${projectId}`
+  );
+  return response.json();
+}
+
+export async function createProject(data: {
+  name: string;
+  description?: string;
+}): Promise<Project> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/projects`,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to create project");
+  }
+  return response.json();
+}
+
+export async function updateProject(
+  projectId: string,
+  data: { name?: string; description?: string }
+): Promise<any> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/projects/${projectId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to update project");
+  }
+  return response.json();
+}
+
+export async function deleteProject(
+  projectId: string,
+  data: { name?: string; description?: string }
+): Promise<any> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/projects/${projectId}`,
+    {
+      method: "DELETE",
+    }
+  );
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to update project");
+  }
+  return response.json();
+}
+
+export async function fetchProjectFiles(
+  projectId: string
+): Promise<ProjectFile> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/projects/${projectId}/files`
+  );
+  return response.json();
+}
+
+export async function createProjectFile(
+  projectId: string,
+  data: { name: string; path: string; content: string; commitMsg: string }
+): Promise<ProjectFileCreateDto> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/projects/${projectId}/files`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }
+  );
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to create project file");
+  }
+  return response.json();
+}
+
+export async function fetchProjectFile(
+  projectId: string,
+  fileId: string
+): Promise<ProjectFile> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/projects/${projectId}/files/${fileId}`
+  );
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to fetch project file");
+  }
+  return response.json();
+}
+
+export async function updateProjectFile(
+  projectId: string,
+  fileId: string,
+  data: { content?: string; commitMsg?: string }
+): Promise<ProjectFile> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/projects/${projectId}/files/${fileId}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }
+  );
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to update project file");
+  }
+  return response.json();
+}
+
+export async function fetchProjectFileVersions(
+  projectId: string,
+  fileId: string
+): Promise<CurrentVersion[]> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/projects/${projectId}/files/${fileId}/versions`
+  );
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to fetch project file versions");
+  }
+  return response.json() as Promise<CurrentVersion[]>;
+}
+
+export async function revertProjectFileVersion(
+  projectId: string,
+  fileId: string,
+  data: { version: number; commitMsg?: string }
+): Promise<ProjectFile> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/projects/${projectId}/files/${fileId}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }
+  );
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to update project file");
+  }
+  return response.json();
+}
+
+export async function processAgentInstruction(
+  projectId: string,
+  instruction: string,
+  threadId?: string
+): Promise<any> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/projects/process-agent`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        instruction,
+        projectId,
+        threadId: threadId ?? undefined,
+      }),
+    }
+  );
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to process agent instruction");
+  }
+  return response.json();
+}
+
+// Agent API methods
+export async function fetchAgents(): Promise<Agent[]> {
+  const response = await fetchWithAuth(`${API_BASE_URL}/agents`);
+  return response.json();
+}
+
+export async function fetchAgent(id: string): Promise<Agent> {
+  const response = await fetchWithAuth(`${API_BASE_URL}/agents/${id}`);
+  return response.json();
+}
+
+export async function createAgent(data: {
+  name: string;
+  description?: string;
+}): Promise<Agent> {
+  const response = await fetchWithAuth(`${API_BASE_URL}/agents`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  return response.json();
+}
+
+export async function updateAgent(
+  id: string,
+  data: { name?: string; description?: string }
+): Promise<Agent> {
+  const response = await fetchWithAuth(`${API_BASE_URL}/agents/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+  return response.json();
+}
+
+export async function deleteAgent(id: string): Promise<void> {
+  await fetchWithAuth(`${API_BASE_URL}/agents/${id}`, {
+    method: "DELETE",
+  });
+}
+
+// Agent steps API methods
+export async function addAgentStep(
+  agentId: string,
+  data: {
+    name: string;
+    description?: string;
+    type: string;
+    config: any;
+    order: number;
+    nextOnSuccess?: string;
+    nextOnFailure?: string;
+  }
+): Promise<AgentStep> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/agents/${agentId}/steps`,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.json();
+}
+
+export async function updateAgentStep(
+  agentId: string,
+  stepId: string,
+  data: {
+    name?: string;
+    description?: string;
+    type?: string;
+    config?: any;
+    order?: number;
+    nextOnSuccess?: string;
+    nextOnFailure?: string;
+  }
+): Promise<AgentStep> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/agents/${agentId}/steps/${stepId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.json();
+}
+
+export async function deleteAgentStep(
+  agentId: string,
+  stepId: string
+): Promise<void> {
+  await fetchWithAuth(`${API_BASE_URL}/agents/${agentId}/steps/${stepId}`, {
+    method: "DELETE",
+  });
+}
+
+// Agent credentials API methods
+export async function addAgentCredential(
+  agentId: string,
+  data: {
+    name: string;
+    type: string;
+    value: string;
+  }
+): Promise<AgentCredential> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/agents/${agentId}/credentials`,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.json();
+}
+
+export async function updateAgentCredential(
+  agentId: string,
+  credentialId: string,
+  data: {
+    name?: string;
+    type?: string;
+    value?: string;
+  }
+): Promise<AgentCredential> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/agents/${agentId}/credentials/${credentialId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.json();
+}
+
+export async function deleteAgentCredential(
+  agentId: string,
+  credentialId: string
+): Promise<void> {
+  await fetchWithAuth(
+    `${API_BASE_URL}/agents/${agentId}/credentials/${credentialId}`,
+    {
+      method: "DELETE",
+    }
+  );
+}
+
+// Agent variables API methods
+export async function addAgentVariable(
+  agentId: string,
+  data: {
+    name: string;
+    defaultValue?: string;
+    description?: string;
+  }
+): Promise<AgentVariable> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/agents/${agentId}/variables`,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.json();
+}
+
+export async function updateAgentVariable(
+  agentId: string,
+  variableId: string,
+  data: {
+    name?: string;
+    defaultValue?: string;
+    description?: string;
+  }
+): Promise<AgentVariable> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/agents/${agentId}/variables/${variableId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.json();
+}
+
+export async function deleteAgentVariable(
+  agentId: string,
+  variableId: string
+): Promise<void> {
+  await fetchWithAuth(
+    `${API_BASE_URL}/agents/${agentId}/variables/${variableId}`,
+    {
+      method: "DELETE",
+    }
+  );
+}
+
+// Agent execution API methods
+export async function executeAgent(
+  agentId: string,
+  input: Record<string, any>
+): Promise<{
+  id: string;
+  status: "RUNNING" | "COMPLETED" | "FAILED";
+  output?: any;
+  error?: string;
+  executionPath: string[];
+  startTime: string;
+  endTime?: string;
+  tokenUsage: number;
+}> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/agents/${agentId}/execute`,
+    {
+      method: "POST",
+      body: JSON.stringify({ input }),
+    }
+  );
+  return response.json();
+}
+
+export async function getAgentExecutions(
+  agentId: string
+): Promise<AgentExecution[]> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/agents/${agentId}/executions`
+  );
+  return response.json();
+}
+
+export async function getAgentExecution(
+  agentId: string,
+  executionId: string
+): Promise<AgentExecution> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/agents/${agentId}/executions/${executionId}`
+  );
+  return response.json();
+}
+
+export async function getTextInputCompletions(
+  text: string,
+  maxTokens: number = 40
+): Promise<string[]> {
+  // Don't make API calls for very short inputs
+  if (text.trim().length < 3) {
+    return [];
+  }
+
+  try {
+    const response = await fetch("/api/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ text, maxTokens }),
+    });
+
+    if (!response.ok) {
+      console.error("Error getting completions:", response.status);
+      return [];
+    }
+
+    const { suggestions } = await response.json();
+    return suggestions || [];
+  } catch (error) {
+    console.error("Error calling completions API:", error);
+    return [];
   }
 }

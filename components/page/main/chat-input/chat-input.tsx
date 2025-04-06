@@ -3,14 +3,14 @@
 import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
-import { Send, Upload, X, Loader2, Slash, Mic, MicOff } from "lucide-react"
+import { Send, Upload, X, Loader2, Mic, MicOff, Globe, Brain, Bot, Sparkles, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import TextareaAutosize from "react-textarea-autosize"
 import { CommandMenu } from "./command-menu"
 import { EmojiPicker } from "./emoji-picker"
-import { FormatToolbar } from "./format-toolbar"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 
 
@@ -28,6 +28,18 @@ interface ChatInputProps {
   placeholder?: string
   maxLength?: number
   onCommandExecute?: (command: string) => void
+  onKeyDown?: (e: React.KeyboardEvent) => void
+
+  // Model selector props
+  selectedModel?: string
+  onModelChange?: (model: string) => void
+  models?: any[]
+
+  // Web search and reasoning props
+  browseMode?: boolean
+  onBrowseModeChange?: (enabled: boolean) => void
+  reasoning?: boolean
+  onReasoningChange?: (enabled: boolean) => void
 }
 
 export function ChatInput({
@@ -43,11 +55,22 @@ export function ChatInput({
   onClearFiles,
   placeholder = "Type your message...",
   onCommandExecute,
+  onKeyDown,
+
+  // Model selector props
+  selectedModel,
+  onModelChange,
+  models,
+
+  // Web search and reasoning props
+  browseMode,
+  onBrowseModeChange,
+  reasoning,
+  onReasoningChange,
 }: ChatInputProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const commandMenuContainerRef = useRef<HTMLDivElement>(null)
   const [isFocused, setIsFocused] = useState(false)
-  const [showFormatting, setShowFormatting] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [showCommandMenu, setShowCommandMenu] = useState(false)
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
@@ -64,12 +87,6 @@ export function ChatInput({
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+/ to toggle formatting toolbar
-      if (e.ctrlKey && e.key === "/") {
-        e.preventDefault()
-        setShowFormatting((prev) => !prev)
-      }
-
       // Escape key to close command menu
       if (e.key === "Escape" && showCommandMenu) {
         setShowCommandMenu(false)
@@ -130,6 +147,15 @@ export function ChatInput({
   }, [isRecording])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Allow parent component to handle keyboard events first
+    if (onKeyDown) {
+      onKeyDown(e);
+      // If the event was prevented by the parent handler, don't continue
+      if (e.defaultPrevented) {
+        return;
+      }
+    }
+
     // Submit on Enter without Shift key
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
@@ -346,15 +372,123 @@ export function ChatInput({
 
   return (
     <TooltipProvider>
-      <div className="space-y-2">
-        {showFormatting && (
-          <div className="flex justify-start animate-fadeIn">
-            <FormatToolbar onFormat={applyFormat} />
-          </div>
-        )}
+      <div className="animate-apple-fade">
+        {/* Model selector and toggles toolbar */}
+        <div className="flex items-center gap-1.5 mb-2 ml-1">
+          {/* Compact model selector */}
+          {selectedModel && onModelChange && models && models.length > 0 && (
+            <div className="flex-shrink-0">
+              <Select value={selectedModel} onValueChange={onModelChange}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <SelectTrigger className="h-7 px-2 py-1 text-xs gap-1.5 bg-background/80 hover:bg-accent/50 transition-colors border-0 rounded-full w-auto">
+                      {models.find(m => m.model === selectedModel)?.description ? (
+                        <span className="flex items-center gap-1.5">
+                          {models.find(m => m.model === selectedModel)?.description.toLowerCase().includes('gemini') && (
+                            <Sparkles className="h-3.5 w-3.5 text-primary" />
+                          )}
+                          {models.find(m => m.model === selectedModel)?.description.toLowerCase().includes('gpt') && (
+                            <Zap className="h-3.5 w-3.5 text-primary" />
+                          )}
+                          {models.find(m => m.model === selectedModel)?.description.toLowerCase().includes('claude') && (
+                            <Brain className="h-3.5 w-3.5 text-primary" />
+                          )}
+                          {!models.find(m => m.model === selectedModel)?.description.toLowerCase().includes('gemini') &&
+                           !models.find(m => m.model === selectedModel)?.description.toLowerCase().includes('gpt') &&
+                           !models.find(m => m.model === selectedModel)?.description.toLowerCase().includes('claude') && (
+                            <Bot className="h-3.5 w-3.5 text-primary" />
+                          )}
+                        </span>
+                      ) : (
+                        <Bot className="h-3.5 w-3.5 text-muted-foreground" />
+                      )}
+                      <SelectValue placeholder="Model" className="text-xs">
+                        {models.find(m => m.model === selectedModel)?.description}
+                      </SelectValue>
+                    </SelectTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    Select AI model
+                  </TooltipContent>
+                </Tooltip>
+                <SelectContent className="bg-background/90 backdrop-blur-md border-primary/10 shadow-md rounded-lg max-h-[300px] overflow-y-auto" align="center">
+                  {models.map((model) => (
+                    <SelectItem
+                      key={model.model}
+                      value={model.model}
+                      className="flex py-2 cursor-pointer focus:bg-primary/5 focus:text-primary hover:bg-accent/50 transition-colors text-xs"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex-shrink-0">
+                          {model.description.toLowerCase().includes('gemini') && (
+                            <Sparkles className="h-3.5 w-3.5 text-primary/70" />
+                          )}
+                          {model.description.toLowerCase().includes('gpt') && (
+                            <Zap className="h-3.5 w-3.5 text-primary/70" />
+                          )}
+                          {model.description.toLowerCase().includes('claude') && (
+                            <Brain className="h-3.5 w-3.5 text-primary/70" />
+                          )}
+                          {!model.description.toLowerCase().includes('gemini') &&
+                           !model.description.toLowerCase().includes('gpt') &&
+                           !model.description.toLowerCase().includes('claude') && (
+                            <Bot className="h-3.5 w-3.5 text-primary/70" />
+                          )}
+                        </div>
+                        <span>{model.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
-        <form onSubmit={onSubmit} className="w-full">
-          <div className="flex gap-2">
+          {/* Web search toggle */}
+          {onBrowseModeChange && (
+            <button
+              type="button"
+                onClick={() => {
+                  if (onBrowseModeChange) {
+                    onBrowseModeChange(!browseMode);
+                    // If turning off browse mode, also turn off reasoning
+                    if (browseMode && reasoning && onReasoningChange) {
+                      onReasoningChange(false);
+                    }
+                  }
+                }}
+                className={`relative flex items-center gap-1 px-2 py-1 rounded-full transition-all duration-200 text-xs h-7
+                  ${browseMode ?
+                    'bg-primary/10 text-primary ring-1 ring-primary/20 shadow-sm' :
+                    'hover:bg-accent/50 text-muted-foreground hover:text-foreground'}
+                `}
+              >
+                <Globe className={`w-3.5 h-3.5 transition-colors ${browseMode ? 'text-primary' : ''}`} />
+                <span className="font-medium">Web Search</span>
+              </button>
+          )}
+
+          {/* Reasoning toggle - only enabled when web search is on */}
+          {onReasoningChange && (
+            <button
+              type="button"
+                onClick={() => browseMode && onReasoningChange && onReasoningChange(!reasoning)}
+                className={`relative flex items-center gap-1 px-2 py-1 rounded-full transition-all duration-200 text-xs h-7
+                  ${!browseMode ? 'opacity-50 cursor-not-allowed' :
+                    reasoning ?
+                      'bg-primary/10 text-primary ring-1 ring-primary/20 shadow-sm' :
+                      'hover:bg-accent/50 text-muted-foreground hover:text-foreground'}
+                `}
+                disabled={!browseMode}
+              >
+                <Brain className={`w-3.5 h-3.5 transition-colors ${reasoning ? 'text-primary' : ''}`} />
+                <span className="font-medium">Reasoning</span>
+              </button>
+          )}
+        </div>
+
+        <form onSubmit={onSubmit} className="w-full relative">
+          <div className="flex gap-2 transition-all duration-300 ease-in-out">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -384,9 +518,9 @@ export function ChatInput({
 
             <div
               className={cn(
-                "flex-1 flex flex-col bg-background rounded-xl transition-all duration-200",
-                "border shadow-sm",
-                isFocused ? "ring-2 ring-primary/20 border-primary/30" : "hover:border-primary/20",
+                "flex-1 flex flex-col bg-background rounded-xl transition-all duration-300",
+                "border shadow-soft",
+                isFocused ? "ring-2 ring-primary/20 border-primary/30 shadow-md" : "hover:border-primary/20",
                 isDisabled && "opacity-60",
               )}
             >
@@ -411,6 +545,7 @@ export function ChatInput({
                     "flex-1 px-4 py-3 bg-transparent border-0 resize-none focus:outline-none",
                     "text-base placeholder:text-muted-foreground/70",
                     "min-h-[48px] max-h-[200px]",
+                    "transition-all duration-300 ease-in-out",
                   )}
                   maxRows={6}
                 />
@@ -423,22 +558,7 @@ export function ChatInput({
                     </div>
                   ) : null}
 
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 rounded-full hover:bg-muted"
-                        onClick={() => setShowFormatting(!showFormatting)}
-                      >
-                        <Slash className="h-5 w-5 text-muted-foreground" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">
-                      {showFormatting ? "Hide formatting" : "Show formatting (Ctrl+/)"}
-                    </TooltipContent>
-                  </Tooltip>
+
 
                   <EmojiPicker onEmojiSelect={handleEmojiSelect} />
 
@@ -489,9 +609,9 @@ export function ChatInput({
                 <Button
                   type="submit"
                   className={cn(
-                    "h-12 w-12 flex-shrink-0 transition-all duration-200",
+                    "h-12 w-12 flex-shrink-0 transition-all duration-300",
                     message.trim() || uploadedFilesCount > 0 ? "bg-primary" : "bg-primary/70",
-                    "shadow-md hover:shadow-lg",
+                    "shadow-md hover:shadow-lg hover:-translate-y-1",
                   )}
                   disabled={
                     isLoading || isProcessingFiles || isDisabled || (message.trim() === "" && uploadedFilesCount === 0)
