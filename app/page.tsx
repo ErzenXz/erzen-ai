@@ -5,6 +5,7 @@ import {
   Globe, Brain, Loader2, FolderRoot, ArrowLeft, Clock, MessageSquarePlus,
   FolderPlus, Code, BookOpen, Bot, Play, Check, ArrowRight
 } from "lucide-react"
+import { TextSelectionButton } from "@/components/page/main/text-selection-button"
 import { readFileAsText } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -273,6 +274,30 @@ export default function Home() {
       description: "Audio playback would start here in a real implementation",
     })
   }, [toast])
+
+  // Handle text selected with the "Edit with AI" button
+  const handleEditWithAI = useCallback((selectedText: string) => {
+    // If there's already text in the input, append the selected text
+    if (message) {
+      setMessage(message + "\n\n" + selectedText)
+    } else {
+      // Otherwise, just set the selected text as the message
+      setMessage(selectedText)
+    }
+
+    // Focus the input
+    const inputElement = document.querySelector('textarea') as HTMLTextAreaElement
+    if (inputElement) {
+      setTimeout(() => {
+        inputElement.focus()
+      }, 100)
+    }
+
+    toast({
+      title: "Message text added",
+      description: "Selected text from the message has been added to the chat input.",
+    })
+  }, [message])
 
   const confirmAction = useCallback(async () => {
     if (dialogAction === "delete-thread" && selectedThreadId) {
@@ -1041,6 +1066,8 @@ export default function Home() {
   return (
     <>
       <div className="flex h-screen bg-background">
+        {/* Text selection button that appears when text is selected */}
+        <TextSelectionButton onEditWithAI={handleEditWithAI} />
         <ChatThreadList
           threads={threads}
           currentThreadId={currentThread?.id ?? null}
