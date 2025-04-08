@@ -989,73 +989,85 @@ export default function Home() {
   if (!user) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-background overflow-hidden relative">
-        {/* Enhanced marble effect background */}
-        <div className="absolute inset-0 -z-10">
-          {/* Base marble texture - refined color gradients */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,_var(--tw-gradient-stops))] from-primary/40 via-primary/5 to-transparent animate-pulse [animation-duration:8s] will-change-opacity"></div>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_70%,_var(--tw-gradient-stops))] from-blue-500/30 via-blue-500/5 to-transparent animate-pulse [animation-duration:12s] [animation-delay:2s] will-change-opacity"></div>
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_10%,_var(--tw-gradient-stops))] from-purple-500/30 via-purple-600/5 to-transparent animate-pulse [animation-duration:10s] [animation-delay:1s] will-change-opacity"></div>
+        {/* Ultra-modern animated background */}
+        <div className="absolute inset-0 -z-10 overflow-hidden">
+          {/* Dynamic gradient background - theme aware */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-background opacity-90 dark:from-primary/10 dark:via-background dark:to-background"></div>
 
-          {/* Realistic marble veining - subtle overlays */}
-          <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(68,51,122,0.05)_25%,rgba(68,51,122,0.05)_50%,transparent_50%,transparent_75%,rgba(68,51,122,0.05)_75%)] bg-[length:100px_100px] animate-gradient-x [animation-duration:15s] transform will-change-transform"></div>
-          <div className="absolute inset-0 bg-[linear-gradient(135deg,transparent_40%,rgba(236,72,153,0.07)_40%,rgba(236,72,153,0.07)_45%,transparent_45%)] bg-[length:150px_150px] animate-gradient-y [animation-duration:18s]"></div>
-          <div className="absolute inset-0 bg-[linear-gradient(80deg,transparent_60%,rgba(16,185,129,0.05)_60%,rgba(16,185,129,0.05)_65%,transparent_65%)] bg-[length:120px_120px] animate-gradient-x [animation-duration:12s] [animation-delay:0.5s]"></div>
+          {/* Animated mesh grid - futuristic effect with theme awareness */}
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(100,116,139,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(100,116,139,0.05)_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,rgba(64,76,255,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(64,76,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px]">
+            <div className="absolute inset-0 animate-pulse-soft [animation-duration:15s]"></div>
+          </div>
 
-          {/* Optimized blur effect with subtle color diffusion */}
-          <div className="absolute inset-0 backdrop-blur-[100px]"></div>
-        </div>
+          {/* Animated particles with glow */}
+          <div className="absolute inset-0">
+            {/* Particle clusters with glow effects */}
+            {Array.from({ length: 20 }).map((_, i) => (
+              <div
+                key={i}
+                className={`absolute rounded-full bg-gradient-to-r ${i % 3 === 0 ? 'from-primary/40 to-primary/10' : i % 3 === 1 ? 'from-blue-500/40 to-blue-500/10' : 'from-purple-500/40 to-purple-500/10'}`}
+                style={{
+                  width: `${Math.random() * 6 + 2}px`,
+                  height: `${Math.random() * 6 + 2}px`,
+                  top: `${Math.random() * 100}%`,
+                  left: `${Math.random() * 100}%`,
+                  boxShadow: `0 0 ${Math.random() * 10 + 5}px ${i % 3 === 0 ? 'rgba(var(--primary), 0.4)' : i % 3 === 1 ? 'rgba(59, 130, 246, 0.4)' : 'rgba(168, 85, 247, 0.4)'}`,
+                  animation: `float ${Math.random() * 10 + 10}s ease-in-out infinite`,
+                  animationDelay: `${Math.random() * 5}s`,
+                }}
+              />
+            ))}
+          </div>
 
-        {/* Perfectly centered content with grid */}
-        <div className="relative z-10 grid place-items-center w-full max-w-[90vw]">
-          {/* Enhanced marble sphere with more realistic effects */}
-          <div className="relative mb-16 p-1 rounded-full scale-[1.5]">
-            {/* Multi-layered glow with color variation */}
-            <div className="absolute -inset-8 bg-gradient-to-r from-primary/20 via-blue-500/20 to-purple-500/20 blur-xl rounded-full opacity-70 animate-pulse [animation-duration:5s] will-change-opacity"></div>
-            <div className="absolute -inset-10 bg-gradient-to-br from-emerald-500/10 via-primary/5 to-pink-500/10 blur-2xl rounded-full opacity-50 animate-pulse [animation-duration:7s] [animation-delay:0.5s]"></div>
-
-            {/* Enhanced marble sphere with realistic texture and depth */}
-            <div className="relative h-48 w-48 rounded-full bg-gradient-to-br from-white/20 via-white/10 to-transparent backdrop-blur-sm border border-white/10 shadow-[inset_0_0_20px_rgba(255,255,255,0.15)] flex items-center justify-center overflow-hidden group">
-              {/* Main marble color with subtle swirl pattern */}
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_70%,_var(--tw-gradient-stops))] from-white/30 via-primary/10 to-blue-500/10"></div>
-
-              {/* Realistic marble veins */}
-              <div className="absolute inset-0 bg-[linear-gradient(120deg,transparent_85%,rgba(255,255,255,0.2)_85%,rgba(255,255,255,0.2)_87%,transparent_87%)]"></div>
-              <div className="absolute inset-0 bg-[linear-gradient(30deg,transparent_80%,rgba(255,255,255,0.1)_80%,rgba(255,255,255,0.1)_82%,transparent_82%)]"></div>
-              <div className="absolute inset-0 bg-[linear-gradient(220deg,transparent_92%,rgba(255,255,255,0.15)_92%,rgba(255,255,255,0.15)_94%,transparent_94%)]"></div>
-
-              {/* Optimized reflection highlights */}
-              <div className="absolute top-0 left-0 h-1/2 w-1/2 bg-gradient-to-br from-white/30 to-transparent rounded-tl-full"></div>
-              <div className="absolute -top-3 -left-3 h-1/4 w-1/4 bg-gradient-to-br from-white/40 to-transparent rounded-full blur-md"></div>
-              <div className="absolute bottom-5 right-5 h-1/4 w-1/4 bg-gradient-to-tl from-white/15 to-transparent rounded-full"></div>
-
-              {/* Secondary reflections */}
-              <div className="absolute top-1/4 left-1/3 h-1/6 w-1/6 bg-gradient-to-br from-white/25 to-transparent rounded-full blur-sm"></div>
-              <div className="absolute bottom-1/3 right-1/4 h-1/6 w-1/6 bg-white/10 rounded-full blur-sm"></div>
-
-              {/* Logo with adaptive colors for light/dark mode */}
-              <div className="relative transition-all transform scale-125 z-10">
-                <Brain className="w-24 h-24 text-white/90 dark:text-white/90 drop-shadow-lg" />
-              </div>
-
-              {/* Optimized shine animation with hardware acceleration */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:translate-x-full transition-all duration-1500 ease-in-out will-change-transform"></div>
+          {/* Animated light beams */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200%] h-[200%] animate-spin-slow [animation-duration:40s]">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-0.5 bg-gradient-to-r from-transparent via-primary/10 to-transparent"
+                  style={{ transform: `translate(-50%, -50%) rotate(${i * 45}deg)` }}
+                />
+              ))}
             </div>
           </div>
 
-          {/* Text content with adaptive colors for light/dark mode */}
-          <div className="text-center relative -mt-6">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary via-blue-400 to-purple-500 bg-clip-text text-transparent drop-shadow-sm dark:from-primary dark:via-blue-400 dark:to-purple-400">
-              Erzen AI
-            </h1>
-            <p className="mt-5 text-foreground/80 dark:text-foreground/80 backdrop-blur-sm px-6 py-3 rounded-full bg-white/5 dark:bg-black/5 border border-white/10 dark:border-white/10">
-              Preparing your workspace...
-            </p>
+          {/* Glowing orbs with dynamic movement */}
+          <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
+            <div className="absolute top-1/4 left-1/4 h-[40vh] w-[40vh] rounded-full bg-primary/10 blur-[120px] animate-pulse-soft [animation-duration:10s]"></div>
+            <div className="absolute bottom-1/4 right-1/4 h-[45vh] w-[45vh] rounded-full bg-blue-500/10 blur-[150px] animate-pulse-soft [animation-duration:15s] [animation-delay:2s]"></div>
+            <div className="absolute top-2/3 left-1/3 h-[30vh] w-[30vh] rounded-full bg-purple-500/10 blur-[100px] animate-pulse-soft [animation-duration:12s] [animation-delay:1s]"></div>
+          </div>
+        </div>
 
-            {/* Loading animation dots */}
-            <div className="mt-8 flex gap-2 justify-center">
-              <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-r from-primary to-blue-400 animate-bounce [animation-delay:-0.3s]"></div>
-              <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 animate-bounce [animation-delay:-0.15s]"></div>
-              <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 animate-bounce"></div>
+        {/* Centered loading spinner only */}
+        <div className="relative z-10 flex items-center justify-center h-full animate-fade-in [animation-duration:1s]">
+          {/* Enhanced loading spinner */}
+          <div className="relative">
+            {/* Outer rotating rings */}
+            <div className="absolute -inset-12 rounded-full border border-primary/20 animate-spin-slow [animation-duration:20s]"></div>
+            <div className="absolute -inset-8 rounded-full border border-blue-500/20 animate-spin-slow [animation-duration:15s] [animation-direction:reverse]"></div>
+            <div className="absolute -inset-4 rounded-full border border-purple-500/20 animate-spin-slow [animation-duration:10s]"></div>
+
+            {/* Subtle glow effect */}
+            <div className="absolute -inset-10 bg-gradient-to-br from-primary/20 via-blue-500/20 to-purple-500/20 rounded-full blur-xl opacity-80 animate-pulse-soft [animation-duration:4s]"></div>
+
+            {/* Main spinner */}
+            <div className="relative h-24 w-24 rounded-full bg-gradient-to-br from-background/80 to-background/60 backdrop-blur-xl border border-muted/30 shadow-lg flex items-center justify-center overflow-hidden">
+              {/* Inner glow */}
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(var(--primary),0.15)_0%,transparent_70%)] animate-pulse-soft [animation-duration:5s]"></div>
+
+              {/* Spinning progress arc */}
+              <div className="absolute inset-0">
+                <svg className="w-full h-full animate-spin-slow [animation-duration:2s]" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" className="text-primary" strokeWidth="3" strokeDasharray="70 170" strokeLinecap="round" />
+                </svg>
+              </div>
+
+              {/* Pulsing center */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse"></div>
+              </div>
             </div>
           </div>
         </div>

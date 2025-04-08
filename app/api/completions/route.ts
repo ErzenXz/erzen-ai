@@ -8,6 +8,7 @@ export async function POST(request: Request) {
     // Parse request body
     const { text, maxTokens = 20 } = await request.json();
 
+    return NextResponse.json({ suggestions: [] }, { status: 200 });
     // Don't make API calls for very short inputs
     if (!text || text.trim().length < 2) {
       return NextResponse.json({ suggestions: [] }, { status: 200 });
