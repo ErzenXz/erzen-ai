@@ -1298,7 +1298,7 @@ export default function Home() {
                             {currentAgent.description || "No description provided"}
                           </p>
                           <div className="mt-4 flex flex-wrap gap-2">
-                            <Badge variant="outline" className="bg-purple-500/5 text-purple-600 border-purple-200/30">
+                            <Badge variant="outline" className="bg-primary/5 text-primary border-primary/30">
                               {currentAgent.steps?.length || 0} steps
                             </Badge>
                             <Badge variant="outline" className="bg-muted/50">
@@ -1322,7 +1322,7 @@ export default function Home() {
                           {currentAgent.steps.sort((a, b) => a.order - b.order).map((step, index) => (
                             <div key={step.id} className="border rounded-lg p-4 bg-card">
                               <div className="flex items-start">
-                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-500/10 text-purple-600 font-medium mr-3">
+                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-medium mr-3">
                                   {index + 1}
                                 </div>
                                 <div className="flex-1">
@@ -1516,15 +1516,46 @@ export default function Home() {
                       </div>
                     </div>
 
-                    <div className="w-full max-w-4xl">
-                      <h3 className="text-2xl font-medium text-center mb-8 flex flex-col items-center">
-                        <span className="text-sm text-primary/80 uppercase tracking-wider mb-2 font-light">Let&apos;s get started</span>
-                        <span className="relative">
-                          <span className="animate-typing-effect overflow-hidden whitespace-nowrap border-r-2 border-primary pr-1 text-foreground">
-                            Howdy{user?.name ? `, ${user.name}` : ""}! How can I help you?
+                    <div className="w-full max-w-5xl">
+                      <div className="relative py-8 px-10 bg-gradient-to-b from-white/10 to-white/5 dark:from-black/10 dark:to-black/5 backdrop-blur-md rounded-3xl border border-white/20 dark:border-white/10 mb-16 mt-8 shadow-[0_10px_50px_-12px_rgba(0,0,0,0.25)] overflow-hidden">
+                        {/* Enhanced animated background elements */}
+                        <div className="absolute -z-10 top-0 left-0 w-full h-full overflow-hidden">
+                          {/* Main gradient blob */}
+                          <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] bg-gradient-to-br from-primary/15 via-blue-500/10 to-purple-500/15 blur-3xl rounded-full opacity-70 animate-pulse-soft [animation-duration:8s]"></div>
+
+                          {/* Secondary gradient blobs */}
+                          <div className="absolute -z-10 bottom-0 right-0 w-1/3 h-1/3 bg-gradient-to-br from-emerald-500/15 via-primary/10 to-pink-500/15 blur-2xl rounded-full opacity-50 animate-pulse-soft [animation-duration:10s] [animation-delay:1s]"></div>
+                          <div className="absolute -z-10 top-0 left-0 w-1/4 h-1/4 bg-gradient-to-br from-blue-500/15 via-primary/10 to-purple-500/15 blur-2xl rounded-full opacity-50 animate-pulse-soft [animation-duration:12s] [animation-delay:2s]"></div>
+
+                          {/* Animated shimmer effect */}
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full animate-[shimmer_5s_infinite] will-change-transform"></div>
+
+                          {/* Subtle noise texture overlay */}
+                          <div className="absolute inset-0 bg-noise opacity-[0.03] mix-blend-soft-light"></div>
+
+                          {/* Subtle border glow */}
+                          <div className="absolute inset-0 rounded-3xl border border-white/30 dark:border-white/20 opacity-50 blur-[2px]"></div>
+                        </div>
+
+                        <h3 className="text-2xl font-medium text-center mb-10 flex flex-col items-center">
+                          {/* Enhanced section title with animated underline */}
+                          <span className="text-sm text-primary/90 uppercase tracking-wider mb-6 font-light flex items-center relative">
+                            <span className="h-[1px] w-10 bg-gradient-to-r from-transparent to-primary/60 mr-3"></span>
+                            <span className="relative">Let&apos;s get started
+                              <span className="absolute -bottom-1.5 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-70"></span>
+                            </span>
+                            <span className="h-[1px] w-10 bg-gradient-to-r from-primary/60 to-transparent ml-3"></span>
                           </span>
-                        </span>
-                      </h3>
+
+                          {/* Enhanced greeting with 3D effect */}
+                          <span className="relative">
+                            <div className="absolute -z-10 -inset-10 bg-gradient-to-r from-primary/20 via-blue-500/20 to-purple-500/20 blur-xl rounded-full opacity-80 animate-pulse-soft [animation-duration:4s]"></div>
+                            <span className="animate-typing-effect overflow-hidden whitespace-nowrap border-r-2 border-primary pr-1 drop-shadow-[0_2px_10px_rgba(var(--primary),0.3)] bg-gradient-to-r from-primary/90 via-blue-500/90 to-purple-500/90 bg-clip-text text-transparent text-4xl font-bold">
+                              Howdy{user?.name ? `, ${user.name}` : ""}! How can I help you?
+                            </span>
+                          </span>
+                        </h3>
+                      </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         {/* Create Category */}
@@ -1775,62 +1806,137 @@ export default function Home() {
 
                 {/* Show templates for a new chat thread */}
                 {currentThread?.id === 'new' && currentThread.messages.length === 0 && !showProjectsGrid && !showAgentsGrid && (
-                  <div className="py-8">
-                    <div className="relative mb-10 text-center">
-                      {/* Modern gradient background effects */}
-                      <div className="absolute -z-10 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-br from-primary/20 via-blue-500/10 to-purple-500/20 blur-3xl rounded-full opacity-70"></div>
-                      <div className="absolute -z-10 left-1/4 top-1/2 -translate-y-1/2 w-32 h-32 bg-gradient-to-br from-emerald-500/10 via-primary/5 to-pink-500/10 blur-2xl rounded-full opacity-50"></div>
+                  <div className="py-8 max-w-5xl mx-auto">
+                    <div className="relative py-10 px-12 bg-gradient-to-b from-white/10 to-white/5 dark:from-black/10 dark:to-black/5 backdrop-blur-md rounded-3xl border border-white/20 dark:border-white/10 mb-14 shadow-[0_10px_50px_-12px_rgba(0,0,0,0.25)] overflow-hidden">
+                      {/* Ultra-modern gradient background effects */}
+                      <div className="absolute -z-10 inset-0 overflow-hidden">
+                        {/* Primary gradient blob with animation */}
+                        <div className="absolute -z-10 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[180%] h-[180%] bg-gradient-to-br from-primary/20 via-blue-500/15 to-purple-500/20 blur-3xl rounded-full opacity-70 animate-pulse-soft [animation-duration:8s]"></div>
 
-                      {/* Animated greeting with user name */}
+                        {/* Secondary animated gradient blobs */}
+                        <div className="absolute -z-10 left-1/4 top-1/2 -translate-y-1/2 w-1/3 h-1/3 bg-gradient-to-br from-emerald-500/15 via-primary/10 to-pink-500/15 blur-2xl rounded-full opacity-60 animate-pulse-soft [animation-duration:10s]"></div>
+                        <div className="absolute -z-10 right-1/4 bottom-1/3 w-1/4 h-1/4 bg-gradient-to-br from-blue-500/15 via-primary/10 to-purple-500/15 blur-2xl rounded-full opacity-50 animate-pulse-soft [animation-duration:12s] [animation-delay:1s]"></div>
+                        <div className="absolute -z-10 right-1/3 top-1/4 w-1/5 h-1/5 bg-gradient-to-br from-purple-500/15 via-primary/10 to-blue-500/15 blur-2xl rounded-full opacity-40 animate-pulse-soft [animation-duration:14s] [animation-delay:2s]"></div>
+
+                        {/* Enhanced shimmer effect */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full animate-[shimmer_5s_infinite] will-change-transform"></div>
+
+                        {/* Subtle noise texture overlay */}
+                        <div className="absolute inset-0 bg-noise opacity-[0.03] mix-blend-soft-light"></div>
+
+                        {/* Subtle border glow */}
+                        <div className="absolute inset-0 rounded-3xl border border-white/30 dark:border-white/20 opacity-50 blur-[2px]"></div>
+
+                        {/* Radial highlight */}
+                        <div className="absolute -z-10 left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2 w-1/2 h-1/2 bg-gradient-to-r from-white/5 to-transparent blur-3xl rounded-full opacity-60"></div>
+                      </div>
+
+                      {/* Enhanced animated greeting with user name */}
                       <div className="flex flex-col items-center">
-                        <h2 className="text-3xl md:text-4xl font-bold mb-2">
-                          <span className="relative inline-block">
-                            <span className="animate-typing-effect overflow-hidden whitespace-nowrap border-r-2 border-primary pr-1 text-foreground">
-                              Howdy{user?.name ? `, ${user.name}` : ""}!
+                        {/* Decorative element */}
+                        <div className="mb-6 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-blue-500/20 flex items-center justify-center">
+                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary/40 to-blue-500/40 animate-pulse-soft [animation-duration:3s]"></div>
+                          </div>
+                        </div>
+
+                        <div className="relative mb-6">
+                          <div className="absolute -z-10 -inset-10 bg-gradient-to-r from-primary/20 via-blue-500/20 to-purple-500/20 blur-xl rounded-full opacity-80 animate-pulse-soft [animation-duration:4s]"></div>
+                          <h2 className="text-3xl md:text-5xl font-bold mb-3">
+                            <span className="relative inline-block">
+                              <span className="animate-typing-effect overflow-hidden whitespace-nowrap border-r-2 border-primary pr-1 drop-shadow-[0_2px_10px_rgba(var(--primary),0.3)] bg-gradient-to-r from-primary/90 via-blue-500/90 to-purple-500/90 bg-clip-text text-transparent">
+                                Howdy{user?.name ? `, ${user.name}` : ""}!
+                              </span>
                             </span>
-                          </span>
-                        </h2>
-                        <h3 className="text-2xl md:text-3xl font-medium mb-3">How can I help you?</h3>
+                          </h2>
+                        </div>
+
+                        <h3 className="text-2xl md:text-3xl font-medium mb-8 bg-gradient-to-r from-primary/90 via-blue-500/90 to-purple-500/90 bg-clip-text text-transparent drop-shadow-sm">How can I help you today?</h3>
+
+                        {/* Enhanced decorative divider */}
+                        <div className="relative">
+                          <div className="h-[1px] w-40 bg-gradient-to-r from-transparent via-primary/40 to-transparent"></div>
+                          <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[3px] w-10 bg-gradient-to-r from-primary/40 via-primary/60 to-primary/40 blur-[1px] opacity-70"></div>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Category tabs - modern glass design */}
-                    <div className="flex justify-center mb-10 bg-background/30 backdrop-blur-md p-1.5 rounded-2xl max-w-lg mx-auto shadow-sm border border-white/10 dark:border-white/5">
-                      {templateCategories.map((category) => (
-                        <button
-                          key={category.id}
-                          onClick={() => {
-                            setSelectedTemplateCategory(category.id as any);
-                            rotateTemplates(category.id);
-                          }}
-                          className={`px-5 py-3 rounded-xl font-medium transition-all duration-300 relative text-sm flex-1 flex items-center justify-center gap-2.5
-                            ${selectedTemplateCategory === category.id
-                              ? `bg-white/10 dark:bg-black/20 shadow-sm text-${category.color} dark:text-white`
-                              : `text-muted-foreground hover:text-foreground ${category.hoverColor} hover:bg-white/5 dark:hover:bg-black/10`
-                            }
-                          `}
-                        >
-                          <category.icon className={`w-4 h-4 ${selectedTemplateCategory === category.id ? 'text-' + category.color : 'opacity-70'}`} />
-                          <span>{category.label}</span>
-                          {selectedTemplateCategory === category.id && (
-                            <span className="absolute inset-0 rounded-xl ring-1 ring-white/20 dark:ring-white/10"></span>
-                          )}
-                          {selectedTemplateCategory === category.id && (
-                            <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/2 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent opacity-70"></span>
-                          )}
-                        </button>
-                      ))}
+                    {/* Premium category tabs with 3D effects - more compact */}
+                    <div className="flex justify-center mb-8 max-w-md mx-auto relative">
+                      {/* Background glow effect */}
+                      <div className="absolute -z-10 inset-0 -m-2 bg-gradient-to-r from-primary/5 via-transparent to-primary/5 rounded-2xl opacity-70 blur-lg"></div>
+
+                      {/* Main tab container */}
+                      <div className="flex w-full bg-gradient-to-b from-white/10 to-white/5 dark:from-black/10 dark:to-black/5 backdrop-blur-md p-1 rounded-xl shadow-md border border-white/20 dark:border-white/10 relative overflow-hidden">
+                        {/* Subtle shimmer effect */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full animate-[shimmer_8s_infinite] will-change-transform"></div>
+
+                        {/* Tab buttons container */}
+                        <div className="flex w-full relative z-10 gap-0.5">
+                          {templateCategories.map((category) => {
+                            const isSelected = selectedTemplateCategory === category.id;
+                            return (
+                              <button
+                                key={category.id}
+                                onClick={() => {
+                                  setSelectedTemplateCategory(category.id as any);
+                                  rotateTemplates(category.id);
+                                }}
+                                className={`relative group px-2 py-2 rounded-lg font-medium transition-all duration-300 text-xs flex-1 flex items-center justify-center gap-1.5
+                                  ${isSelected
+                                    ? `bg-gradient-to-b from-white/15 to-white/5 dark:from-black/20 dark:to-black/10 shadow-[0_2px_6px_-2px_rgba(0,0,0,0.1)] text-primary`
+                                    : `text-muted-foreground hover:text-foreground hover:bg-white/5 dark:hover:bg-black/10`
+                                  }
+                                `}
+                              >
+                                {/* Selection highlight effects */}
+                                {isSelected && (
+                                  <div className="absolute inset-0 rounded-lg ring-1 ring-white/20 dark:ring-white/10"></div>
+                                )}
+
+                                {/* Icon with glow effect */}
+                                <div className={`relative flex items-center justify-center h-5 w-5 rounded-full ${isSelected ? 'bg-primary/10' : 'bg-white/5 dark:bg-black/5'} transition-colors duration-300`}>
+                                  {isSelected && <div className="absolute inset-0 rounded-full blur-[1px] bg-primary/20 opacity-70"></div>}
+                                  <category.icon className={`w-3 h-3 ${isSelected ? 'text-primary' : 'opacity-70 group-hover:opacity-90'} transition-all duration-300`} />
+                                </div>
+
+                                {/* Label */}
+                                <span className={`${isSelected ? 'font-semibold' : ''} transition-all duration-300`}>{category.label}</span>
+
+                                {/* Bottom indicator */}
+                                <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 h-0.5 transition-all duration-300 rounded-full bg-gradient-to-r from-transparent via-primary to-transparent"
+                                     style={{
+                                       width: isSelected ? '40%' : '0%',
+                                       opacity: isSelected ? 0.7 : 0
+                                     }}>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
 
 
-                    {/* Templates grid */}
+                    {/* Simplified templates grid with system theme support */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
                       {templateCategories.find(c => c.id === selectedTemplateCategory)?.templates.map((template, index) => {
                         const category = templateCategories.find(c => c.id === selectedTemplateCategory)!;
+
+                        // Determine category-specific colors and styles using theme colors
+                        const categoryColors = {
+                          writing: { bg: 'bg-primary/5 dark:bg-primary/10', icon: 'text-primary' },
+                          learning: { bg: 'bg-primary/5 dark:bg-primary/10', icon: 'text-primary' },
+                          coding: { bg: 'bg-primary/5 dark:bg-primary/10', icon: 'text-primary' },
+                          other: { bg: 'bg-primary/5 dark:bg-primary/10', icon: 'text-primary' }
+                        };
+
+                        const colorSet = categoryColors[category.id as keyof typeof categoryColors] || categoryColors.other;
+
                         return (
                           <Card
                             key={`template-${selectedTemplateCategory}-${index}`}
-                            className="group p-6 cursor-pointer transition-all duration-300 border-muted/30 hover:shadow-md overflow-hidden relative rounded-xl hover:scale-[1.02] hover:border-primary/30"
+                            className={`group p-0 cursor-pointer transition-all duration-300 border-white/10 dark:border-white/5 hover:shadow-md overflow-hidden relative rounded-xl hover:scale-[1.01] hover:border-primary/20 ${colorSet.bg} backdrop-blur-sm`}
                             onClick={() => {
                               if (template.enableBrowse) {
                                 setBrowseMode(true);
@@ -1838,28 +1944,41 @@ export default function Home() {
                               setMessage(template.prompt);
                             }}
                           >
-                            {/* Subtle hover effect */}
-                            <div className="absolute inset-0 bg-gradient-to-r opacity-0 group-hover:opacity-100 transition-opacity duration-300 from-primary/5 via-primary/10 to-primary/5"></div>
+                            {/* Simple hover effect */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
-                            <div className="relative z-10 flex flex-col h-full">
-                              <div className="flex items-start justify-between mb-2">
-                                <p className={`font-semibold text-base ${category.hoverColor} transition-colors`}>
-                                  {template.title}
-                                </p>
-                                {template.enableBrowse && (
-                                  <Badge variant="outline" className="ml-2 shrink-0 text-xs px-2.5 py-0.5 rounded-full text-primary border-primary/30 bg-primary/5">
-                                    <Globe className="w-3 h-3 mr-1" />
-                                    Web
-                                  </Badge>
-                                )}
+                            <div className="relative z-10 flex flex-col h-full p-5">
+                              {/* Template header with icon */}
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center">
+                                  <div className="w-8 h-8 rounded-full flex items-center justify-center mr-3 bg-white/20 dark:bg-black/20">
+                                    <category.icon className={`w-4 h-4 ${colorSet.icon}`} />
+                                  </div>
+                                  <div>
+                                    <p className={`font-semibold text-base transition-colors`}>
+                                      {template.title}
+                                    </p>
+                                    {template.enableBrowse && (
+                                      <div className="flex items-center mt-0.5">
+                                        <Globe className="w-3 h-3 mr-1 text-primary/70" />
+                                        <span className="text-xs text-primary/70">Web-enabled</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                              <p className="text-sm text-muted-foreground">{template.description}</p>
-                            </div>
 
-                            {/* Arrow indicator on hover */}
-                            <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-0 -translate-x-2">
-                              <div className="bg-primary/10 rounded-full p-1.5">
-                                <ArrowRight className="h-4 w-4 text-primary" />
+                              {/* Template description */}
+                              <p className="text-sm text-muted-foreground mb-4">{template.description}</p>
+
+                              {/* Simple prompt preview */}
+                              <div className="mt-auto pt-2 border-t border-white/5 dark:border-white/5 flex justify-between items-center">
+                                <p className="text-xs text-muted-foreground truncate max-w-[80%]">{template.prompt.substring(0, 40)}...</p>
+
+                                {/* Simple arrow indicator */}
+                                <div className="flex items-center justify-center rounded-full p-1.5 bg-white/10 dark:bg-white/5 group-hover:bg-primary/10 transition-colors duration-300">
+                                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors duration-300" />
+                                </div>
                               </div>
                             </div>
                           </Card>
