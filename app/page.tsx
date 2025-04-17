@@ -1041,35 +1041,28 @@ export default function Home() {
         </div>
 
         {/* Centered loading spinner only */}
-        <div className="relative z-10 flex items-center justify-center h-full animate-fade-in [animation-duration:1s]">
-          {/* Enhanced loading spinner */}
-          <div className="relative">
-            {/* Outer rotating rings */}
-            <div className="absolute -inset-12 rounded-full border border-primary/20 animate-spin-slow [animation-duration:20s]"></div>
-            <div className="absolute -inset-8 rounded-full border border-blue-500/20 animate-spin-slow [animation-duration:15s] [animation-direction:reverse]"></div>
-            <div className="absolute -inset-4 rounded-full border border-purple-500/20 animate-spin-slow [animation-duration:10s]"></div>
+        <div className="relative z-10 flex flex-col items-center justify-center h-full animate-fade-in [animation-duration:1s]">
+          {/* AI Orb Loading Indicator */}
+          <div className="relative w-48 h-48 flex items-center justify-center">
+            {/* Outer Glow Ring 1 */}
+            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-400/30 via-purple-500/30 to-pink-500/30 blur-2xl animate-pulse [animation-duration:4s]"></div>
 
-            {/* Subtle glow effect */}
-            <div className="absolute -inset-10 bg-gradient-to-br from-primary/20 via-blue-500/20 to-purple-500/20 rounded-full blur-xl opacity-80 animate-pulse-soft [animation-duration:4s]"></div>
+            {/* Outer Glow Ring 2 (Slightly smaller, different animation) */}
+            <div className="absolute inset-2 rounded-full bg-gradient-to-r from-pink-500/20 via-cyan-400/20 to-purple-500/20 blur-xl animate-pulse [animation-duration:5s] [animation-delay:0.5s]"></div>
 
-            {/* Main spinner */}
-            <div className="relative h-24 w-24 rounded-full bg-gradient-to-br from-background/80 to-background/60 backdrop-blur-xl border border-muted/30 shadow-lg flex items-center justify-center overflow-hidden">
-              {/* Inner glow */}
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(var(--primary),0.15)_0%,transparent_70%)] animate-pulse-soft [animation-duration:5s]"></div>
-
-              {/* Spinning progress arc */}
-              <div className="absolute inset-0">
-                <svg className="w-full h-full animate-spin-slow [animation-duration:2s]" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" className="text-primary" strokeWidth="3" strokeDasharray="70 170" strokeLinecap="round" />
-                </svg>
-              </div>
-
-              {/* Pulsing center */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse"></div>
-              </div>
+            {/* Central Orb */}
+            <div className="relative w-32 h-32 rounded-full overflow-hidden shadow-2xl">
+              {/* Orb Gradient Background */}
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan-400 via-purple-500 to-pink-500 animate-spin-slow [animation-duration:10s]"></div>
+              {/* Inner Subtle Glow/Texture */}
+              <div className="absolute inset-1 rounded-full bg-black/20 blur-md"></div>
+              {/* Optional: Add a very subtle inner core */}
+              <div className="absolute inset-4 rounded-full bg-white/10 blur-sm opacity-80"></div>
             </div>
           </div>
+          <p className="mt-8 text-2xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 animate-pulse">
+            Loading Workspace...
+          </p>
         </div>
       </div>
     );
