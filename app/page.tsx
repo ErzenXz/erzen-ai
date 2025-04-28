@@ -25,7 +25,6 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { toast } from "@/hooks/use-toast"
-import { LoadingAnimation } from "@/components/ui/loading-animation"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -93,8 +92,6 @@ export default function Home() {
     selectProjectThread,
     currentProjectThreadId
   } = useChat()
-
-  const [projectIsLoading, setProjectIsLoading] = useState(false)
 
   const { user } = useAuth()
   const [message, setMessage] = useState("")
@@ -923,24 +920,31 @@ export default function Home() {
     if (models.length === 0) {
       const loadModels = async () => {
         try {
-          setProjectIsLoading(true);
-          // Simulate loading delay - replace with actual API call
-          const response = await fetch('/api/models');
-          const data = await response.json();
-          setModels(data.models);
+          const availableModels = await fetchModels()
+          setModels(availableModels)
+
+          // Set default model if none is selected
+          if (!selectedModel && availableModels.length > 0) {
+            // Try to find Llama 4 Scout as the default model
+            const llamaScout = availableModels.find(
+              (model) => model.description.includes("Llama 4 Scout")
+            )
+            // Fallback to Gemini Flash 2.0 if Llama 4 Scout is not available
+            const geminiFlash = availableModels.find(
+              (model) => model.description === "Gemini Flash 2.0"
+            )
+            // Use Llama 4 Scout if available, otherwise Gemini Flash, otherwise first model
+            setSelectedModel(llamaScout ? llamaScout.model :
+              geminiFlash ? geminiFlash.model :
+              availableModels[0].model)
+          }
         } catch (error) {
-          console.error('Error loading models:', error);
-          // Set default models in case of error
-          setModels([
-            { id: 'anthropic:claude-3-opus', name: 'Claude 3 Opus', provider: 'anthropic' },
-            { id: 'anthropic:claude-3-sonnet', name: 'Claude 3 Sonnet', provider: 'anthropic' },
-            { id: 'anthropic:claude-3-haiku', name: 'Claude 3 Haiku', provider: 'anthropic' },
-            { id: 'openai:gpt-4', name: 'GPT-4', provider: 'openai' },
-            { id: 'openai:gpt-4-turbo', name: 'GPT-4 Turbo', provider: 'openai' },
-            { id: 'openai:gpt-3.5-turbo', name: 'GPT-3.5 Turbo', provider: 'openai' },
-          ]);
-        } finally {
-          setProjectIsLoading(false);
+          console.error("Failed to load models:", error)
+          toast({
+            title: "Error",
+            description: "Failed to load AI models. Please refresh the page.",
+            variant: "destructive"
+          })
         }
       }
 
@@ -983,9 +987,86 @@ export default function Home() {
     }
   }, [])
 
-  // Show loading UI while initializing
-  if (!user || isLoading || projectIsLoading) {
-    return <LoadingAnimation message="Loading Workspace..." />;
+  if (!user) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-background overflow-hidden relative">
+        {/* Ultra-modern animated background */}
+        <div className="absolute inset-0 -z-10 overflow-hidden">
+          {/* Dynamic gradient background - theme aware */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-background opacity-90 dark:from-primary/10 dark:via-background dark:to-background"></div>
+
+          {/* Animated mesh grid - futuristic effect with theme awareness */}
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(100,116,139,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(100,116,139,0.05)_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,rgba(64,76,255,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(64,76,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px]">
+            <div className="absolute inset-0 animate-pulse-soft [animation-duration:15s]"></div>
+          </div>
+
+          {/* Animated particles with glow */}
+          <div className="absolute inset-0">
+            {/* Particle clusters with glow effects */}
+            {Array.from({ length: 20 }).map((_, i) => (
+              <div
+                key={i}
+                className={`absolute rounded-full bg-gradient-to-r ${i % 3 === 0 ? 'from-primary/40 to-primary/10' : i % 3 === 1 ? 'from-blue-500/40 to-blue-500/10' : 'from-purple-500/40 to-purple-500/10'}`}
+                style={{
+                  width: `${Math.random() * 6 + 2}px`,
+                  height: `${Math.random() * 6 + 2}px`,
+                  top: `${Math.random() * 100}%`,
+                  left: `${Math.random() * 100}%`,
+                  boxShadow: `0 0 ${Math.random() * 10 + 5}px ${i % 3 === 0 ? 'rgba(var(--primary), 0.4)' : i % 3 === 1 ? 'rgba(59, 130, 246, 0.4)' : 'rgba(168, 85, 247, 0.4)'}`,
+                  animation: `float ${Math.random() * 10 + 10}s ease-in-out infinite`,
+                  animationDelay: `${Math.random() * 5}s`,
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Animated light beams */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200%] h-[200%] animate-spin-slow [animation-duration:40s]">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-0.5 bg-gradient-to-r from-transparent via-primary/10 to-transparent"
+                  style={{ transform: `translate(-50%, -50%) rotate(${i * 45}deg)` }}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Glowing orbs with dynamic movement */}
+          <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
+            <div className="absolute top-1/4 left-1/4 h-[40vh] w-[40vh] rounded-full bg-primary/10 blur-[120px] animate-pulse-soft [animation-duration:10s]"></div>
+            <div className="absolute bottom-1/4 right-1/4 h-[45vh] w-[45vh] rounded-full bg-blue-500/10 blur-[150px] animate-pulse-soft [animation-duration:15s] [animation-delay:2s]"></div>
+            <div className="absolute top-2/3 left-1/3 h-[30vh] w-[30vh] rounded-full bg-purple-500/10 blur-[100px] animate-pulse-soft [animation-duration:12s] [animation-delay:1s]"></div>
+          </div>
+        </div>
+
+        {/* Centered loading spinner only */}
+        <div className="relative z-10 flex flex-col items-center justify-center h-full animate-fade-in [animation-duration:1s]">
+          {/* AI Orb Loading Indicator */}
+          <div className="relative w-48 h-48 flex items-center justify-center">
+            {/* Outer Glow Ring 1 */}
+            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-400/30 via-purple-500/30 to-pink-500/30 blur-2xl animate-pulse [animation-duration:4s]"></div>
+
+            {/* Outer Glow Ring 2 (Slightly smaller, different animation) */}
+            <div className="absolute inset-2 rounded-full bg-gradient-to-r from-pink-500/20 via-cyan-400/20 to-purple-500/20 blur-xl animate-pulse [animation-duration:5s] [animation-delay:0.5s]"></div>
+
+            {/* Central Orb */}
+            <div className="relative w-32 h-32 rounded-full overflow-hidden shadow-2xl">
+              {/* Orb Gradient Background */}
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan-400 via-purple-500 to-pink-500 animate-spin-slow [animation-duration:10s]"></div>
+              {/* Inner Subtle Glow/Texture */}
+              <div className="absolute inset-1 rounded-full bg-black/20 blur-md"></div>
+              {/* Optional: Add a very subtle inner core */}
+              <div className="absolute inset-4 rounded-full bg-white/10 blur-sm opacity-80"></div>
+            </div>
+          </div>
+          <p className="mt-8 text-2xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 animate-pulse">
+            Loading Workspace...
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (

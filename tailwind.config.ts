@@ -155,14 +155,6 @@ const config: Config = {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-10px)" },
         },
-        "float-delay": {
-          "0%, 100%": { transform: "translateY(0)" },
-          "50%": { transform: "translateY(-15px)" },
-        },
-        "float-reverse": {
-          "0%, 100%": { transform: "translateY(-5px)" },
-          "50%": { transform: "translateY(5px)" },
-        },
         "pulse-soft": {
           "0%, 100%": { opacity: "1", transform: "scale(1)" },
           "50%": { opacity: "0.85", transform: "scale(1.05)" },
@@ -170,10 +162,6 @@ const config: Config = {
         "spin-slow": {
           "0%": { transform: "rotate(0deg)" },
           "100%": { transform: "rotate(360deg)" },
-        },
-        "spin-reverse-slow": {
-          "0%": { transform: "rotate(0deg)" },
-          "100%": { transform: "rotate(-360deg)" },
         },
         "bounce-gentle": {
           "0%, 100%": { transform: "translateY(0)" },
@@ -234,12 +222,9 @@ const config: Config = {
         shimmer: "shimmer 2s linear infinite",
         glow: "glow 1.5s ease-in-out infinite",
         "ping-slow": "ping-slow 1.5s cubic-bezier(0, 0, 0.2, 1) infinite",
-        float: "float 6s ease-in-out infinite",
-        "float-delay": "float-delay 7s ease-in-out infinite",
-        "float-reverse": "float-reverse 8s ease-in-out infinite",
+        float: "float 4s ease-in-out infinite",
         "pulse-soft": "pulse-soft 3s ease-in-out infinite",
         "spin-slow": "spin-slow 8s linear infinite",
-        "spin-reverse-slow": "spin-reverse-slow 10s linear infinite",
         "bounce-gentle": "bounce-gentle 2s ease-in-out infinite",
         "slide-in-right": "slide-in-right 0.3s ease-out",
         "slide-in-left": "slide-in-left 0.3s ease-out",
