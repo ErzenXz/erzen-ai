@@ -1123,3 +1123,8 @@ export async function getTextInputCompletions(
     return [];
   }
 }
+
+export async function fetchUsage(): Promise<any> {
+  const response = await fetchWithAuth(`${API_BASE_URL}/usage`);
+  return response.json();
+}

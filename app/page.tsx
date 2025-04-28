@@ -98,6 +98,7 @@ export default function Home() {
   const [selectedModel, setSelectedModel] = useState("")
   const [browseMode, setBrowseMode] = useState(false)
   const [reasoning, setReasoning] = useState(false)
+  const [research, setResearch] = useState(false)
   const [showFileUpload, setShowFileUpload] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
   const [isProcessingFiles, setIsProcessingFiles] = useState(false)
@@ -188,7 +189,7 @@ export default function Home() {
       setIsEditingMessage(null)
       setShowAgentsGrid(false)
       setShowAgentDetails(false)
-      await sendMessage(content, selectedModel, browseMode, reasoning)
+      await sendMessage(content, selectedModel, browseMode, reasoning, research)
       toast({
         title: "Message Sent",
         description: "Your message was sent successfully",
@@ -198,7 +199,7 @@ export default function Home() {
     } finally {
       setIsProcessingFiles(false)
     }
-  }, [message, uploadedFiles, selectedModel, user, isProcessingFiles, browseMode, reasoning, sendMessage, toast])
+  }, [message, uploadedFiles, selectedModel, user, isProcessingFiles, browseMode, reasoning, research, sendMessage, toast])
 
   const handleFilesChange = useCallback((files: File[]) => {
     setUploadedFiles(files)
@@ -2080,6 +2081,8 @@ export default function Home() {
                   onBrowseModeChange={setBrowseMode}
                   reasoning={reasoning}
                   onReasoningChange={setReasoning}
+                  research={research}
+                  onResearchChange={setResearch}
                 />
               </div>
             </footer>

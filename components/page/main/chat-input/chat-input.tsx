@@ -3,16 +3,14 @@
 import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
-import { Send, Upload, X, Loader2, Mic, MicOff, Globe, Brain, Bot, Sparkles, Zap } from "lucide-react"
+import { Send, Upload, X, Loader2, Mic, MicOff, Globe, Brain, Binoculars } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import TextareaAutosize from "react-textarea-autosize"
 import { CommandMenu } from "./command-menu"
 import { EmojiPicker } from "./emoji-picker"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-
-
+import { ModelSelector } from "@/components/page/main/model-selector"
 
 interface ChatInputProps {
   message: string
@@ -40,6 +38,8 @@ interface ChatInputProps {
   onBrowseModeChange?: (enabled: boolean) => void
   reasoning?: boolean
   onReasoningChange?: (enabled: boolean) => void
+  research?: boolean
+  onResearchChange?: (enabled: boolean) => void
 }
 
 export function ChatInput({
@@ -67,6 +67,8 @@ export function ChatInput({
   onBrowseModeChange,
   reasoning,
   onReasoningChange,
+  research,
+  onResearchChange,
 }: ChatInputProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const commandMenuContainerRef = useRef<HTMLDivElement>(null)
@@ -375,115 +377,85 @@ export function ChatInput({
       <div className="animate-apple-fade">
         {/* Model selector and toggles toolbar */}
         <div className="flex items-center gap-1.5 mb-2 ml-1">
-          {/* Compact model selector */}
+          {/* Use our improved model selector */}
           {selectedModel && onModelChange && models && models.length > 0 && (
             <div className="flex-shrink-0">
-              <Select value={selectedModel} onValueChange={onModelChange}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <SelectTrigger className="h-7 px-2 py-1 text-xs gap-1.5 bg-background/80 hover:bg-accent/50 transition-colors border-0 rounded-full w-auto">
-                      {models.find(m => m.model === selectedModel)?.description ? (
-                        <span className="flex items-center gap-1.5">
-                          {models.find(m => m.model === selectedModel)?.description.toLowerCase().includes('gemini') && (
-                            <Sparkles className="h-3.5 w-3.5 text-primary" />
-                          )}
-                          {models.find(m => m.model === selectedModel)?.description.toLowerCase().includes('gpt') && (
-                            <Zap className="h-3.5 w-3.5 text-primary" />
-                          )}
-                          {models.find(m => m.model === selectedModel)?.description.toLowerCase().includes('claude') && (
-                            <Brain className="h-3.5 w-3.5 text-primary" />
-                          )}
-                          {!models.find(m => m.model === selectedModel)?.description.toLowerCase().includes('gemini') &&
-                           !models.find(m => m.model === selectedModel)?.description.toLowerCase().includes('gpt') &&
-                           !models.find(m => m.model === selectedModel)?.description.toLowerCase().includes('claude') && (
-                            <Bot className="h-3.5 w-3.5 text-primary" />
-                          )}
-                        </span>
-                      ) : (
-                        <Bot className="h-3.5 w-3.5 text-muted-foreground" />
-                      )}
-                      <SelectValue placeholder="Model" className="text-xs">
-                        {models.find(m => m.model === selectedModel)?.description}
-                      </SelectValue>
-                    </SelectTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="text-xs">
-                    Select AI model
-                  </TooltipContent>
-                </Tooltip>
-                <SelectContent className="bg-background/90 backdrop-blur-md border-primary/10 shadow-md rounded-lg max-h-[300px] overflow-y-auto" align="center">
-                  {models.map((model) => (
-                    <SelectItem
-                      key={model.model}
-                      value={model.model}
-                      className="flex py-2 cursor-pointer focus:bg-primary/5 focus:text-primary hover:bg-accent/50 transition-colors text-xs"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex-shrink-0">
-                          {model.description.toLowerCase().includes('gemini') && (
-                            <Sparkles className="h-3.5 w-3.5 text-primary/70" />
-                          )}
-                          {model.description.toLowerCase().includes('gpt') && (
-                            <Zap className="h-3.5 w-3.5 text-primary/70" />
-                          )}
-                          {model.description.toLowerCase().includes('claude') && (
-                            <Brain className="h-3.5 w-3.5 text-primary/70" />
-                          )}
-                          {!model.description.toLowerCase().includes('gemini') &&
-                           !model.description.toLowerCase().includes('gpt') &&
-                           !model.description.toLowerCase().includes('claude') && (
-                            <Bot className="h-3.5 w-3.5 text-primary/70" />
-                          )}
-                        </div>
-                        <span>{model.description}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ModelSelector
+                value={selectedModel}
+                onChange={onModelChange}
+              />
             </div>
           )}
 
           {/* Web search toggle */}
           {onBrowseModeChange && (
-            <button
-              type="button"
-                onClick={() => {
-                  if (onBrowseModeChange) {
-                    onBrowseModeChange(!browseMode);
-                    // If turning off browse mode, also turn off reasoning
-                    if (browseMode && reasoning && onReasoningChange) {
-                      onReasoningChange(false);
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onBrowseModeChange) {
+                      onBrowseModeChange(!browseMode);
+                      // If turning off browse mode, also turn off reasoning
+                      if (browseMode && reasoning && onReasoningChange) {
+                        onReasoningChange(false);
+                      }
                     }
-                  }
-                }}
-                className={`relative flex items-center gap-1 px-2 py-1 rounded-full transition-all duration-200 text-xs h-7
-                  ${browseMode ?
-                    'bg-primary/10 text-primary ring-1 ring-primary/20 shadow-sm' :
-                    'hover:bg-accent/50 text-muted-foreground hover:text-foreground'}
-                `}
-              >
-                <Globe className={`w-3.5 h-3.5 transition-colors ${browseMode ? 'text-primary' : ''}`} />
-                <span className="font-medium">Web Search</span>
-              </button>
-          )}
-
-          {/* Reasoning toggle - only enabled when web search is on */}
-          {onReasoningChange && (
-            <button
-              type="button"
-                onClick={() => browseMode && onReasoningChange && onReasoningChange(!reasoning)}
-                className={`relative flex items-center gap-1 px-2 py-1 rounded-full transition-all duration-200 text-xs h-7
-                  ${!browseMode ? 'opacity-50 cursor-not-allowed' :
-                    reasoning ?
+                  }}
+                  className={`relative flex items-center gap-1 px-2 py-1 rounded-full transition-all duration-200 text-xs h-7
+                    ${browseMode ?
                       'bg-primary/10 text-primary ring-1 ring-primary/20 shadow-sm' :
                       'hover:bg-accent/50 text-muted-foreground hover:text-foreground'}
-                `}
-                disabled={!browseMode}
-              >
-                <Brain className={`w-3.5 h-3.5 transition-colors ${reasoning ? 'text-primary' : ''}`} />
-                <span className="font-medium">Reasoning</span>
-              </button>
+                  `}
+                >
+                  <Globe className={`w-3.5 h-3.5 transition-colors ${browseMode ? 'text-primary' : ''}`} />
+                  <span className="font-medium">Web Search</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Search the web for information</TooltipContent>
+            </Tooltip>
+          )}
+
+          {/* Research toggle - independent button */}
+          {onResearchChange && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => onResearchChange && onResearchChange(!research)}
+                  className={`relative flex items-center gap-1 px-2 py-1 rounded-full transition-all duration-200 text-xs h-7
+                    ${research ?
+                      'bg-primary/10 text-primary ring-1 ring-primary/20 shadow-sm' :
+                      'hover:bg-accent/50 text-muted-foreground hover:text-foreground'}
+                  `}
+                >
+                  <Binoculars className={`w-3.5 h-3.5 transition-colors ${research ? 'text-primary' : ''}`} />
+                  <span className="font-medium">Research</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Research any topic in depth</TooltipContent>
+            </Tooltip>
+          )}
+
+          {/* Reasoning toggle - can be enabled independently now */}
+          {onReasoningChange && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => onReasoningChange && onReasoningChange(!reasoning)}
+                  className={`relative flex items-center gap-1 px-2 py-1 rounded-full transition-all duration-200 text-xs h-7
+                    ${reasoning ?
+                      'bg-primary/10 text-primary ring-1 ring-primary/20 shadow-sm' :
+                      'hover:bg-accent/50 text-muted-foreground hover:text-foreground'}
+                  `}
+                >
+                  <Brain className={`w-3.5 h-3.5 transition-colors ${reasoning ? 'text-primary' : ''}`} />
+                  <span className="font-medium">Reasoning</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Think before responding</TooltipContent>
+            </Tooltip>
           )}
         </div>
 
@@ -557,8 +529,6 @@ export function ChatInput({
                       <span className="h-2 w-2 rounded-full bg-destructive"></span>
                     </div>
                   ) : null}
-
-
 
                   <EmojiPicker onEmojiSelect={handleEmojiSelect} />
 

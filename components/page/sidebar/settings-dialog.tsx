@@ -43,6 +43,9 @@ import {
   Lock,
   User,
   Zap,
+  BarChart,
+  Loader2,
+  Check,
 } from "lucide-react"
 import type { UserInstruction, ChatMemory, AIModel } from "@/lib/types"
 import {
@@ -53,6 +56,8 @@ import {
   updateInstruction,
   deleteInstruction,
   fetchModels,
+  fetchUsage,
+  fetchUserInfo,
 } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -62,9 +67,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart"
-import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, ResponsiveContainer } from "recharts"
+import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
+import { format } from "date-fns"
+
+// Add UserInfo type at the top of the file
+type UserInfo = {
+  id: string
+  name: string
+  username: string
+  email: string
+  role: string
+  lastLogin: string
+  multifactorEnabled: boolean
+  emailVerified: boolean
+  externalUser: boolean
+  birthdate: string
+  language: string
+  timezone: string
+  image: string | null
+}
 
 // Memory visualization component
 const MemoryVisualization = ({ data }: { data: ChatMemory[] }) => {
@@ -398,7 +421,16 @@ export function SettingsDialog() {
   const [safeSearchEnabled, setSafeSearchEnabled] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
   const [activeCategory, setActiveCategory] = useState("ai-behavior")
+  const [usage, setUsage] = useState<{
+    used: number;
+    total: number;
+    remaining: number;
+    resetDate: string;
+  } | null>(null);
   const { toast } = useToast()
+
+  // Add userInfo state after the usage state:
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
 
   // Settings for the sidebar navigation
   const categories = [
@@ -418,8 +450,7 @@ export function SettingsDialog() {
       icon: Sliders,
       subcategories: [
         { id: "appearance", label: "Appearance", icon: Palette },
-        { id: "notifications", label: "Notifications", icon: Bell },
-        { id: "accessibility", label: "Accessibility", icon: Keyboard },
+        { id: "shortcuts", label: "Shortcuts", icon: Keyboard },
       ],
     },
     {
@@ -427,7 +458,7 @@ export function SettingsDialog() {
       label: "Privacy & Security",
       icon: Shield,
       subcategories: [
-        { id: "data-usage", label: "Data Usage", icon: HardDrive },
+        { id: "usage", label: "Usage", icon: BarChart },
         { id: "web-search", label: "Web Search", icon: Globe },
         { id: "security", label: "Security", icon: Lock },
       ],
@@ -449,21 +480,9 @@ export function SettingsDialog() {
   const [fontSize, setFontSize] = useState("medium")
   const [messageStyle, setMessageStyle] = useState("bubbles")
   const [animationsEnabled, setAnimationsEnabled] = useState(true)
-
-  // Settings for notifications
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
-  const [soundEnabled, setSoundEnabled] = useState(true)
-  const [desktopNotifications, setDesktopNotifications] = useState(false)
-
-  // Settings for accessibility
-  const [highContrastMode, setHighContrastMode] = useState(false)
-  const [reducedMotion, setReducedMotion] = useState(false)
+  
+  // Settings for keyboard shortcuts
   const [keyboardShortcuts, setKeyboardShortcuts] = useState(true)
-
-  // Settings for data usage
-  const [autoDeleteMessages, setAutoDeleteMessages] = useState(false)
-  const [autoDeletePeriod, setAutoDeletePeriod] = useState("30")
-  const [storageLimit, setStorageLimit] = useState("unlimited")
 
   // Settings for security
   const [twoFactorAuth, setTwoFactorAuth] = useState(false)
@@ -473,9 +492,45 @@ export function SettingsDialog() {
   // Sidebar ref for scrolling
   const sidebarRef = useRef<HTMLDivElement>(null)
 
+  // Check usage periodically (every 5 minutes)
+  useEffect(() => {
+    const checkUsage = async () => {
+      try {
+        const usageData = await fetchUsage();
+        setUsage(usageData);
+      } catch (error) {
+        console.error("Error fetching usage data:", error);
+      }
+    };
+
+    // Initial fetch
+    checkUsage();
+
+    // Set up periodic checking
+    const intervalId = setInterval(checkUsage, 5 * 60 * 1000);
+
+    return () => clearInterval(intervalId);
+  }, []);
+
   useEffect(() => {
     if (isOpen) {
       loadData()
+      
+      // Get the current theme from next-themes when dialog opens
+      const themeFromStorage = localStorage.getItem("theme") || "system";
+      setTheme(themeFromStorage);
+      
+      // Refresh usage data when opening settings
+      const refreshUsage = async () => {
+        try {
+          const usageData = await fetchUsage();
+          setUsage(usageData);
+        } catch (error) {
+          console.error("Error fetching usage data:", error);
+        }
+      };
+      
+      refreshUsage();
     }
   }, [isOpen])
 
@@ -492,14 +547,16 @@ export function SettingsDialog() {
   const loadData = async () => {
     try {
       setIsLoading(true)
-      const [memoryData, instructionsData, modelsData] = await Promise.all([
+      const [memoryData, instructionsData, modelsData, userInfoData] = await Promise.all([
         fetchMemory(),
         fetchInstructions(),
         fetchModels(),
+        fetchUserInfo(),
       ])
       setMemory(memoryData)
       setInstructions(instructionsData)
       setModels(modelsData)
+      setUserInfo(userInfoData)
     } catch (error) {
       toast({
         title: "Error loading data",
@@ -613,6 +670,23 @@ export function SettingsDialog() {
       setIsLoading(false)
     }
   }
+
+  // Handle theme change
+  const handleThemeChange = (newTheme: string) => {
+    setTheme(newTheme);
+    localStorage.setItem("theme", newTheme);
+    
+    // Apply theme using next-themes approach
+    document.documentElement.setAttribute("data-theme", newTheme);
+    
+    // Dispatch theme change event to trigger any transitions
+    window.dispatchEvent(new Event("themeChange"));
+    
+    toast({
+      title: "Theme updated",
+      description: `Theme has been changed to ${newTheme}`,
+    });
+  };
 
   // Render the settings content based on active category
   const renderSettingsContent = () => {
@@ -850,7 +924,7 @@ export function SettingsDialog() {
                 <ToggleSetting
                   id="streaming-responses"
                   title="Streaming Responses"
-                  description="Show AI responses as they're being generated"
+                  description="Show AI responses as they&apos;re being generated"
                   checked={true}
                   onCheckedChange={() => {}}
                 />
@@ -858,7 +932,7 @@ export function SettingsDialog() {
                 <ToggleSetting
                   id="reasoning"
                   title="Show Reasoning"
-                  description="Display the AI's reasoning process when generating responses"
+                  description="Display the AI&apos;s reasoning process when generating responses"
                   checked={false}
                   onCheckedChange={() => {}}
                 />
@@ -891,249 +965,121 @@ export function SettingsDialog() {
                 </CardTitle>
                 <CardDescription>Customize the look and feel of the interface</CardDescription>
               </CardHeader>
-              <CardContent className="pt-0 space-y-4">
-                <div className="space-y-2">
-                  <Label>Theme</Label>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant={theme === "light" ? "default" : "outline"}
-                      size="sm"
-                      className="flex items-center gap-2"
-                      onClick={() => setTheme("light")}
-                    >
-                      <Sun className="h-4 w-4" />
-                      Light
-                    </Button>
-                    <Button
-                      variant={theme === "dark" ? "default" : "outline"}
-                      size="sm"
-                      className="flex items-center gap-2"
-                      onClick={() => setTheme("dark")}
-                    >
-                      <Moon className="h-4 w-4" />
-                      Dark
-                    </Button>
-                    <Button
-                      variant={theme === "system" ? "default" : "outline"}
-                      size="sm"
-                      className="flex items-center gap-2"
-                      onClick={() => setTheme("system")}
-                    >
-                      <Settings className="h-4 w-4" />
-                      System
-                    </Button>
+              <CardContent className="pt-0">
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium mb-3 block">Light & Dark</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        variant={theme === "light" ? "default" : "outline"}
+                        size="lg"
+                        className="justify-start h-14 px-4 py-3 w-full"
+                        onClick={() => handleThemeChange("light")}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-50 to-gray-100 border border-gray-200 flex items-center justify-center">
+                            <Sun className="h-4 w-4 text-amber-500" />
+                          </div>
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium">Light</span>
+                            <span className="text-xs text-muted-foreground">Default light theme</span>
+                          </div>
+                        </div>
+                      </Button>
+                      
+                      <Button
+                        variant={theme === "dark" ? "default" : "outline"}
+                        size="lg"
+                        className="justify-start h-14 px-4 py-3 w-full"
+                        onClick={() => handleThemeChange("dark")}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 flex items-center justify-center">
+                            <Moon className="h-4 w-4 text-blue-400" />
+                          </div>
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium">Dark</span>
+                            <span className="text-xs text-muted-foreground">Default dark theme</span>
+                          </div>
+                        </div>
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium mb-3 block">Color Themes</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <ThemeButton 
+                        theme="blue" 
+                        currentTheme={theme} 
+                        onClick={() => handleThemeChange("blue")} 
+                        color="bg-blue-500" 
+                      />
+                      <ThemeButton 
+                        theme="green" 
+                        currentTheme={theme} 
+                        onClick={() => handleThemeChange("green")} 
+                        color="bg-green-500" 
+                      />
+                      <ThemeButton 
+                        theme="purple" 
+                        currentTheme={theme} 
+                        onClick={() => handleThemeChange("purple")} 
+                        color="bg-purple-500" 
+                      />
+                      <ThemeButton 
+                        theme="yellow" 
+                        currentTheme={theme} 
+                        onClick={() => handleThemeChange("yellow")} 
+                        color="bg-yellow-400" 
+                      />
+                      <ThemeButton 
+                        theme="pink" 
+                        currentTheme={theme} 
+                        onClick={() => handleThemeChange("pink")} 
+                        color="bg-pink-500" 
+                      />
+                      <ThemeButton 
+                        theme="orange" 
+                        currentTheme={theme} 
+                        onClick={() => handleThemeChange("orange")} 
+                        color="bg-orange-500" 
+                      />
+                      <ThemeButton 
+                        theme="teal" 
+                        currentTheme={theme} 
+                        onClick={() => handleThemeChange("teal")} 
+                        color="bg-teal-500" 
+                      />
+                      <ThemeButton 
+                        theme="gray" 
+                        currentTheme={theme} 
+                        onClick={() => handleThemeChange("gray")} 
+                        color="bg-gray-500" 
+                      />
+                      <ThemeButton 
+                        theme="system" 
+                        currentTheme={theme} 
+                        onClick={() => handleThemeChange("system")} 
+                        color="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" 
+                      />
+                    </div>
                   </div>
                 </div>
-
-                <div className="space-y-2 pt-2">
-                  <Label htmlFor="font-size">Font Size</Label>
-                  <Select value={fontSize} onValueChange={setFontSize}>
-                    <SelectTrigger id="font-size">
-                      <SelectValue placeholder="Select font size" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="small">Small</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="large">Large</SelectItem>
-                      <SelectItem value="xl">Extra Large</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2 pt-2">
-                  <Label htmlFor="message-style">Message Style</Label>
-                  <Select value={messageStyle} onValueChange={setMessageStyle}>
-                    <SelectTrigger id="message-style">
-                      <SelectValue placeholder="Select message style" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="bubbles">Chat Bubbles</SelectItem>
-                      <SelectItem value="modern">Modern</SelectItem>
-                      <SelectItem value="compact">Compact</SelectItem>
-                      <SelectItem value="minimal">Minimal</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <ToggleSetting
-                  id="animations"
-                  title="Interface Animations"
-                  description="Enable smooth transitions and animations throughout the interface"
-                  checked={animationsEnabled}
-                  onCheckedChange={setAnimationsEnabled}
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5 text-primary" />
-                  Chat Appearance
-                </CardTitle>
-                <CardDescription>Customize how chat messages are displayed</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0 space-y-4">
-                <div className="space-y-2">
-                  <Label>Message Alignment</Label>
-                  <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" size="sm" className="flex-1">
-                      Left Aligned
-                    </Button>
-                    <Button variant="default" size="sm" className="flex-1">
-                      Bubbles
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="space-y-2 pt-2">
-                  <Label htmlFor="code-theme">Code Block Theme</Label>
-                  <Select defaultValue="github">
-                    <SelectTrigger id="code-theme">
-                      <SelectValue placeholder="Select code theme" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="github">GitHub</SelectItem>
-                      <SelectItem value="vscode">VS Code</SelectItem>
-                      <SelectItem value="dracula">Dracula</SelectItem>
-                      <SelectItem value="monokai">Monokai</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <ToggleSetting
-                  id="syntax-highlighting"
-                  title="Syntax Highlighting"
-                  description="Highlight code syntax in code blocks"
-                  checked={true}
-                  onCheckedChange={() => {}}
-                />
               </CardContent>
             </Card>
           </div>
         )
 
-      case "notifications":
+      case "shortcuts":
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-xl font-semibold mb-2">Notifications</h2>
+              <h2 className="text-xl font-semibold mb-2">Shortcuts</h2>
               <p className="text-muted-foreground">
-                Configure how and when you receive notifications from your AI assistant
+                Configure keyboard shortcuts for faster navigation
               </p>
             </div>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Bell className="w-5 h-5 text-primary" />
-                  Notification Settings
-                </CardTitle>
-                <CardDescription>Control when and how you receive notifications</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0 space-y-4">
-                <ToggleSetting
-                  id="notifications-enabled"
-                  title="Enable Notifications"
-                  description="Receive notifications when new messages arrive"
-                  checked={notificationsEnabled}
-                  onCheckedChange={setNotificationsEnabled}
-                />
-
-                <ToggleSetting
-                  id="sound-enabled"
-                  title="Notification Sounds"
-                  description="Play a sound when new notifications arrive"
-                  checked={soundEnabled}
-                  onCheckedChange={setSoundEnabled}
-                  disabled={!notificationsEnabled}
-                />
-
-                <ToggleSetting
-                  id="desktop-notifications"
-                  title="Desktop Notifications"
-                  description="Show notifications on your desktop when the app is in the background"
-                  checked={desktopNotifications}
-                  onCheckedChange={setDesktopNotifications}
-                  disabled={!notificationsEnabled}
-                />
-
-                <div className="space-y-2 pt-2">
-                  <Label htmlFor="notification-level">Notification Level</Label>
-                  <Select defaultValue="all" disabled={!notificationsEnabled}>
-                    <SelectTrigger id="notification-level">
-                      <SelectValue placeholder="Select notification level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Messages</SelectItem>
-                      <SelectItem value="mentions">Mentions Only</SelectItem>
-                      <SelectItem value="important">Important Only</SelectItem>
-                      <SelectItem value="none">None</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )
-
-      case "accessibility":
-        return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-xl font-semibold mb-2">Accessibility</h2>
-              <p className="text-muted-foreground">Configure settings to make the interface more accessible</p>
-            </div>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Keyboard className="w-5 h-5 text-primary" />
-                  Accessibility Settings
-                </CardTitle>
-                <CardDescription>Make the interface more accessible for your needs</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0 space-y-4">
-                <ToggleSetting
-                  id="high-contrast"
-                  title="High Contrast Mode"
-                  description="Increase contrast for better visibility"
-                  checked={highContrastMode}
-                  onCheckedChange={setHighContrastMode}
-                />
-
-                <ToggleSetting
-                  id="reduced-motion"
-                  title="Reduced Motion"
-                  description="Minimize animations and motion effects"
-                  checked={reducedMotion}
-                  onCheckedChange={setReducedMotion}
-                />
-
-                <ToggleSetting
-                  id="keyboard-shortcuts"
-                  title="Keyboard Shortcuts"
-                  description="Enable keyboard shortcuts for faster navigation"
-                  checked={keyboardShortcuts}
-                  onCheckedChange={setKeyboardShortcuts}
-                />
-
-                <div className="space-y-2 pt-2">
-                  <Label htmlFor="text-to-speech">Text-to-Speech Voice</Label>
-                  <Select defaultValue="default">
-                    <SelectTrigger id="text-to-speech">
-                      <SelectValue placeholder="Select voice" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="default">Default</SelectItem>
-                      <SelectItem value="female">Female</SelectItem>
-                      <SelectItem value="male">Male</SelectItem>
-                      <SelectItem value="neutral">Gender Neutral</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
 
             <Card>
               <CardHeader className="pb-2">
@@ -1167,101 +1113,106 @@ export function SettingsDialog() {
                   </div>
                 </div>
               </CardContent>
+              <CardFooter>
+                <ToggleSetting
+                  id="keyboard-shortcuts"
+                  title="Enable Keyboard Shortcuts"
+                  description="Toggle all keyboard shortcuts on or off"
+                  checked={keyboardShortcuts}
+                  onCheckedChange={setKeyboardShortcuts}
+                />
+              </CardFooter>
             </Card>
           </div>
         )
 
-      case "data-usage":
+      case "usage":
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-xl font-semibold mb-2">Data Usage</h2>
-              <p className="text-muted-foreground">Manage how your data is stored and used by the AI assistant</p>
+              <h2 className="text-xl font-semibold mb-2">Usage Dashboard</h2>
+              <p className="text-muted-foreground">
+                Monitor your API request usage and limits
+              </p>
             </div>
 
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <HardDrive className="w-5 h-5 text-primary" />
-                  Data Storage
+                  <BarChart className="w-5 h-5 text-primary" />
+                  API Usage
                 </CardTitle>
-                <CardDescription>Configure how your conversation data is stored</CardDescription>
+                <CardDescription>Your current API usage and remaining requests</CardDescription>
               </CardHeader>
-              <CardContent className="pt-0 space-y-4">
-                <ToggleSetting
-                  id="auto-delete"
-                  title="Auto-Delete Messages"
-                  description="Automatically delete messages after a specified period"
-                  checked={autoDeleteMessages}
-                  onCheckedChange={setAutoDeleteMessages}
-                />
-
-                <div className="space-y-2">
-                  <Label htmlFor="auto-delete-period">Auto-Delete Period</Label>
-                  <Select value={autoDeletePeriod} onValueChange={setAutoDeletePeriod} disabled={!autoDeleteMessages}>
-                    <SelectTrigger id="auto-delete-period">
-                      <SelectValue placeholder="Select period" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="7">7 days</SelectItem>
-                      <SelectItem value="30">30 days</SelectItem>
-                      <SelectItem value="90">90 days</SelectItem>
-                      <SelectItem value="365">1 year</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2 pt-2">
-                  <Label htmlFor="storage-limit">Storage Limit</Label>
-                  <Select value={storageLimit} onValueChange={setStorageLimit}>
-                    <SelectTrigger id="storage-limit">
-                      <SelectValue placeholder="Select storage limit" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="100">100 MB</SelectItem>
-                      <SelectItem value="500">500 MB</SelectItem>
-                      <SelectItem value="1000">1 GB</SelectItem>
-                      <SelectItem value="unlimited">Unlimited</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Download className="w-5 h-5 text-primary" />
-                  Data Export
-                </CardTitle>
-                <CardDescription>Export your conversation data</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0 space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="export-format">Export Format</Label>
-                  <Select defaultValue="json">
-                    <SelectTrigger id="export-format">
-                      <SelectValue placeholder="Select format" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="json">JSON</SelectItem>
-                      <SelectItem value="csv">CSV</SelectItem>
-                      <SelectItem value="txt">Plain Text</SelectItem>
-                      <SelectItem value="html">HTML</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button className="flex-1">
-                    <Download className="w-4 h-4 mr-2" />
-                    Export All Conversations
-                  </Button>
-                  <Button variant="outline" className="flex-1">
-                    <Download className="w-4 h-4 mr-2" />
-                    Export Current Chat
-                  </Button>
-                </div>
+              <CardContent className="pt-4">
+                {usage ? (
+                  <div className="space-y-6">
+                    <div className="w-full h-[250px] flex items-center justify-center">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={[
+                              { name: "Used", value: usage.used },
+                              { name: "Remaining", value: usage.remaining }
+                            ]}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={80}
+                            paddingAngle={5}
+                            dataKey="value"
+                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          >
+                            <Cell fill="hsl(var(--primary))" />
+                            <Cell fill="hsl(var(--muted))" />
+                          </Pie>
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-card rounded-lg p-4 border">
+                        <div className="text-sm text-muted-foreground">Used Requests</div>
+                        <div className="text-2xl font-bold mt-1">{usage.used}</div>
+                      </div>
+                      
+                      <div className="bg-card rounded-lg p-4 border">
+                        <div className="text-sm text-muted-foreground">Remaining Requests</div>
+                        <div className="text-2xl font-bold mt-1">{usage.remaining}</div>
+                      </div>
+                      
+                      <div className="bg-card rounded-lg p-4 border">
+                        <div className="text-sm text-muted-foreground">Total Limit</div>
+                        <div className="text-2xl font-bold mt-1">{usage.total}</div>
+                      </div>
+                      
+                      <div className="bg-card rounded-lg p-4 border">
+                        <div className="text-sm text-muted-foreground">Resets On</div>
+                        <div className="text-2xl font-bold mt-1">
+                          {format(new Date(usage.resetDate), "MMM d, yyyy")}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {usage.remaining < usage.total * 0.1 && (
+                      <div className="flex items-center p-4 border border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-900/50 rounded-lg">
+                        <AlertTriangle className="w-5 h-5 text-yellow-500 mr-2" />
+                        <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                          You&apos;re running low on API requests. Consider upgrading your plan or reducing usage.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-[300px]">
+                    <div className="text-center space-y-4">
+                      <div className="bg-primary/10 h-12 w-12 rounded-full flex items-center justify-center mx-auto">
+                        <Loader2 className="h-6 w-6 text-primary animate-spin" />
+                      </div>
+                      <p className="text-muted-foreground">Loading usage data...</p>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -1465,6 +1416,157 @@ export function SettingsDialog() {
         )
 
       case "profile":
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold mb-2">User Profile</h2>
+              <p className="text-muted-foreground">
+                View and manage your account information
+              </p>
+            </div>
+
+            {userInfo ? (
+              <>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <User className="w-5 h-5 text-primary" />
+                      Account Information
+                    </CardTitle>
+                    <CardDescription>Your personal information and account status</CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="flex flex-col items-center sm:flex-row sm:items-start gap-6 mb-6">
+                      <div className="relative h-24 w-24 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center">
+                        {userInfo.image ? (
+                          <img src={userInfo.image} alt={userInfo.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <User className="h-12 w-12 text-primary/50" />
+                        )}
+                        <div className="absolute bottom-0 inset-x-0 h-8 bg-black/40 flex items-center justify-center">
+                          <Button size="icon" variant="ghost" className="h-6 w-6 text-white">
+                            <Edit2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="flex-1 text-center sm:text-left">
+                        <h3 className="text-xl font-semibold">{userInfo.name}</h3>
+                        <p className="text-muted-foreground">@{userInfo.username}</p>
+                        <div className="flex flex-wrap gap-2 mt-2 justify-center sm:justify-start">
+                          <Badge className={userInfo.role === "PREMIUM" ? "bg-amber-500 hover:bg-amber-600" : ""}>
+                            {userInfo.role === "USER" ? "Free Account" : 
+                              userInfo.role === "PREMIUM" ? "Premium" : userInfo.role}
+                          </Badge>
+                          {!userInfo.emailVerified && (
+                            <Badge variant="outline" className="text-red-500 border-red-200">
+                              Email Not Verified
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-xs text-muted-foreground">Email</label>
+                          <p className="font-medium">{userInfo.email}</p>
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Last Login</label>
+                          <p className="font-medium">{format(new Date(userInfo.lastLogin), "MMM d, yyyy HH:mm")}</p>
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Language</label>
+                          <p className="font-medium">{userInfo.language}</p>
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Timezone</label>
+                          <p className="font-medium">{userInfo.timezone}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                  <CardFooter className="flex flex-col gap-2 sm:flex-row">
+                    <Button className="w-full sm:w-auto">
+                      Edit Profile
+                    </Button>
+                    <Button variant="outline" className="w-full sm:w-auto">
+                      Change Password
+                    </Button>
+                  </CardFooter>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Shield className="w-5 h-5 text-primary" />
+                      Account Security
+                    </CardTitle>
+                    <CardDescription>Secure your account with additional protection</CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="flex items-center justify-between py-2">
+                      <div>
+                        <h4 className="font-medium">Two-Factor Authentication</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Add an extra layer of security to your account
+                        </p>
+                      </div>
+                      <Switch
+                        checked={userInfo.multifactorEnabled}
+                        onCheckedChange={() => {}}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {userInfo.role === "USER" && (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Zap className="w-5 h-5 text-primary" />
+                        Upgrade to Premium
+                      </CardTitle>
+                      <CardDescription>Get access to premium features and higher usage limits</CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Check className="text-green-500 h-5 w-5" />
+                          <p>Unlimited API requests</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Check className="text-green-500 h-5 w-5" />
+                          <p>Access to all AI models</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Check className="text-green-500 h-5 w-5" />
+                          <p>Priority support</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter>
+                      <Button className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700">
+                        Upgrade Now
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                )}
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-[300px]">
+                <div className="text-center space-y-4">
+                  <div className="bg-primary/10 h-12 w-12 rounded-full flex items-center justify-center mx-auto">
+                    <Loader2 className="h-6 w-6 text-primary animate-spin" />
+                  </div>
+                  <p className="text-muted-foreground">Loading profile information...</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )
+
       case "data-export":
       case "data-import":
         return (
@@ -1617,5 +1719,37 @@ export function SettingsDialog() {
       </AlertDialog>
     </>
   )
+}
+
+// Add this new component above the SettingsDialog function
+function ThemeButton({ 
+  theme, 
+  currentTheme, 
+  onClick, 
+  color 
+}: { 
+  theme: string 
+  currentTheme: string
+  onClick: () => void
+  color: string
+}) {
+  const isActive = currentTheme === theme;
+  
+  return (
+    <Button
+      variant={isActive ? "default" : "outline"}
+      size="sm"
+      className={cn(
+        "h-14 p-0 w-full border overflow-hidden",
+        isActive && "ring-2 ring-primary"
+      )}
+      onClick={onClick}
+    >
+      <div className="flex flex-col items-center justify-center w-full h-full gap-1">
+        <div className={cn("h-5 w-5 rounded-full", color)} />
+        <span className="text-xs capitalize">{theme}</span>
+      </div>
+    </Button>
+  );
 }
 

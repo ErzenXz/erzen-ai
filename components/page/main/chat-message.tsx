@@ -15,6 +15,14 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  Globe,
+  X,
+  SkipForward,
+  Loader2,
+  FlagTriangleRight,
+  Download,
+  MoreHorizontal,
+  Pencil,
 } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
@@ -39,6 +47,12 @@ import remarkGemoji from "remark-gemoji"
 import remarkFrontmatter from "remark-frontmatter"
 import remarkDirective from "remark-directive"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
 
 const remarkPlugins = [
   remarkGfm,
@@ -506,6 +520,236 @@ const ThinkingContent = memo(({ content }: { content: string }) => {
   )
 })
 ThinkingContent.displayName = "ThinkingContent"
+
+// ResearchStatus component
+const ResearchStatus = memo(({ status }: { status: any }) => {
+  const [isOpen, setIsOpen] = useState(true);
+
+  if (!status) return null;
+
+  // Handle different statuses in the research flow
+  let statusMessage = '';
+  let detailMessage = '';
+  
+  switch (status.status) {
+    case 'started':
+      statusMessage = 'Research initiated';
+      detailMessage = status.message || 'Starting research process...';
+      break;
+    case 'generating_queries':
+      statusMessage = 'Generating search queries';
+      detailMessage = status.message || 'Creating optimal search queries based on your question...';
+      break;
+    case 'queries_generated':
+      statusMessage = `Generated ${status.queries?.length || 0} search queries`;
+      detailMessage = status.queries ? status.queries.join(', ') : '';
+      break;
+    case 'searching':
+      statusMessage = 'Searching';
+      detailMessage = status.message || `Searching for "${status.currentQuery}"`;
+      break;
+    case 'search_complete':
+      statusMessage = 'Search completed';
+      detailMessage = status.message || `Found ${status.count || 0} results`;
+      break;
+    case 'processing':
+      statusMessage = 'Processing research';
+      detailMessage = status.message || `Processing ${status.count || 0} sources...`;
+      break;
+    case 'complete':
+      statusMessage = 'Research completed';
+      detailMessage = status.message || 'Finished research. Generating response...';
+      break;
+    case 'error':
+      statusMessage = 'Research error';
+      detailMessage = status.message || status.error || 'An error occurred during research.';
+      break;
+    default:
+      statusMessage = 'Researching';
+      detailMessage = status.message || 'Finding information...';
+  }
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="my-4">
+      <div className="relative bg-muted/30 rounded-lg p-3 overflow-hidden">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center space-x-2">
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              className="h-4 w-4 text-primary"
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            <h3 className="text-sm font-medium">{statusMessage}</h3>
+          </div>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-background/80">
+              {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </CollapsibleTrigger>
+        </div>
+
+        <CollapsibleContent className="mt-2 overflow-hidden transition-all duration-300 ease-in-out">
+          <div className="border-l-2 border-primary/20 pl-4 py-1 space-y-2">
+            <div className="text-sm text-foreground/90 font-light leading-relaxed">
+              {detailMessage}
+              
+              {/* Display sources if available */}
+              {status.sources && status.sources.length > 0 && (
+                <div className="mt-2">
+                  <p className="font-medium text-xs text-muted-foreground mb-1">Sources:</p>
+                  <ul className="list-disc pl-4 text-xs space-y-1">
+                    {status.sources.map((source: any, index: number) => (
+                      <li key={`source-${index}`}>
+                        {source.title} {source.url && <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-primary underline">Link</a>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        </CollapsibleContent>
+
+        <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-primary/5 to-transparent rounded-full -z-10 opacity-60 blur-xl"></div>
+        <div className="absolute bottom-0 left-0 w-16 h-16 bg-gradient-to-tr from-primary/5 to-transparent rounded-full -z-10 opacity-60 blur-lg"></div>
+      </div>
+    </Collapsible>
+  );
+});
+ResearchStatus.displayName = "ResearchStatus";
+
+// Enhance the BrowsingStatus component to better display search history
+const BrowsingStatus = memo(({ status, searchQuery, progress, message, references }: {
+  status: string;
+  searchQuery?: string;
+  progress?: number;
+  message?: any;
+  references?: any;
+}) => {
+  const [expanded, setExpanded] = useState(false);
+  
+  // Get the browsing history from the message property
+  const searchHistory = message?.history || [];
+  
+  const getMessage = (currentStatus: string) => {
+    switch (currentStatus) {
+      case 'started':
+        return `Started web search for "${searchQuery}"`;
+      case 'analyzing':
+        return 'Analyzing query and planning search strategy...';
+      case 'searching':
+        return `Searching the web for "${searchQuery}"...`;
+      case 'tavily_results':
+        return 'Processing search results...';
+      case 'usage_info':
+        return 'Checking usage information...';
+      case 'skipped':
+        return 'Web search skipped';
+      case 'completed':
+        return 'Web search completed';
+      case 'error':
+        return 'Error occurred during web search';
+      default:
+        return `Processing ${currentStatus}...`;
+    }
+  };
+  
+  // Return null if no status (should not happen)
+  if (!status) return null;
+  
+  const isCompleted = ['completed', 'skipped', 'error'].includes(status);
+  const hasReferences = references && references.length > 0;
+  
+  return (
+    <div className="mt-4 border rounded-lg overflow-hidden bg-accent/30">
+      <div className="p-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="flex-shrink-0">
+            {isCompleted ? (
+              status === 'error' ? (
+                <X className="h-4 w-4 text-destructive" />
+              ) : status === 'skipped' ? (
+                <SkipForward className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <Check className="h-4 w-4 text-primary" />
+              )
+            ) : (
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium">{getMessage(status)}</p>
+            {searchQuery && (
+              <p className="text-xs text-muted-foreground truncate">
+                {hasReferences ? (
+                  <>Found {references.length} sources</>
+                ) : (
+                  <>Query: &quot;{searchQuery}&quot;</>
+                )}
+              </p>
+            )}
+          </div>
+        </div>
+        
+        {/* Only show the toggle if there's a history to display */}
+        {searchHistory.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 rounded-full"
+            onClick={() => setExpanded(!expanded)}
+          >
+            <ChevronDown
+              className={cn("h-4 w-4 text-muted-foreground transition-transform", 
+                expanded ? "transform rotate-180" : ""
+              )}
+            />
+            <span className="sr-only">Toggle search history</span>
+          </Button>
+        )}
+      </div>
+      
+      {/* Expandable search history timeline */}
+      {expanded && searchHistory.length > 0 && (
+        <div className="px-4 pb-3 pt-1">
+          <div className="relative border-l border-muted pl-4 space-y-2">
+            {searchHistory.map((item: {status: string, timestamp: string}, index: number) => (
+              <div key={`history-${index}`} className="relative">
+                {/* Timeline dot */}
+                <div className="absolute -left-6 top-1 h-3 w-3 rounded-full border-2 border-background" 
+                  style={{ 
+                    backgroundColor: ['completed', 'error', 'skipped'].includes(item.status) 
+                      ? (item.status === 'error' ? 'var(--destructive)' : item.status === 'skipped' ? 'var(--muted)' : 'var(--primary)') 
+                      : 'var(--muted-foreground)'
+                  }} 
+                />
+                <div className="text-xs">
+                  <span className="text-muted-foreground mr-1">{new Date(item.timestamp).toLocaleTimeString()}</span>
+                  <span className="font-medium">{getMessage(item.status)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Progress bar for searching status */}
+      {status === 'searching' && typeof progress === 'number' && (
+        <Progress value={progress} className="h-1 rounded-none" />
+      )}
+    </div>
+  );
+});
+BrowsingStatus.displayName = "BrowsingStatus";
 
 // Optimized content renderer that handles both regular and streaming content
 const ContentRenderer = memo(
@@ -1754,8 +1998,31 @@ CollapsibleUserMessage.displayName = "CollapsibleUserMessage"
               </DropdownMenu>
             </div>
           </div>
+
+          {/* Show research status if available */}
+          {message.researchStatus && (
+            <ResearchStatus status={message.researchStatus} />
+          )}
+
+          {/* Show browsing status if available */}
+          {message.browsingStatus && message.browsingStatus.status && (
+            <BrowsingStatus
+              status={message.browsingStatus.status}
+              searchQuery={message.browsingStatus.query}
+              progress={message.browsingStatus.progress}
+              message={message.browsingStatus}
+              references={message.browsingStatus.sources}
+            />
+          )}
+
           <div className="markdown-wrapper max-w-full">
             {messageContent}
+            
+            {/* Show browsing references if available */}
+            {message.browsingStatus && message.browsingStatus.status === 'completed' && message.browsingStatus.sources && (
+              <BrowsingReferences sources={message.browsingStatus.sources} query={message.browsingStatus.query} />
+            )}
+            
             {/* Debug audio player - only visible when playing */}
             {isPlaying && (
               <div className="mt-4 p-3 bg-muted rounded-md">
@@ -1779,4 +2046,84 @@ CollapsibleUserMessage.displayName = "CollapsibleUserMessage"
 });
 
 ChatMessage.displayName = "ChatMessage";
+
+// Add a new component for displaying references at the bottom of messages
+const BrowsingReferences = memo(({ sources, query }: { sources?: any[], query?: string }) => {
+  if (!sources || sources.length === 0) return null;
+  
+  // Separate text and image sources
+  const textSources = sources.filter(s => s.source !== 'tavily_image');
+  const imageSources = sources.filter(s => s.source === 'tavily_image');
+  
+  return (
+    <div className="mt-6 pt-3 border-t border-muted">
+      {query && (
+        <div className="text-xs text-muted-foreground mb-2">
+          Search query: <span className="font-medium">{query}</span>
+        </div>
+      )}
+
+      {/* Text sources as a list with title and snippet */}
+      {textSources.length > 0 && (
+        <div className="mb-4">
+          <h4 className="text-sm font-medium mb-2">Web Sources</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {textSources.map((source, index) => (
+              <a 
+                key={`ref-${index}`}
+                href={source.url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="group p-3 rounded-lg border bg-background/50 hover:bg-muted/50 transition-colors flex flex-col"
+              >
+                <div className="flex items-start gap-2">
+                  <div className="flex-shrink-0 h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-xs text-primary font-medium">{index + 1}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h5 className="text-sm font-medium truncate group-hover:text-primary transition-colors">{source.title || `Source ${index + 1}`}</h5>
+                    <p className="text-xs text-muted-foreground truncate">{source.url}</p>
+                  </div>
+                </div>
+                {source.snippet && (
+                  <p className="text-xs text-foreground/70 mt-2 line-clamp-2">{source.snippet}</p>
+                )}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Image sources as a responsive grid gallery */}
+      {imageSources.length > 0 && (
+        <div className="mt-3">
+          <h4 className="text-sm font-medium mb-2">Image Results</h4>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            {imageSources.map((source, index) => (
+              <a 
+                key={`img-${index}`}
+                href={source.url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="relative group rounded-md overflow-hidden border hover:border-primary/50 transition-colors aspect-square"
+              >
+                <img 
+                  src={source.url} 
+                  alt={source.title || `Image ${index + 1}`}
+                  className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                  <p className="text-xs font-medium text-foreground truncate w-full">
+                    {source.title || `Image ${index + 1}`}
+                  </p>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
+BrowsingReferences.displayName = "BrowsingReferences";
 
