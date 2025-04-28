@@ -341,7 +341,8 @@ export function useChat() {
       content: string,
       model: string,
       browseMode: boolean,
-      reasoning: boolean
+      reasoning: boolean,
+      research: boolean = false
     ) => {
       // Skip if we're not in a browser context
       if (!isBrowser) {
@@ -392,9 +393,8 @@ export function useChat() {
           setThreads((prev) => [...prev]);
         }
 
-        // Create a new socket connection for this message
+        // Clean up any existing socket
         if (socketRef.current) {
-          // Clean up any existing socket
           socketRef.current.disconnect();
           socketRef.current = null;
         }
@@ -408,6 +408,14 @@ export function useChat() {
         let fullResponse = "";
         let newThreadId: string | null = null;
 
+        // Set up all event handlers BEFORE emitting the request
+
+        // Handle chatStarted event
+        socketRef.current.on("chatStarted", (data) => {
+          console.log("Chat started:", data);
+        });
+
+        // Handle chatChunk event for streaming response
         socketRef.current.on("chatChunk", (data) => {
           // Check if response contains a chat ID pattern
           const chatIdMatch = data.content?.match(/__CHATID__([0-9a-f-]+)__/);
@@ -417,8 +425,13 @@ export function useChat() {
             newThreadId = chatIdMatch[1];
 
             // Update currentThreadId and ref immediately
-            setCurrentThreadId(newThreadId);
-            currentThreadIdRef.current = newThreadId;
+            if (currentProjectId) {
+              setCurrentProjectThreadId(newThreadId);
+              currentProjectThreadIdRef.current = newThreadId;
+            } else {
+              setCurrentThreadId(newThreadId);
+              currentThreadIdRef.current = newThreadId;
+            }
 
             // Remove the chat ID marker from the message content
             data.content = data.content.replace(/__CHATID__([0-9a-f-]+)__/, "");
@@ -568,7 +581,7 @@ export function useChat() {
           }
         });
 
-        // Add handler for the chatThinking event
+        // Handle chatThinking event for thinking updates
         socketRef.current.on("chatThinking", (data) => {
           const activeThreadId =
             threadId === "new" ? newThreadId ?? "new" : threadId;
@@ -596,61 +609,100 @@ export function useChat() {
           }
         });
 
-        socketRef.current.on("chatComplete", async (data) => {
-          if (data?.chatId && threadId === "new" && !newThreadId) {
-            newThreadId = data.chatId;
+        // Handle research event
+        socketRef.current.on("chatResearching", (data) => {
+          // Add research status to the assistant message
+          const activeThreadId =
+            threadId === "new" ? newThreadId ?? "new" : threadId;
+          const currentMessages =
+            messageMapRef.current.get(activeThreadId) || [];
 
-            // Update currentThreadId and ref
-            if (currentProjectId) {
-              setCurrentProjectThreadId(newThreadId);
-              currentProjectThreadIdRef.current = newThreadId;
-            } else {
-              setCurrentThreadId(newThreadId);
-              currentThreadIdRef.current = newThreadId;
-            }
+          if (currentMessages.length > 0) {
+            const updatedMessages = [...currentMessages];
+            const lastMessage = updatedMessages[updatedMessages.length - 1];
 
-            const newThread = {
-              id: newThreadId!,
-              title: content.slice(0, 50) + (content.length > 50 ? "..." : ""),
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              userId: "",
-              messages: [],
-              projectId: currentProjectId || undefined,
+            updatedMessages[updatedMessages.length - 1] = {
+              ...lastMessage,
+              researchStatus: data,
             };
 
-            // Save the new thread in IndexedDB
-            await db.saveThread(newThread);
+            messageMapRef.current.set(activeThreadId, updatedMessages);
 
-            if (currentProjectId) {
-              setProjectThreads((prev) => {
-                const exists = prev.some((t) => t.id === newThreadId);
-                if (exists) return prev;
-                return [newThread, ...prev];
-              });
+            // Force re-render
+            if (currentProjectId && currentProjectThreadId) {
+              setProjectThreads((prev) => [...prev]);
             } else {
-              setThreads((prev) => {
-                const exists = prev.some((t) => t.id === newThreadId);
-                if (exists) return prev;
-                return [newThread, ...prev];
-              });
-            }
-
-            // Move messages from 'new' to the new thread ID
-            const newMessages = messageMapRef.current.get("new") || [];
-            if (newThreadId) {
-              // Save these messages to IndexedDB with the correct chatId
-              const messagesToSave = newMessages.map((msg) => ({
-                ...msg,
-                chatId: newThreadId!,
-              }));
-              await db.saveMessages(messagesToSave);
-
-              messageMapRef.current.set(newThreadId, newMessages);
-              messageMapRef.current.delete("new");
+              setThreads((prev) => [...prev]);
             }
           }
+        });
 
+        // Handle browsing event
+        socketRef.current.on("chatBrowsing", (data) => {
+          // Add research status to the assistant message
+          const activeThreadId =
+            threadId === "new" ? newThreadId ?? "new" : threadId;
+          const currentMessages =
+            messageMapRef.current.get(activeThreadId) || [];
+
+          if (currentMessages.length > 0) {
+            const updatedMessages = [...currentMessages];
+            const lastMessage = updatedMessages[updatedMessages.length - 1];
+
+            // Get existing browsing status or initialize new one
+            const existingStatus = lastMessage.browsingStatus || {};
+
+            // Store previous steps as history
+            const history = existingStatus.history || [];
+
+            // Don't add the completed status to history as we'll display that in a different way
+            if (
+              existingStatus.status &&
+              existingStatus.status !== "completed" &&
+              data.status !== "completed"
+            ) {
+              history.push({
+                status: existingStatus.status,
+                message: existingStatus.message,
+                timestamp: existingStatus.timestamp || new Date().toISOString(),
+              });
+            }
+
+            // For completed status, save full result data
+            if (data.status === "completed" && data.result) {
+              updatedMessages[updatedMessages.length - 1] = {
+                ...lastMessage,
+                browsingStatus: {
+                  ...data,
+                  history: history,
+                  sources: data.result.sources || [],
+                  query: data.result.query || "",
+                },
+              };
+            } else {
+              // For other statuses, update with new data while preserving history
+              updatedMessages[updatedMessages.length - 1] = {
+                ...lastMessage,
+                browsingStatus: {
+                  ...data,
+                  history: history,
+                },
+              };
+            }
+
+            messageMapRef.current.set(activeThreadId, updatedMessages);
+
+            // Force re-render
+            if (currentProjectId && currentProjectThreadId) {
+              setProjectThreads((prev) => [...prev]);
+            } else {
+              setThreads((prev) => [...prev]);
+            }
+          }
+        });
+
+        // Handle chatComplete event
+        socketRef.current.on("chatComplete", async () => {
           // Save the completed messages to IndexedDB if it's not a new thread
           if (threadId !== "new" || newThreadId) {
             const finalThreadId = newThreadId ?? threadId;
@@ -671,9 +723,12 @@ export function useChat() {
           setIsLoading(false);
         });
 
+        // Handle chatError event
         socketRef.current.on("chatError", (error) => {
           setError(
-            typeof error === "string" ? error : "Failed to send message"
+            typeof error === "object" && error.error
+              ? error.error
+              : "Failed to send message"
           );
 
           // Close socket connection on error
@@ -694,20 +749,18 @@ export function useChat() {
           }
         });
 
-        // Determine which socket event to use based on browseMode and reasoning
-        const messageToEmit =
-          browseMode || (browseMode && reasoning)
-            ? "chatStream"
-            : "chatPlainStream";
-
-        // Use the captured threadId for sending the request.
-        // When creating a new thread, we do not send an existing chatId.
-        socketRef.current.emit(messageToEmit, {
+        // Emit the request after setting up all handlers
+        socketRef.current.emit("chatStreaming", {
           message: content,
           chatId: threadId === "new" ? undefined : threadId,
           projectId: currentProjectId || undefined,
           model: model,
-          reasoning,
+          systemPrompt: "You are a helpful AI assistant.",
+          tools: {
+            browsing: browseMode,
+            reasoning: reasoning,
+            research: research,
+          },
         });
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to send message");

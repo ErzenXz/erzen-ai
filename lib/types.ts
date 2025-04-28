@@ -7,6 +7,8 @@ export interface Message {
   createdAt?: string;
   thinking?: boolean;
   thinkingContent?: string;
+  researchStatus?: any;
+  browsingStatus?: any;
 }
 
 export interface ChatThread {

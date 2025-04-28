@@ -8,17 +8,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Loader2, Bot, Sparkles, Zap, Brain, Flame, Cpu, Cloud, BrainCircuit } from 'lucide-react'
+import { Loader2, Bot, Sparkles, Zap, Brain, Flame, Cpu, Cloud, BrainCircuit, Pin, PinOff } from 'lucide-react'
 import { AIModel } from "@/lib/types"
 import { fetchModels } from "@/lib/api"
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 // Utility functions
 const getProviderIcon = (modelType: string) => {
   const type = modelType.toLowerCase();
-  console.log(`Provider type: ${type}`);
-
+  
   // Check for provider names in the type field
   if (type.includes('google') || type.includes('gemini')) return Sparkles; // Google/Gemini
   if (type.includes('openai') || type.includes('gpt')) return Zap; // OpenAI/GPT
@@ -31,17 +31,15 @@ const getProviderIcon = (modelType: string) => {
   return Bot; // Default
 }
 
-const getModelCapabilityTag = (modelDescription: string) => {
-  if (modelDescription.toLowerCase().includes('pro') ||
-      modelDescription.toLowerCase().includes('thinking')) {
-    return 'Advanced';
-  }
-  if (modelDescription.toLowerCase().includes('fast') ||
-      modelDescription.toLowerCase().includes('flash')) {
-    return 'Fast';
-  }
-  return 'Standard';
-}
+
+// Default preferred models by name (these will be matched against model descriptions)
+const DEFAULT_PREFERRED_MODELS = [
+  "Gemini Flash 2.5",
+  "GPT 4.1",
+  "GPT 4o",
+  "Llama 4 Scout",
+  "Claude 3.5 Sonnet",
+];
 
 interface ModelSelectorProps {
   readonly value: string
@@ -52,6 +50,36 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
   const [models, setModels] = useState<AIModel[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState("preferred")
+  const [preferredModels, setPreferredModels] = useState<string[]>([])
+
+  // Load preferred models from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedPreferredModels = localStorage.getItem("preferredModels");
+      if (savedPreferredModels) {
+        setPreferredModels(JSON.parse(savedPreferredModels));
+      } else {
+        setPreferredModels(DEFAULT_PREFERRED_MODELS);
+        localStorage.setItem("preferredModels", JSON.stringify(DEFAULT_PREFERRED_MODELS));
+      }
+    } catch (err) {
+      console.error("Error loading preferred models:", err);
+      setPreferredModels(DEFAULT_PREFERRED_MODELS);
+    }
+  }, []);
+
+  // Save preferred models to localStorage whenever they change
+  useEffect(() => {
+    try {
+      if (preferredModels.length > 0) {
+        localStorage.setItem("preferredModels", JSON.stringify(preferredModels));
+        console.log("Saved preferred models:", preferredModels);
+      }
+    } catch (err) {
+      console.error("Error saving preferred models:", err);
+    }
+  }, [preferredModels]);
 
   useEffect(() => {
     const loadModels = async () => {
@@ -68,10 +96,7 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
           // Convert dates to timestamps for comparison
           const dateA = new Date(a.createdAt).getTime()
           const dateB = new Date(b.createdAt).getTime()
-
-          // Log the dates for debugging
-          console.log(`Comparing: ${a.description} (${a.createdAt}) vs ${b.description} (${b.createdAt})`);
-
+          
           // Sort in descending order (newest first)
           return dateB - dateA
         }
@@ -80,24 +105,24 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
         modelsCopy.sort(sortByCreatedDate)
         const sortedModels = modelsCopy
 
-        // Log the sorted models
-        console.log('Sorted models (newest first):', sortedModels.map(m => `${m.description} (${m.createdAt})`))
-
         setModels(sortedModels)
         
         if (!value && sortedModels.length > 0) {
-          // Try to find Llama 4 Scout as the default model
-          const llamaScout = sortedModels.find(
-            (model) => model.description.includes("Llama 4 Scout")
+          // Always try to set Gemini Flash 2.5 as the default model
+          const geminiModel = sortedModels.find(
+            (model) => model.description.includes("Gemini Flash 2.5")
           )
-          // Fallback to Gemini Flash 2.0 if Llama 4 Scout is not available
-          const geminiFlash = sortedModels.find(
-            (model) => model.description === "Gemini Flash 2.0"
-          )
-          // Use Llama 4 Scout if available, otherwise Gemini Flash, otherwise first model
-          onChange(llamaScout ? llamaScout.model : 
-            geminiFlash ? geminiFlash.model : 
-            sortedModels[0].model)
+          
+          if (geminiModel) {
+            // If Gemini Flash 2.5 is available, set it as the default
+            onChange(geminiModel.model)
+          } else {
+            // Fallback options if Gemini Flash 2.5 is not available
+            const fallbackModel = sortedModels.find(
+              (model) => model.description === "Llama 4 Maverick"
+            )
+            onChange(fallbackModel ? fallbackModel.model : sortedModels[0].model)
+          }
         }
         
       } catch (err) {
@@ -111,6 +136,40 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
 
   // Find the selected model to display only its description
   const selectedModel = models.find(model => model.model === value)
+
+  // Check if a model is pinned
+  const isPinned = (modelDescription: string) => {
+    return preferredModels.includes(modelDescription);
+  };
+  
+  // Filter models based on user preferences
+  const filteredModels = models.filter(model => 
+    preferredModels.includes(model.description)
+  );
+
+  // Toggle pin/unpin a model
+  const togglePinModel = (modelDescription: string, e: React.MouseEvent) => {
+    // Prevent the event from bubbling up to parent elements
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log("Toggling pin for model:", modelDescription);
+    
+    // Store the exact model description for more precise matching
+    if (preferredModels.includes(modelDescription)) {
+      // Remove from preferred
+      console.log("Removing from preferred models");
+      const newPreferred = preferredModels.filter(m => m !== modelDescription);
+      console.log("New preferred models:", newPreferred);
+      setPreferredModels(newPreferred);
+    } else {
+      // Add to preferred
+      console.log("Adding to preferred models");
+      const updatedPreferred = [...preferredModels, modelDescription];
+      console.log("Updated preferred models:", updatedPreferred);
+      setPreferredModels(updatedPreferred);
+    }
+  };
 
   if (error) {
     return (
@@ -126,25 +185,25 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
       <Select value={value} onValueChange={onChange}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <SelectTrigger className="w-[240px] gap-2 bg-background/80 backdrop-blur-sm hover:bg-accent/50 hover:bg-opacity-80 transition-all duration-200 border-primary/10 shadow-sm group">
+            <SelectTrigger className="w-[180px] gap-1.5 h-7 px-2 py-1 text-xs bg-background/80 hover:bg-accent/50 border-0 shadow-none rounded-full backdrop-blur-sm transition-colors">
               {(() => {
                 if (isLoading) {
-                  return <Loader2 className="h-4 w-4 animate-spin text-primary" />;
+                  return <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />;
                 }
 
                 if (selectedModel) {
                   return (
-                    <span className="flex items-center gap-2">
+                    <span className="flex items-center gap-1.5">
                       {React.createElement(getProviderIcon(selectedModel.type), {
-                        className: "h-4 w-4 text-primary/80 group-hover:text-primary transition-colors duration-200"
+                        className: "h-3.5 w-3.5 text-primary/80 group-hover:text-primary transition-colors duration-200"
                       })}
                     </span>
                   );
                 }
 
-                return <Bot className="h-4 w-4 text-muted-foreground" />;
+                return <Bot className="h-3.5 w-3.5 text-muted-foreground" />;
               })()}
-              <SelectValue placeholder="Select a model" className="flex items-center">
+              <SelectValue placeholder="Select a model" className="flex items-center text-xs">
                 {selectedModel?.description}
               </SelectValue>
             </SelectTrigger>
@@ -153,51 +212,73 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
             {selectedModel ? `${selectedModel.type} - ${selectedModel.description}` : "Select an AI model"}
           </TooltipContent>
         </Tooltip>
-        <SelectContent className="bg-background/80 backdrop-blur-sm border-primary/10 shadow-md rounded-lg" align="center">
-          <div className="max-h-[300px] overflow-y-auto py-1">
-            {models.map((model) => {
-              const ProviderIcon = getProviderIcon(model.type)
-              const capability = getModelCapabilityTag(model.description)
-
-              return (
-                <SelectItem
-                  key={model.model}
-                  value={model.model}
-                  className="flex py-3 cursor-pointer focus:bg-primary/5 focus:text-primary hover:bg-accent/50 hover:bg-opacity-80 transition-all duration-200 group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex-shrink-0">
-                      <ProviderIcon className="h-5 w-5 text-primary/70 group-hover:text-primary transition-colors duration-200" />
-                    </div>
-                    <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium">{model.description}</span>
-                        <Badge
-                          variant="outline"
-                          className={`text-xs px-1.5 py-0 ${(() => {
-                            if (capability === 'Advanced') {
-                              return 'bg-blue-500/10 text-blue-500 border-blue-500/30';
-                            }
-                            if (capability === 'Fast') {
-                              return 'bg-amber-500/10 text-amber-500 border-amber-500/30';
-                            }
-                            return 'bg-green-500/10 text-green-500 border-green-500/30';
-                          })()}`}
-                        >
-                          {capability}
-                        </Badge>
-                      </div>
-                      <span className="text-xs text-muted-foreground truncate">
-                        {model.type}
-                      </span>
-                    </div>
-                  </div>
-                </SelectItem>
-              )
-            })}
-          </div>
+        <SelectContent className="bg-background/95 backdrop-blur-md border-0 shadow-lg rounded-xl max-w-[280px] p-2" align="center">
+          <Tabs defaultValue="preferred" className="w-full" onValueChange={setActiveTab}>
+            <TabsList className="w-full mb-2 bg-accent/30 border-0 p-0.5 h-8 rounded-lg">
+              <TabsTrigger value="preferred" className="flex-1 text-xs h-7 rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">Preferred</TabsTrigger>
+              <TabsTrigger value="all" className="flex-1 text-xs h-7 rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">All Models</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="preferred" className="mt-0">
+              {filteredModels.length === 0 ? (
+                <div className="text-center py-2 text-xs text-muted-foreground">
+                  No preferred models yet. Go to &ldquo;All Models&rdquo; to add some.
+                </div>
+              ) : (
+                <div className="max-h-[220px] overflow-y-auto space-y-0.5 pr-1">
+                  {filteredModels.map((model) => renderModelItem(model, togglePinModel, isPinned))}
+                </div>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="all" className="mt-0">
+              <div className="max-h-[220px] overflow-y-auto space-y-0.5 pr-1">
+                {models.map((model) => renderModelItem(model, togglePinModel, isPinned))}
+              </div>
+            </TabsContent>
+          </Tabs>
         </SelectContent>
       </Select>
     </TooltipProvider>
   )
+
+  function renderModelItem(
+    model: AIModel, 
+    togglePin: (desc: string, e: React.MouseEvent) => void,
+    isPinned: (desc: string) => boolean
+  ) {
+    const pinned = isPinned(model.description);
+    
+    return (
+      <div 
+        key={model.model}
+        onClick={() => onChange(model.model)}
+        className="flex py-1.5 px-2 cursor-pointer focus:bg-primary/5 text-sm focus:text-primary hover:bg-accent/40 transition-all duration-200 my-0.5 rounded-lg"
+      >
+        <div className="flex items-center justify-between w-full">
+          <span className="font-medium text-xs truncate pr-2">
+            {model.description}
+          </span>
+          
+          {activeTab === "all" && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <Button 
+                type="button"
+                variant="ghost" 
+                size="icon" 
+                className={`h-5 w-5 p-0.5 shrink-0 ${pinned ? 'text-primary' : 'text-muted-foreground'}`}
+                onClick={(e) => togglePin(model.description, e)}
+              >
+                {pinned ? (
+                  <PinOff className="h-3 w-3 hover:text-destructive" />
+                ) : (
+                  <Pin className="h-3 w-3 hover:text-primary" />
+                )}
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 }

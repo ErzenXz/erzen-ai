@@ -57,10 +57,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${robotoMono.variable}`}>
       <body className={inter.className}>
         <ThemeProvider
-          attribute="class"
+          attribute="data-theme"
           defaultTheme="system"
           enableSystem
-          disableTransitionOnChange
+          enableColorScheme
+          themes={["light", "dark", "blue", "green", "purple", "yellow", "pink", "orange", "teal", "gray", "system"]}
         >
           {children}
           <Analytics />
