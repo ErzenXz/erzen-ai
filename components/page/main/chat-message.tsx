@@ -28,7 +28,9 @@ import {
   BookOpen,
   Eye,
   Code,
-  ExternalLink,
+  ExternalLink as ExternalLinkIcon,
+  Link as LinkIcon,
+  Brain,
 } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
@@ -39,7 +41,7 @@ import remarkMath from "remark-math"
 import rehypeKatex from "rehype-katex"
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter"
 import { oneDark, oneLight } from "react-syntax-highlighter/dist/cjs/styles/prism"
-import { useEffect, useRef, useState, useCallback, useMemo, memo } from "react"
+import { useEffect, useRef, useState, useCallback, useMemo, memo, ReactNode } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -133,12 +135,95 @@ const MarkdownRenderer = memo(
         .replace(/\n+$/, "\n")
     }, [content])
 
+    // Process memory references and external links
+    const processSpecialContent = useMemo(() => {
+      let processedContent = normalizedContent;
+      let specialElements: JSX.Element[] = [];
+      
+      // Process memory references - updated to match new format -#[MEMORY(variableName)(value)]#-
+      const memoryRegex = /-#\[MEMORY\(([^)]+)\)\(([^)]+)\)\]#-/g;
+      let memoryMatch;
+      
+      while ((memoryMatch = memoryRegex.exec(normalizedContent)) !== null) {
+        const [fullMatch, variableName, value] = memoryMatch;
+        const key = `memory-${variableName}-${specialElements.length}`;
+        const element = (
+          <MemoryReference 
+            key={key}
+            variableName={variableName} 
+            value={value.trim()} 
+          />
+        );
+        specialElements.push(element);
+        
+        // Replace with placeholder to be able to split around it later
+        processedContent = processedContent.replace(
+          fullMatch, 
+          `__SPECIAL_ELEMENT_${specialElements.length - 1}__`
+        );
+      }
+      
+      // Process external links
+      const linkRegex = /-#\[LINK\(([^)]+)\)\(([^)]+)\)\]#-/g;
+      let linkMatch;
+      
+      while ((linkMatch = linkRegex.exec(normalizedContent)) !== null) {
+        const [fullMatch, url, title] = linkMatch;
+        const key = `link-${url}-${specialElements.length}`;
+        const element = (
+          <LinkBadge 
+            key={key}
+            url={url} 
+            title={title} 
+          />
+        );
+        specialElements.push(element);
+        
+        // Replace with placeholder
+        processedContent = processedContent.replace(
+          fullMatch, 
+          `__SPECIAL_ELEMENT_${specialElements.length - 1}__`
+        );
+      }
+      
+      return { processedContent, specialElements };
+    }, [normalizedContent]);
+
+    // Render content with special elements
+    const renderWithSpecialElements = useCallback((text: string) => {
+      const { processedContent, specialElements } = processSpecialContent;
+      
+      // If no special elements, render as normal
+      if (specialElements.length === 0) {
+        return text;
+      }
+      
+      // Split by placeholders and render parts with special elements
+      const parts = processedContent.split(/(__SPECIAL_ELEMENT_\d+__)/);
+      
+      return parts.map((part, index) => {
+        const match = part.match(/__SPECIAL_ELEMENT_(\d+)__/);
+        if (match) {
+          const elementIndex = parseInt(match[1], 10);
+          return specialElements[elementIndex];
+        }
+        return part;
+      });
+    }, [processSpecialContent]);
+
     return (
       <ReactMarkdown
         remarkPlugins={remarkPlugins}
         rehypePlugins={[rehypeKatex]}
         className="prose-content"
         components={{
+          p: ({ node, children, ...props }) => {
+            return (
+              <p {...props}>
+                {renderWithSpecialElements(String(children))}
+              </p>
+            );
+          },
           code({ node: _node, className, children, ...props }) {
             const match = /language-(\w+)/.exec(className ?? "")
             const code = String(children).replace(/\n$/, "")
@@ -198,7 +283,7 @@ const MarkdownRenderer = memo(
 MarkdownRenderer.displayName = "MarkdownRenderer"
 
 // Enhanced text streaming effect component
-const StreamingText = memo(({ content }: { content: string }) => {
+const StreamingText = memo(({ content }: { content: string }): ReactNode => {
   const containerRef = useRef<HTMLDivElement>(null)
   const [renderMode, setRenderMode] = useState<'direct' | 'markdown'>('direct')
   const [canvasElements, setCanvasElements] = useState<Array<{type: 'creative' | 'webdev', title: string, content: string}>>([])
@@ -488,7 +573,7 @@ const StreamingText = memo(({ content }: { content: string }) => {
 StreamingText.displayName = "StreamingText"
 
 // Thinking content component with collapsible functionality
-const ThinkingContent = memo(({ content }: { content: string }) => {
+const ThinkingContent = memo(({ content }: { content: string }): ReactNode => {
   const [isOpen, setIsOpen] = useState(false)
 
   // Clean up content by removing any stray HTML-like tags and normalize whitespace
@@ -2379,7 +2464,7 @@ const Canvas = memo(({ type, title, content, isDarkTheme }: {
                     Export HTML
                   </Button>
                   <Button variant="outline" size="sm" onClick={handleOpenInNewTab} className="rounded-lg">
-                    <ExternalLink className="h-4 w-4 mr-1.5" />
+                    <ExternalLinkIcon className="h-4 w-4 mr-1.5" />
                     Open in New Tab
                   </Button>
                 </>
@@ -2456,4 +2541,37 @@ const Canvas = memo(({ type, title, content, isDarkTheme }: {
   )
 })
 Canvas.displayName = "Canvas"
+
+// Memory reference component with badge styling
+const MemoryReference = memo(({ variableName, value }: { variableName: string; value: string }) => {
+  return (
+    <span className="inline-flex items-center px-0.5 py-0.5 rounded-md bg-primary/10 border border-primary/20 text-primary-foreground group hover:bg-primary/20 transition-colors mx-0.5">
+      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-l-sm bg-primary/20 text-xs font-medium text-primary">
+        <Brain className="h-3 w-3" />
+        <span>{variableName}</span>
+      </div>
+      <span className="px-1.5 py-0.5 text-sm text-foreground">{value}</span>
+    </span>
+  )
+})
+MemoryReference.displayName = "MemoryReference"
+
+// Link badge component for external references
+const LinkBadge = memo(({ url, title }: { url: string; title: string }) => {
+  return (
+    <a 
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center px-0.5 py-0.5 rounded-md bg-accent/40 border border-accent/30 text-accent-foreground group hover:bg-accent/60 transition-colors mx-0.5"
+    >
+      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-l-sm bg-accent/50 text-xs font-medium text-accent-foreground">
+        <LinkIcon className="h-3 w-3" />
+        <span>Source</span>
+      </div>
+      <span className="px-1.5 py-0.5 text-sm text-foreground">{title}</span>
+    </a>
+  )
+})
+LinkBadge.displayName = "LinkBadge"
 
