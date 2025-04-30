@@ -1102,8 +1102,8 @@ export default function Home() {
         />
 
         <div className="flex-1 flex flex-col">
-          {/* Hide header in chat mode, show in other modes */}
-          {(!currentThread?.id || showProjectsGrid || showAgentsGrid || currentProjectId) && (
+          {/* Hide header in chat mode, show in other modes. Crucially, DO NOT show when in ProjectWorkspace */}
+          {(!currentThread?.id || showProjectsGrid || showAgentsGrid || (currentProjectId && currentProjectThreadId)) && (
             <header className="border-b p-4">
             {/* Chat mode header - simplified */}
             {!showProjectsGrid && !showAgentsGrid && !currentProjectId && (
@@ -1173,22 +1173,7 @@ export default function Home() {
 
             {/* Project threads view header - just back button and title */}
             {currentProjectId && !currentProjectThreadId && !showProjectsGrid && !showAgentsGrid && (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Button variant="ghost" size="sm" onClick={handleBackToProjects}
-                    className="hover:bg-primary/5 transition-colors">
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back to Projects
-                  </Button>
-                  <h2 className="text-lg font-semibold">
-                    {projects.find(p => p.id === currentProjectId)?.name}
-                  </h2>
-                </div>
-                <Button size="sm" onClick={() => {}} className="bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary">
-                  <MessageSquarePlus className="h-4 w-4 mr-2" />
-                  New Thread
-                </Button>
-              </div>
+              <></>
             )}
 
             {/* Project workspace header */}
@@ -1216,7 +1201,7 @@ export default function Home() {
           {/* Show project workspace when a project is selected */}
           {currentProjectId && !currentProjectThreadId && !showProjectsGrid && !showAgentsGrid && !showAgentDetails ? (
             <ProjectProvider initialProjectId={currentProjectId}>
-              <ProjectWorkspace />
+              <ProjectWorkspace onBackToProjects={handleBackToProjects} />
             </ProjectProvider>
           ) : (
             <ScrollArea
