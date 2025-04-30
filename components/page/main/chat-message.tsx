@@ -23,6 +23,12 @@ import {
   Download,
   MoreHorizontal,
   Pencil,
+  Maximize2,
+  FileCode,
+  BookOpen,
+  Eye,
+  Code,
+  ExternalLink,
 } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
@@ -195,6 +201,31 @@ MarkdownRenderer.displayName = "MarkdownRenderer"
 const StreamingText = memo(({ content }: { content: string }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const [renderMode, setRenderMode] = useState<'direct' | 'markdown'>('direct')
+  const [canvasElements, setCanvasElements] = useState<Array<{type: 'creative' | 'webdev', title: string, content: string}>>([])
+
+  // Extract canvas elements from content
+  useEffect(() => {
+    // Check for canvas elements in streaming content
+    const canvasRegex = /<canvas\s+type="(creative|webdev)"\s+title="([^"]+)">([\s\S]*?)<\/canvas>/g;
+    const extractedCanvasElements: Array<{type: 'creative' | 'webdev', title: string, content: string}> = [];
+    
+    let match;
+    while ((match = canvasRegex.exec(content)) !== null) {
+      const [fullMatch, type, title, canvasContent] = match;
+      // Only add if we have actual content or if the canvas element is complete
+      if (canvasContent.trim() || fullMatch.includes('</canvas>')) {
+        extractedCanvasElements.push({
+          type: type as 'creative' | 'webdev',
+          title,
+          content: canvasContent
+        });
+      }
+    }
+    
+    if (extractedCanvasElements.length > 0) {
+      setCanvasElements(extractedCanvasElements);
+    }
+  }, [content]);
 
   // Force styles to apply immediately after mount
   useEffect(() => {
@@ -360,11 +391,21 @@ const StreamingText = memo(({ content }: { content: string }) => {
       .replace(/\n+$/, "\n")
   }, [content])
 
+  // Clean the content of canvas tags for display
+  const cleanedContent = useMemo(() => {
+    let cleaned = normalizedContent;
+    canvasElements.forEach(canvas => {
+      const canvasRegex = new RegExp(`<canvas\\s+type="${canvas.type}"\\s+title="${canvas.title}">[\\s\\S]*?<\\/canvas>`, 'g');
+      cleaned = cleaned.replace(canvasRegex, ''); // Remove the canvas tag completely instead of showing placeholder
+    });
+    return cleaned;
+  }, [normalizedContent, canvasElements]);
+
   // Create HTML directly instead of using ReactMarkdown for streaming
   // This will be more immediately styled by the browser
   const createMarkdownHtml = useMemo(() => {
     // Simple markdown parser for immediate display
-    return normalizedContent
+    return cleanedContent
       // Headers
       .replace(/^# (.*$)/gim, '<h1 class="urgent-md-h1">$1</h1>')
       .replace(/^## (.*$)/gim, '<h2 class="urgent-md-h2">$1</h2>')
@@ -399,10 +440,15 @@ const StreamingText = memo(({ content }: { content: string }) => {
       .replace(/<\/p><p>/gim, '</p>\n<p>');
 
 
-  }, [normalizedContent]);
+  }, [cleanedContent]);
 
   // Generate a unique ID for this component instance
   const uniqueId = useMemo(() => `streaming-${Math.random().toString(36).substring(2, 9)}`, []);
+
+  // Get the current theme
+  const isDarkTheme = typeof document !== "undefined" 
+    ? document.documentElement.classList.contains("dark") 
+    : false
 
   return (
     <div className="relative streaming-markdown-container urgent-streaming-styles"
@@ -421,9 +467,18 @@ const StreamingText = memo(({ content }: { content: string }) => {
             remarkPlugins={remarkPlugins}
             rehypePlugins={[rehypeKatex]}
           >
-            {normalizedContent}
+            {cleanedContent}
           </ReactMarkdown>
         )}
+        {canvasElements.map((canvas, index) => (
+          <Canvas
+            key={`streaming-canvas-${index}`}
+            type={canvas.type}
+            title={canvas.title}
+            content={canvas.content}
+            isDarkTheme={isDarkTheme}
+          />
+        ))}
         <span className="ml-0.5 inline-block h-4 w-1.5 animate-cursor-blink bg-primary/80"></span>
       </div>
       <div className="absolute left-0 right-0 bottom-0 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none opacity-30"></div>
@@ -864,7 +919,28 @@ const ContentRenderer = memo(
       }
     }, [content, isStreaming, isInThinkingBlock]);
 
-    // Split the content processing into smaller functions for better performance
+    // Extract canvas elements from content
+    const extractCanvasElements = useCallback((text: string) => {
+      const canvasRegex = /<canvas\s+type="(creative|webdev)"\s+title="([^"]+)">([\s\S]*?)<\/canvas>/g;
+      const canvasElements: Array<{type: 'creative' | 'webdev', title: string, content: string}> = [];
+      let cleanedContent = text;
+      
+      let match;
+      while ((match = canvasRegex.exec(text)) !== null) {
+        const [fullMatch, type, title, content] = match;
+        canvasElements.push({
+          type: type as 'creative' | 'webdev',
+          title,
+          content
+        });
+        
+        // Replace canvas elements with placeholders in the main content
+        cleanedContent = cleanedContent.replace(fullMatch, ''); // Remove completely instead of showing placeholder
+      }
+      
+      return { cleanedContent, canvasElements };
+    }, []);
+
     // Handle streaming content separately
     const renderStreamingContent = useCallback(() => {
       if (streamingThinkingContent) {
@@ -879,7 +955,7 @@ const ContentRenderer = memo(
       return <StreamingText content={content} />
     }, [streamingThinkingContent, thinkingContent, mainStreamingContent, content]);
 
-    // Process content to extract file attachments
+    // Process content to extract file attachments and canvas elements
     const processedContent = useMemo(() => {
       // For streaming content, use the dedicated renderer
       if (isStreaming) {
@@ -898,6 +974,10 @@ const ContentRenderer = memo(
         // Remove the thinking block from main content to avoid duplication
         mainContent = mainContent.replace(match[0], '')
       }
+
+      // Extract canvas elements
+      const { cleanedContent, canvasElements } = extractCanvasElements(mainContent);
+      mainContent = cleanedContent;
 
       // Combine extracted thinking blocks with existing thinkingContent
       let finalThinkingBlocks: JSX.Element[] = []
@@ -918,9 +998,20 @@ const ContentRenderer = memo(
         )
       })
 
+      // Prepare canvas elements
+      const canvasComponents = canvasElements.map((canvas, index) => (
+        <Canvas
+          key={`canvas-${index}`}
+          type={canvas.type}
+          title={canvas.title}
+          content={canvas.content}
+          isDarkTheme={isDarkTheme}
+        />
+      ));
+
       // Check if content contains file attachments
       if (!mainContent.match(fileAttachmentRegex)) {
-        // If no file attachments, render as normal markdown
+        // If no file attachments, render as normal markdown with canvas components
         return (
           <>
             {finalThinkingBlocks}
@@ -931,6 +1022,7 @@ const ContentRenderer = memo(
               copyToClipboard={copyToClipboard}
               copied={copied}
             />
+            {canvasComponents}
           </>
         )
       }
@@ -1005,9 +1097,10 @@ const ContentRenderer = memo(
         <>
           {finalThinkingBlocks}
           {parts}
+          {canvasComponents}
         </>
       )
-    }, [content, isDarkTheme, isStreaming, remarkPlugins, copyToClipboard, copied, thinkingContent, renderStreamingContent]);
+    }, [content, isDarkTheme, isStreaming, remarkPlugins, copyToClipboard, copied, thinkingContent, renderStreamingContent, extractCanvasElements]);
 
     return processedContent
   },
@@ -2126,4 +2219,241 @@ const BrowsingReferences = memo(({ sources, query }: { sources?: any[], query?: 
   );
 });
 BrowsingReferences.displayName = "BrowsingReferences";
+
+// Canvas component for creative writing and web development
+const Canvas = memo(({ type, title, content, isDarkTheme }: { 
+  type: 'creative' | 'webdev',
+  title: string,
+  content: string,
+  isDarkTheme: boolean
+}) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
+  const [editedContent, setEditedContent] = useState(content)
+  
+  // For web preview in iframe
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+
+  // Update preview in iframe
+  const updatePreview = useCallback(() => {
+    if (type === 'webdev' && iframeRef.current) {
+      const iframe = iframeRef.current
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
+      
+      if (iframeDoc) {
+        iframeDoc.open()
+        iframeDoc.write(editedContent)
+        iframeDoc.close()
+      }
+    }
+  }, [editedContent, type])
+
+  // Initialize preview when first showing it
+  useEffect(() => {
+    if (showPreview) {
+      updatePreview()
+    }
+  }, [showPreview, updatePreview])
+
+  // Export content for creative writing
+  const handleExport = useCallback(() => {
+    const blob = new Blob([editedContent], { type: 'text/markdown' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${title || 'canvas-export'}.md`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }, [editedContent, title])
+
+  // Export HTML for web development
+  const handleExportHtml = useCallback(() => {
+    const blob = new Blob([editedContent], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${title || 'canvas-export'}.html`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }, [editedContent, title])
+
+  // Open in new tab for web development
+  const handleOpenInNewTab = useCallback(() => {
+    const blob = new Blob([editedContent], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank')
+    // Don't revoke immediately to allow loading in the new tab
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }, [editedContent])
+
+  return (
+    <>
+      {/* Collapsed preview box */}
+      <div 
+        className="relative mt-6 mb-3 p-4 border border-primary/20 rounded-xl bg-muted/30 cursor-pointer hover:bg-muted/50 transition-all shadow-sm hover:shadow-md"
+        onClick={() => setIsOpen(true)}
+      >
+        <div className="flex items-center gap-3">
+          {type === 'creative' ? (
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <BookOpen className="h-5 w-5 text-primary/80" />
+            </div>
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <FileCode className="h-5 w-5 text-primary/80" />
+            </div>
+          )}
+          <div className="flex-1">
+            <h3 className="text-sm font-medium">
+              {title || (type === 'creative' ? 'Creative Writing' : 'Web Development')}
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {type === 'creative' 
+                ? 'Click to open creative canvas' 
+                : 'Click to open web development canvas'}
+            </p>
+          </div>
+          <div className="bg-background/80 backdrop-blur-sm p-1.5 rounded-full border border-muted hover:bg-background transition-colors">
+            <Maximize2 className="h-4 w-4 text-primary/70" />
+          </div>
+        </div>
+      </div>
+
+      {/* Full modal dialog */}
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent className="max-w-6xl h-[85vh] flex flex-col p-0 gap-0 rounded-xl shadow-lg border-primary/10">
+          <div className="flex items-center justify-between border-b p-4 bg-muted/30 backdrop-blur-sm">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              {type === 'creative' ? (
+                <>
+                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <BookOpen className="h-5 w-5 text-primary" />
+                  </div>
+                  <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                    Creative Canvas: {title}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <FileCode className="h-5 w-5 text-primary" />
+                  </div>
+                  <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                    Web Canvas: {title}
+                  </span>
+                </>
+              )}
+            </h2>
+            <div className="flex items-center gap-2">
+              {type === 'creative' ? (
+                <Button variant="outline" size="sm" onClick={handleExport} className="rounded-lg">
+                  <Download className="h-4 w-4 mr-1.5" />
+                  Export Markdown
+                </Button>
+              ) : (
+                <>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setShowPreview(!showPreview)}
+                    className="rounded-lg"
+                  >
+                    {showPreview ? (
+                      <>
+                        <Code className="h-4 w-4 mr-1.5" />
+                        Show Code
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="h-4 w-4 mr-1.5" />
+                        Preview
+                      </>
+                    )}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleExportHtml} className="rounded-lg">
+                    <Download className="h-4 w-4 mr-1.5" />
+                    Export HTML
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleOpenInNewTab} className="rounded-lg">
+                    <ExternalLink className="h-4 w-4 mr-1.5" />
+                    Open in New Tab
+                  </Button>
+                </>
+              )}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setIsOpen(false)}
+                className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors ml-2"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-hidden">
+            {type === 'creative' ? (
+              <div className="h-full flex flex-row">
+                <div className="flex-1 border-r">
+                  <Textarea
+                    value={editedContent}
+                    onChange={(e) => setEditedContent(e.target.value)}
+                    className="h-full p-4 font-mono text-sm resize-none rounded-none border-0 focus-visible:ring-0"
+                  />
+                </div>
+                <div className="flex-1 overflow-auto bg-muted/10">
+                  <div className="prose-content p-6 h-full overflow-auto">
+                    <ReactMarkdown
+                      remarkPlugins={remarkPlugins}
+                      rehypePlugins={[rehypeKatex]}
+                    >
+                      {editedContent}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="h-full flex">
+                {!showPreview && (
+                  <Textarea
+                    value={editedContent}
+                    onChange={(e) => setEditedContent(e.target.value)}
+                    className="flex-1 p-4 font-mono text-sm resize-none rounded-none border-0 focus-visible:ring-0"
+                  />
+                )}
+                {showPreview && (
+                  <div className="flex-1 h-full bg-white">
+                    <iframe
+                      ref={iframeRef}
+                      title="Web Preview"
+                      className="w-full h-full border-0"
+                      sandbox="allow-scripts allow-same-origin"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          
+          {/* Status bar for info */}
+          <div className="border-t py-2 px-4 flex justify-between items-center bg-muted/10 text-xs text-muted-foreground">
+            <div>
+              {type === 'creative' ? 'Markdown editor' : 'HTML editor'} • {editedContent.length} characters
+            </div>
+            <div>
+              {type === 'creative' 
+                ? 'Edit and preview your creative content' 
+                : showPreview ? 'Viewing live preview' : 'Edit HTML code'}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+})
+Canvas.displayName = "Canvas"
 
