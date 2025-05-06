@@ -15,22 +15,16 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
-  Globe,
   X,
   SkipForward,
   Loader2,
-  FlagTriangleRight,
   Download,
-  MoreHorizontal,
-  Pencil,
   Maximize2,
   FileCode,
   BookOpen,
   Eye,
   Code,
   ExternalLink as ExternalLinkIcon,
-  Link as LinkIcon,
-  Brain,
 } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
@@ -55,12 +49,13 @@ import remarkGemoji from "remark-gemoji"
 import remarkFrontmatter from "remark-frontmatter"
 import remarkDirective from "remark-directive"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
+
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { CodeEditor } from "@/components/project/code-editor"
 
 const remarkPlugins = [
   remarkGfm,
@@ -135,72 +130,28 @@ const MarkdownRenderer = memo(
         .replace(/\n+$/, "\n")
     }, [content])
 
-    // Process memory references and external links
+    // This function is no longer used for processing memory and searchsource tags
+    // It's kept for backward compatibility with other special content
     const processSpecialContent = useMemo(() => {
-      let processedContent = normalizedContent;
-      let specialElements: JSX.Element[] = [];
-      
-      // Process memory references - updated to match new format -#[MEMORY(variableName)(value)]#-
-      const memoryRegex = /-#\[MEMORY\(([^)]+)\)\(([^)]+)\)\]#-/g;
-      let memoryMatch;
-      
-      while ((memoryMatch = memoryRegex.exec(normalizedContent)) !== null) {
-        const [fullMatch, variableName, value] = memoryMatch;
-        const key = `memory-${variableName}-${specialElements.length}`;
-        const element = (
-          <MemoryReference 
-            key={key}
-            variableName={variableName} 
-            value={value.trim()} 
-          />
-        );
-        specialElements.push(element);
-        
-        // Replace with placeholder to be able to split around it later
-        processedContent = processedContent.replace(
-          fullMatch, 
-          `__SPECIAL_ELEMENT_${specialElements.length - 1}__`
-        );
-      }
-      
-      // Process external links
-      const linkRegex = /-#\[LINK\(([^)]+)\)\(([^)]+)\)\]#-/g;
-      let linkMatch;
-      
-      while ((linkMatch = linkRegex.exec(normalizedContent)) !== null) {
-        const [fullMatch, url, title] = linkMatch;
-        const key = `link-${url}-${specialElements.length}`;
-        const element = (
-          <LinkBadge 
-            key={key}
-            url={url} 
-            title={title} 
-          />
-        );
-        specialElements.push(element);
-        
-        // Replace with placeholder
-        processedContent = processedContent.replace(
-          fullMatch, 
-          `__SPECIAL_ELEMENT_${specialElements.length - 1}__`
-        );
-      }
-      
-      return { processedContent, specialElements };
+      // Just return the original content without any processing
+      return {
+        processedContent: normalizedContent,
+        specialElements: [] as JSX.Element[]
+      };
     }, [normalizedContent]);
 
     // Render content with special elements
     const renderWithSpecialElements = useCallback((text: string) => {
       const { processedContent, specialElements } = processSpecialContent;
-      
+
       // If no special elements, render as normal
       if (specialElements.length === 0) {
         return text;
       }
-      
+
       // Split by placeholders and render parts with special elements
       const parts = processedContent.split(/(__SPECIAL_ELEMENT_\d+__)/);
-      
+
       return parts.map((part, index) => {
         const match = part.match(/__SPECIAL_ELEMENT_(\d+)__/);
         if (match) {
@@ -290,23 +241,29 @@ const StreamingText = memo(({ content }: { content: string }): ReactNode => {
 
   // Extract canvas elements from content
   useEffect(() => {
+
     // Check for canvas elements in streaming content
     const canvasRegex = /<canvas\s+type="(creative|webdev)"\s+title="([^"]+)">([\s\S]*?)<\/canvas>/g;
     const extractedCanvasElements: Array<{type: 'creative' | 'webdev', title: string, content: string}> = [];
-    
+
     let match;
     while ((match = canvasRegex.exec(content)) !== null) {
-      const [fullMatch, type, title, canvasContent] = match;
-      // Only add if we have actual content or if the canvas element is complete
-      if (canvasContent.trim() || fullMatch.includes('</canvas>')) {
-        extractedCanvasElements.push({
-          type: type as 'creative' | 'webdev',
-          title,
-          content: canvasContent
-        });
+      try {
+        const [fullMatch, type, title, canvasContent] = match;
+        // Only add if we have actual content or if the canvas element is complete
+        if (type && title && typeof canvasContent === 'string' &&
+            (canvasContent.trim() || fullMatch.includes('</canvas>'))) {
+          extractedCanvasElements.push({
+            type: type as 'creative' | 'webdev',
+            title: title,
+            content: canvasContent
+          });
+        }
+      } catch (error) {
+        console.error('Error processing streaming canvas element:', error);
       }
     }
-    
+
     if (extractedCanvasElements.length > 0) {
       setCanvasElements(extractedCanvasElements);
     }
@@ -476,13 +433,24 @@ const StreamingText = memo(({ content }: { content: string }): ReactNode => {
       .replace(/\n+$/, "\n")
   }, [content])
 
-  // Clean the content of canvas tags for display
+  // Clean the content of special tags for display
   const cleanedContent = useMemo(() => {
     let cleaned = normalizedContent;
+
+    // Memory and searchsource tags have been removed from the codebase
+
+    // Remove canvas tags
     canvasElements.forEach(canvas => {
-      const canvasRegex = new RegExp(`<canvas\\s+type="${canvas.type}"\\s+title="${canvas.title}">[\\s\\S]*?<\\/canvas>`, 'g');
-      cleaned = cleaned.replace(canvasRegex, ''); // Remove the canvas tag completely instead of showing placeholder
+      try {
+        if (canvas && canvas.type && canvas.title) {
+          const canvasRegex = new RegExp(`<canvas\\s+type="${canvas.type}"\\s+title="${canvas.title}">[\\s\\S]*?<\\/canvas>`, 'g');
+          cleaned = cleaned.replace(canvasRegex, ''); // Remove the canvas tag completely instead of showing placeholder
+        }
+      } catch (error) {
+        console.error('Error removing canvas tag:', error);
+      }
     });
+
     return cleaned;
   }, [normalizedContent, canvasElements]);
 
@@ -531,8 +499,8 @@ const StreamingText = memo(({ content }: { content: string }): ReactNode => {
   const uniqueId = useMemo(() => `streaming-${Math.random().toString(36).substring(2, 9)}`, []);
 
   // Get the current theme
-  const isDarkTheme = typeof document !== "undefined" 
-    ? document.documentElement.classList.contains("dark") 
+  const isDarkTheme = typeof document !== "undefined"
+    ? document.documentElement.classList.contains("dark")
     : false
 
   return (
@@ -540,6 +508,7 @@ const StreamingText = memo(({ content }: { content: string }): ReactNode => {
       ref={containerRef}
       data-id={uniqueId}>
       <div className="prose-content streaming-content custom-streaming-markdown">
+
         {renderMode === 'direct' ? (
           <div
             className="urgent-streaming-styles"
@@ -555,6 +524,7 @@ const StreamingText = memo(({ content }: { content: string }): ReactNode => {
             {cleanedContent}
           </ReactMarkdown>
         )}
+
         {canvasElements.map((canvas, index) => (
           <Canvas
             key={`streaming-canvas-${index}`}
@@ -670,7 +640,7 @@ const ResearchStatus = memo(({ status }: { status: any }) => {
   // Handle different statuses in the research flow
   let statusMessage = '';
   let detailMessage = '';
-  
+
   switch (status.status) {
     case 'started':
       statusMessage = 'Research initiated';
@@ -714,14 +684,14 @@ const ResearchStatus = memo(({ status }: { status: any }) => {
       <div className="relative bg-muted/30 rounded-lg p-3 overflow-hidden">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2">
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
               className="h-4 w-4 text-primary"
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
               strokeLinejoin="round"
             >
               <circle cx="12" cy="12" r="10"/>
@@ -741,7 +711,7 @@ const ResearchStatus = memo(({ status }: { status: any }) => {
           <div className="border-l-2 border-primary/20 pl-4 py-1 space-y-2">
             <div className="text-sm text-foreground/90 font-light leading-relaxed">
               {detailMessage}
-              
+
               {/* Display sources if available */}
               {status.sources && status.sources.length > 0 && (
                 <div className="mt-2">
@@ -776,10 +746,10 @@ const BrowsingStatus = memo(({ status, searchQuery, progress, message, reference
   references?: any;
 }) => {
   const [expanded, setExpanded] = useState(false);
-  
+
   // Get the browsing history from the message property
   const searchHistory = message?.history || [];
-  
+
   const getMessage = (currentStatus: string) => {
     switch (currentStatus) {
       case 'started':
@@ -802,13 +772,13 @@ const BrowsingStatus = memo(({ status, searchQuery, progress, message, reference
         return `Processing ${currentStatus}...`;
     }
   };
-  
+
   // Return null if no status (should not happen)
   if (!status) return null;
-  
+
   const isCompleted = ['completed', 'skipped', 'error'].includes(status);
   const hasReferences = references && references.length > 0;
-  
+
   return (
     <div className="mt-4 border rounded-lg overflow-hidden bg-accent/30">
       <div className="p-3 flex items-center justify-between gap-2">
@@ -839,7 +809,7 @@ const BrowsingStatus = memo(({ status, searchQuery, progress, message, reference
             )}
           </div>
         </div>
-        
+
         {/* Only show the toggle if there's a history to display */}
         {searchHistory.length > 0 && (
           <Button
@@ -849,7 +819,7 @@ const BrowsingStatus = memo(({ status, searchQuery, progress, message, reference
             onClick={() => setExpanded(!expanded)}
           >
             <ChevronDown
-              className={cn("h-4 w-4 text-muted-foreground transition-transform", 
+              className={cn("h-4 w-4 text-muted-foreground transition-transform",
                 expanded ? "transform rotate-180" : ""
               )}
             />
@@ -857,7 +827,7 @@ const BrowsingStatus = memo(({ status, searchQuery, progress, message, reference
           </Button>
         )}
       </div>
-      
+
       {/* Expandable search history timeline */}
       {expanded && searchHistory.length > 0 && (
         <div className="px-4 pb-3 pt-1">
@@ -865,12 +835,12 @@ const BrowsingStatus = memo(({ status, searchQuery, progress, message, reference
             {searchHistory.map((item: {status: string, timestamp: string}, index: number) => (
               <div key={`history-${index}`} className="relative">
                 {/* Timeline dot */}
-                <div className="absolute -left-6 top-1 h-3 w-3 rounded-full border-2 border-background" 
-                  style={{ 
-                    backgroundColor: ['completed', 'error', 'skipped'].includes(item.status) 
-                      ? (item.status === 'error' ? 'var(--destructive)' : item.status === 'skipped' ? 'var(--muted)' : 'var(--primary)') 
+                <div className="absolute -left-6 top-1 h-3 w-3 rounded-full border-2 border-background"
+                  style={{
+                    backgroundColor: ['completed', 'error', 'skipped'].includes(item.status)
+                      ? (item.status === 'error' ? 'var(--destructive)' : item.status === 'skipped' ? 'var(--muted)' : 'var(--primary)')
                       : 'var(--muted-foreground)'
-                  }} 
+                  }}
                 />
                 <div className="text-xs">
                   <span className="text-muted-foreground mr-1">{new Date(item.timestamp).toLocaleTimeString()}</span>
@@ -881,7 +851,7 @@ const BrowsingStatus = memo(({ status, searchQuery, progress, message, reference
           </div>
         </div>
       )}
-      
+
       {/* Progress bar for searching status */}
       {status === 'searching' && typeof progress === 'number' && (
         <Progress value={progress} className="h-1 rounded-none" />
@@ -1009,20 +979,28 @@ const ContentRenderer = memo(
       const canvasRegex = /<canvas\s+type="(creative|webdev)"\s+title="([^"]+)">([\s\S]*?)<\/canvas>/g;
       const canvasElements: Array<{type: 'creative' | 'webdev', title: string, content: string}> = [];
       let cleanedContent = text;
-      
+
       let match;
       while ((match = canvasRegex.exec(text)) !== null) {
-        const [fullMatch, type, title, content] = match;
-        canvasElements.push({
-          type: type as 'creative' | 'webdev',
-          title,
-          content
-        });
-        
-        // Replace canvas elements with placeholders in the main content
-        cleanedContent = cleanedContent.replace(fullMatch, ''); // Remove completely instead of showing placeholder
+        try {
+          const [fullMatch, type, title, content] = match;
+
+          // Only add if we have valid data
+          if (type && title && typeof content === 'string') {
+            canvasElements.push({
+              type: type as 'creative' | 'webdev',
+              title: title,
+              content: content
+            });
+          }
+
+          // Replace canvas elements with placeholders in the main content
+          cleanedContent = cleanedContent.replace(fullMatch, ''); // Remove completely instead of showing placeholder
+        } catch (error) {
+          console.error('Error processing canvas element:', error);
+        }
       }
-      
+
       return { cleanedContent, canvasElements };
     }, []);
 
@@ -1060,6 +1038,12 @@ const ContentRenderer = memo(
         mainContent = mainContent.replace(match[0], '')
       }
 
+      // Memory references have been removed
+
+      // Extract search sources - using a more robust approach to handle commas and special characters
+      // Look for the opening and closing tags separately
+      // Search source handling has been removed
+
       // Extract canvas elements
       const { cleanedContent, canvasElements } = extractCanvasElements(mainContent);
       mainContent = cleanedContent;
@@ -1096,10 +1080,11 @@ const ContentRenderer = memo(
 
       // Check if content contains file attachments
       if (!mainContent.match(fileAttachmentRegex)) {
-        // If no file attachments, render as normal markdown with canvas components
+        // If no file attachments, render as normal markdown with special elements
         return (
           <>
             {finalThinkingBlocks}
+
             <MarkdownRenderer
               content={mainContent}
               isDarkTheme={isDarkTheme}
@@ -1107,6 +1092,7 @@ const ContentRenderer = memo(
               copyToClipboard={copyToClipboard}
               copied={copied}
             />
+
             {canvasComponents}
           </>
         )
@@ -1181,7 +1167,9 @@ const ContentRenderer = memo(
       return (
         <>
           {finalThinkingBlocks}
+
           {parts}
+
           {canvasComponents}
         </>
       )
@@ -2195,12 +2183,12 @@ CollapsibleUserMessage.displayName = "CollapsibleUserMessage"
 
           <div className="markdown-wrapper max-w-full">
             {messageContent}
-            
+
             {/* Show browsing references if available */}
             {message.browsingStatus && message.browsingStatus.status === 'completed' && message.browsingStatus.sources && (
               <BrowsingReferences sources={message.browsingStatus.sources} query={message.browsingStatus.query} />
             )}
-            
+
             {/* Debug audio player - only visible when playing */}
             {isPlaying && (
               <div className="mt-4 p-3 bg-muted rounded-md">
@@ -2228,11 +2216,11 @@ ChatMessage.displayName = "ChatMessage";
 // Add a new component for displaying references at the bottom of messages
 const BrowsingReferences = memo(({ sources, query }: { sources?: any[], query?: string }) => {
   if (!sources || sources.length === 0) return null;
-  
+
   // Separate text and image sources
   const textSources = sources.filter(s => s.source !== 'tavily_image');
   const imageSources = sources.filter(s => s.source === 'tavily_image');
-  
+
   return (
     <div className="mt-6 pt-3 border-t border-muted">
       {query && (
@@ -2247,10 +2235,10 @@ const BrowsingReferences = memo(({ sources, query }: { sources?: any[], query?: 
           <h4 className="text-sm font-medium mb-2">Web Sources</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {textSources.map((source, index) => (
-              <a 
+              <a
                 key={`ref-${index}`}
-                href={source.url} 
-                target="_blank" 
+                href={source.url}
+                target="_blank"
                 rel="noopener noreferrer"
                 className="group p-3 rounded-lg border bg-background/50 hover:bg-muted/50 transition-colors flex flex-col"
               >
@@ -2271,24 +2259,24 @@ const BrowsingReferences = memo(({ sources, query }: { sources?: any[], query?: 
           </div>
         </div>
       )}
-      
+
       {/* Image sources as a responsive grid gallery */}
       {imageSources.length > 0 && (
         <div className="mt-3">
           <h4 className="text-sm font-medium mb-2">Image Results</h4>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {imageSources.map((source, index) => (
-              <a 
+              <a
                 key={`img-${index}`}
-                href={source.url} 
-                target="_blank" 
+                href={source.url}
+                target="_blank"
                 rel="noopener noreferrer"
                 className="relative group rounded-md overflow-hidden border hover:border-primary/50 transition-colors aspect-square"
               >
-                <img 
-                  src={source.url} 
+                <img
+                  src={source.url}
                   alt={source.title || `Image ${index + 1}`}
-                  className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                  className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
                   <p className="text-xs font-medium text-foreground truncate w-full">
@@ -2306,7 +2294,7 @@ const BrowsingReferences = memo(({ sources, query }: { sources?: any[], query?: 
 BrowsingReferences.displayName = "BrowsingReferences";
 
 // Canvas component for creative writing and web development
-const Canvas = memo(({ type, title, content, isDarkTheme }: { 
+const Canvas = memo(({ type, title, content, isDarkTheme }: {
   type: 'creative' | 'webdev',
   title: string,
   content: string,
@@ -2315,7 +2303,7 @@ const Canvas = memo(({ type, title, content, isDarkTheme }: {
   const [isOpen, setIsOpen] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [editedContent, setEditedContent] = useState(content)
-  
+
   // For web preview in iframe
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
@@ -2324,7 +2312,7 @@ const Canvas = memo(({ type, title, content, isDarkTheme }: {
     if (type === 'webdev' && iframeRef.current) {
       const iframe = iframeRef.current
       const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
-      
+
       if (iframeDoc) {
         iframeDoc.open()
         iframeDoc.write(editedContent)
@@ -2333,12 +2321,23 @@ const Canvas = memo(({ type, title, content, isDarkTheme }: {
     }
   }, [editedContent, type])
 
-  // Initialize preview when first showing it
+  // Initialize preview when first showing it or when content changes
   useEffect(() => {
     if (showPreview) {
       updatePreview()
     }
-  }, [showPreview, updatePreview])
+  }, [showPreview, updatePreview, editedContent])
+
+  // Update the preview when the dialog opens
+  useEffect(() => {
+    if (isOpen && showPreview) {
+      // Small delay to ensure iframe is ready
+      const timer = setTimeout(() => {
+        updatePreview()
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [isOpen, showPreview, updatePreview])
 
   // Export content for creative writing
   const handleExport = useCallback(() => {
@@ -2378,140 +2377,189 @@ const Canvas = memo(({ type, title, content, isDarkTheme }: {
   return (
     <>
       {/* Collapsed preview box */}
-      <div 
-        className="relative mt-6 mb-3 p-4 border border-primary/20 rounded-xl bg-muted/30 cursor-pointer hover:bg-muted/50 transition-all shadow-sm hover:shadow-md"
+      <div
+        className="relative mt-6 mb-3 p-0 border border-primary/20 rounded-xl bg-gradient-to-br from-background via-muted/20 to-background cursor-pointer hover:bg-muted/30 transition-all shadow-sm hover:shadow-md group overflow-hidden"
         onClick={() => setIsOpen(true)}
       >
-        <div className="flex items-center gap-3">
+        {/* Decorative elements */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-xl opacity-60 -z-10"></div>
+        <div className="absolute bottom-0 left-0 w-24 h-24 bg-primary/5 rounded-full blur-lg opacity-40 -z-10"></div>
+
+        <div className="flex items-center gap-4 p-4 relative">
           {type === 'creative' ? (
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <BookOpen className="h-5 w-5 text-primary/80" />
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-sm border border-primary/10 group-hover:scale-105 transition-transform">
+              <BookOpen className="h-5 w-5 text-primary group-hover:text-primary/90 transition-colors" />
             </div>
           ) : (
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <FileCode className="h-5 w-5 text-primary/80" />
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-sm border border-primary/10 group-hover:scale-105 transition-transform">
+              <FileCode className="h-5 w-5 text-primary group-hover:text-primary/90 transition-colors" />
             </div>
           )}
           <div className="flex-1">
-            <h3 className="text-sm font-medium">
+            <h3 className="text-sm font-medium group-hover:text-primary transition-colors">
               {title || (type === 'creative' ? 'Creative Writing' : 'Web Development')}
             </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {type === 'creative' 
-                ? 'Click to open creative canvas' 
+            <p className="text-xs text-muted-foreground mt-0.5 group-hover:text-muted-foreground/80 transition-colors">
+              {type === 'creative'
+                ? 'Click to open creative canvas'
                 : 'Click to open web development canvas'}
             </p>
           </div>
-          <div className="bg-background/80 backdrop-blur-sm p-1.5 rounded-full border border-muted hover:bg-background transition-colors">
-            <Maximize2 className="h-4 w-4 text-primary/70" />
+          <div className="bg-background/80 backdrop-blur-sm p-2 rounded-full border border-primary/10 shadow-sm group-hover:bg-primary/10 group-hover:scale-105 transition-all">
+            <Maximize2 className="h-4 w-4 text-primary/70 group-hover:text-primary transition-colors" />
           </div>
         </div>
+
+        {/* Preview indicator bar */}
+        <div className="h-1 w-full bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
       </div>
 
       {/* Full modal dialog */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="max-w-6xl h-[85vh] flex flex-col p-0 gap-0 rounded-xl shadow-lg border-primary/10">
-          <div className="flex items-center justify-between border-b p-4 bg-muted/30 backdrop-blur-sm">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
+        <DialogContent className="max-w-7xl h-[90vh] flex flex-col p-0 gap-0 rounded-xl shadow-xl border-primary/10 animate-apple-scale overflow-hidden">
+          {/* Enhanced header with gradient background */}
+          <div className="relative flex items-center justify-between p-4 border-b backdrop-blur-sm overflow-hidden">
+            {/* Background decorative elements */}
+            <div className="absolute inset-0 bg-gradient-to-r from-background via-muted/30 to-background z-0"></div>
+            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl opacity-60 -z-10 animate-pulse-soft"></div>
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary/10 rounded-full blur-2xl opacity-40 -z-10"></div>
+
+            <h2 className="text-lg font-semibold flex items-center gap-3 z-10">
               {type === 'creative' ? (
                 <>
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-sm border border-primary/10">
                     <BookOpen className="h-5 w-5 text-primary" />
                   </div>
-                  <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                    Creative Canvas: {title}
-                  </span>
+                  <div className="flex flex-col">
+                    <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent font-bold">
+                      Creative Canvas
+                    </span>
+                    <span className="text-xs text-muted-foreground">{title}</span>
+                  </div>
                 </>
               ) : (
                 <>
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-sm border border-primary/10">
                     <FileCode className="h-5 w-5 text-primary" />
                   </div>
-                  <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                    Web Canvas: {title}
-                  </span>
+                  <div className="flex flex-col">
+                    <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent font-bold">
+                      Web Canvas
+                    </span>
+                    <span className="text-xs text-muted-foreground">{title}</span>
+                  </div>
                 </>
               )}
             </h2>
-            <div className="flex items-center gap-2">
+
+            <div className="flex items-center gap-2 z-10">
               {type === 'creative' ? (
-                <Button variant="outline" size="sm" onClick={handleExport} className="rounded-lg">
-                  <Download className="h-4 w-4 mr-1.5" />
-                  Export Markdown
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExport}
+                  className="rounded-lg bg-background/80 backdrop-blur-sm border-primary/20 hover:bg-primary/5 transition-all shadow-sm"
+                >
+                  <Download className="h-4 w-4 mr-1.5 text-primary" />
+                  <span className="text-foreground/90">Export Markdown</span>
                 </Button>
               ) : (
                 <>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant={showPreview ? "default" : "outline"}
+                    size="sm"
                     onClick={() => setShowPreview(!showPreview)}
-                    className="rounded-lg"
+                    className={cn(
+                      "rounded-lg transition-all shadow-sm",
+                      showPreview
+                        ? "bg-primary hover:bg-primary/90"
+                        : "bg-background/80 backdrop-blur-sm border-primary/20 hover:bg-primary/5"
+                    )}
                   >
                     {showPreview ? (
                       <>
                         <Code className="h-4 w-4 mr-1.5" />
-                        Show Code
+                        <span>Show Code</span>
                       </>
                     ) : (
                       <>
-                        <Eye className="h-4 w-4 mr-1.5" />
-                        Preview
+                        <Eye className="h-4 w-4 mr-1.5 text-primary" />
+                        <span className="text-foreground/90">Preview</span>
                       </>
                     )}
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handleExportHtml} className="rounded-lg">
-                    <Download className="h-4 w-4 mr-1.5" />
-                    Export HTML
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportHtml}
+                    className="rounded-lg bg-background/80 backdrop-blur-sm border-primary/20 hover:bg-primary/5 transition-all shadow-sm"
+                  >
+                    <Download className="h-4 w-4 mr-1.5 text-primary" />
+                    <span className="text-foreground/90">Export HTML</span>
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handleOpenInNewTab} className="rounded-lg">
-                    <ExternalLinkIcon className="h-4 w-4 mr-1.5" />
-                    Open in New Tab
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleOpenInNewTab}
+                    className="rounded-lg bg-background/80 backdrop-blur-sm border-primary/20 hover:bg-primary/5 transition-all shadow-sm"
+                  >
+                    <ExternalLinkIcon className="h-4 w-4 mr-1.5 text-primary" />
+                    <span className="text-foreground/90">Open in Tab</span>
                   </Button>
                 </>
               )}
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => setIsOpen(false)}
-                className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors ml-2"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              {/* Close button removed to avoid duplication with the default Dialog close button */}
             </div>
           </div>
 
-          <div className="flex-1 overflow-hidden">
+          {/* Enhanced content area with modern code editor */}
+          <div className="flex-1 overflow-hidden relative">
+            {/* Background decorative elements */}
+            <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-primary/3 rounded-full blur-3xl opacity-70 -z-10"></div>
+            <div className="absolute bottom-1/3 left-1/3 w-64 h-64 bg-primary/3 rounded-full blur-3xl opacity-50 -z-10"></div>
+
             {type === 'creative' ? (
               <div className="h-full flex flex-row">
-                <div className="flex-1 border-r">
-                  <Textarea
-                    value={editedContent}
-                    onChange={(e) => setEditedContent(e.target.value)}
-                    className="h-full p-4 font-mono text-sm resize-none rounded-none border-0 focus-visible:ring-0"
-                  />
-                </div>
-                <div className="flex-1 overflow-auto bg-muted/10">
-                  <div className="prose-content p-6 h-full overflow-auto">
-                    <ReactMarkdown
-                      remarkPlugins={remarkPlugins}
-                      rehypePlugins={[rehypeKatex]}
-                    >
-                      {editedContent}
-                    </ReactMarkdown>
+                <div className="flex-1 border-r border-muted/20">
+                  <div className="h-full w-full">
+                    <CodeEditor
+                      value={editedContent}
+                      language="markdown"
+                      onChange={setEditedContent}
+                      theme={isDarkTheme ? "github-dark" : "github-light"}
+                    />
                   </div>
+                </div>
+                <div className="flex-1 overflow-auto bg-gradient-to-b from-background to-muted/5">
+                  <ScrollArea className="h-full">
+                    <div className="prose-content p-8 h-full">
+                      <div className="prose prose-sm max-w-none dark:prose-invert">
+                        <ReactMarkdown
+                          remarkPlugins={remarkPlugins}
+                          rehypePlugins={[rehypeKatex]}
+                        >
+                          {editedContent}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  </ScrollArea>
                 </div>
               </div>
             ) : (
               <div className="h-full flex">
-                {!showPreview && (
-                  <Textarea
-                    value={editedContent}
-                    onChange={(e) => setEditedContent(e.target.value)}
-                    className="flex-1 p-4 font-mono text-sm resize-none rounded-none border-0 focus-visible:ring-0"
-                  />
-                )}
-                {showPreview && (
-                  <div className="flex-1 h-full bg-white">
+                {!showPreview ? (
+                  <div className="flex-1 h-full">
+                    <div className="h-full w-full">
+                      <CodeEditor
+                        value={editedContent}
+                        language="html"
+                        onChange={setEditedContent}
+                        theme={isDarkTheme ? "github-dark" : "github-light"}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1 h-full bg-white rounded-md m-2 shadow-sm overflow-hidden border border-muted/30">
                     <iframe
                       ref={iframeRef}
                       title="Web Preview"
@@ -2523,16 +2571,41 @@ const Canvas = memo(({ type, title, content, isDarkTheme }: {
               </div>
             )}
           </div>
-          
-          {/* Status bar for info */}
-          <div className="border-t py-2 px-4 flex justify-between items-center bg-muted/10 text-xs text-muted-foreground">
-            <div>
-              {type === 'creative' ? 'Markdown editor' : 'HTML editor'} • {editedContent.length} characters
+
+          {/* Enhanced status bar with more information and visual elements */}
+          <div className="border-t py-3 px-6 flex justify-between items-center bg-gradient-to-r from-background via-muted/10 to-background text-xs">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-primary/60 animate-pulse"></div>
+                <span className="text-foreground/70 font-medium">
+                  {type === 'creative' ? 'Markdown' : 'HTML'}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <span className="inline-flex items-center gap-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
+                    <path d="M10 1a6 6 0 00-6 6v1.5a.5.5 0 01-.5.5H3a1 1 0 00-1 1v1a1 1 0 001 1h.5a.5.5 0 01.5.5V13a6 6 0 0012 0v-1.5a.5.5 0 01.5-.5H17a1 1 0 001-1v-1a1 1 0 00-1-1h-.5a.5.5 0 01-.5-.5V7a6 6 0 00-6-6z" />
+                  </svg>
+                  {editedContent.length} chars
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
+                    <path fillRule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 10.5a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75a.75.75 0 01-.75-.75zM2 10a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5A.75.75 0 012 10z" clipRule="evenodd" />
+                  </svg>
+                  {editedContent.split('\n').length} lines
+                </span>
+              </div>
             </div>
-            <div>
-              {type === 'creative' 
-                ? 'Edit and preview your creative content' 
-                : showPreview ? 'Viewing live preview' : 'Edit HTML code'}
+            <div className="flex items-center gap-2">
+              <div className="text-muted-foreground">
+                {type === 'creative'
+                  ? 'Edit and preview your creative content'
+                  : showPreview ? 'Viewing live preview' : 'Edit HTML code'}
+              </div>
+              <div className="h-4 w-px bg-muted-foreground/20"></div>
+              <div className="text-primary/70 font-medium">
+                {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </div>
             </div>
           </div>
         </DialogContent>
@@ -2542,36 +2615,5 @@ const Canvas = memo(({ type, title, content, isDarkTheme }: {
 })
 Canvas.displayName = "Canvas"
 
-// Memory reference component with badge styling
-const MemoryReference = memo(({ variableName, value }: { variableName: string; value: string }) => {
-  return (
-    <span className="inline-flex items-center px-0.5 py-0.5 rounded-md bg-primary/10 border border-primary/20 text-primary-foreground group hover:bg-primary/20 transition-colors mx-0.5">
-      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-l-sm bg-primary/20 text-xs font-medium text-primary">
-        <Brain className="h-3 w-3" />
-        <span>{variableName}</span>
-      </div>
-      <span className="px-1.5 py-0.5 text-sm text-foreground">{value}</span>
-    </span>
-  )
-})
-MemoryReference.displayName = "MemoryReference"
-
-// Link badge component for external references
-const LinkBadge = memo(({ url, title }: { url: string; title: string }) => {
-  return (
-    <a 
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-flex items-center px-0.5 py-0.5 rounded-md bg-accent/40 border border-accent/30 text-accent-foreground group hover:bg-accent/60 transition-colors mx-0.5"
-    >
-      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-l-sm bg-accent/50 text-xs font-medium text-accent-foreground">
-        <LinkIcon className="h-3 w-3" />
-        <span>Source</span>
-      </div>
-      <span className="px-1.5 py-0.5 text-sm text-foreground">{title}</span>
-    </a>
-  )
-})
-LinkBadge.displayName = "LinkBadge"
+// Memory reference and Link badge components have been removed
 
