@@ -202,7 +202,6 @@ const StreamingText = memo(({ content }: { content: string }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const [renderMode, setRenderMode] = useState<'direct' | 'markdown'>('direct')
   const [canvasElements, setCanvasElements] = useState<Array<{type: 'creative' | 'webdev', title: string, content: string}>>([])
-
   // Extract canvas elements from content
   useEffect(() => {
     // Check for canvas elements in streaming content
@@ -213,11 +212,11 @@ const StreamingText = memo(({ content }: { content: string }) => {
     while ((match = canvasRegex.exec(content)) !== null) {
       const [fullMatch, type, title, canvasContent] = match;
       // Only add if we have actual content or if the canvas element is complete
-      if (canvasContent.trim() || fullMatch.includes('</canvas>')) {
+      if (canvasContent && canvasContent.trim() && fullMatch.includes('</canvas>')) {
         extractedCanvasElements.push({
           type: type as 'creative' | 'webdev',
-          title,
-          content: canvasContent
+          title: title || 'Untitled Canvas',
+          content: canvasContent.trim()
         });
       }
     }
@@ -395,8 +394,11 @@ const StreamingText = memo(({ content }: { content: string }) => {
   const cleanedContent = useMemo(() => {
     let cleaned = normalizedContent;
     canvasElements.forEach(canvas => {
-      const canvasRegex = new RegExp(`<canvas\\s+type="${canvas.type}"\\s+title="${canvas.title}">[\\s\\S]*?<\\/canvas>`, 'g');
-      cleaned = cleaned.replace(canvasRegex, ''); // Remove the canvas tag completely instead of showing placeholder
+      // Use a more precise regex to match the full canvas element
+      const canvasRegex = new RegExp(
+        `<canvas\\s+type="${canvas.type}"\\s+title="${canvas.title}">[\\s\\S]*?<\\/canvas>`, 'g'
+      );
+      cleaned = cleaned.replace(canvasRegex, ''); // Remove the canvas tag completely
     });
     return cleaned;
   }, [normalizedContent, canvasElements]);
@@ -917,9 +919,7 @@ const ContentRenderer = memo(
           setMainStreamingContent(content.substring(0, openPos));
         }
       }
-    }, [content, isStreaming, isInThinkingBlock]);
-
-    // Extract canvas elements from content
+    }, [content, isStreaming, isInThinkingBlock]);    // Extract canvas elements from content with cleaner handling
     const extractCanvasElements = useCallback((text: string) => {
       const canvasRegex = /<canvas\s+type="(creative|webdev)"\s+title="([^"]+)">([\s\S]*?)<\/canvas>/g;
       const canvasElements: Array<{type: 'creative' | 'webdev', title: string, content: string}> = [];
@@ -928,14 +928,16 @@ const ContentRenderer = memo(
       let match;
       while ((match = canvasRegex.exec(text)) !== null) {
         const [fullMatch, type, title, content] = match;
-        canvasElements.push({
-          type: type as 'creative' | 'webdev',
-          title,
-          content
-        });
-        
-        // Replace canvas elements with placeholders in the main content
-        cleanedContent = cleanedContent.replace(fullMatch, ''); // Remove completely instead of showing placeholder
+        if (content && content.trim()) {
+          canvasElements.push({
+            type: type as 'creative' | 'webdev',
+            title: title || 'Untitled Canvas',
+            content: content.trim()
+          });
+          
+          // Replace canvas elements with placeholders in the main content
+          cleanedContent = cleanedContent.replace(fullMatch, ''); // Remove completely instead of showing placeholder
+        }
       }
       
       return { cleanedContent, canvasElements };
@@ -953,9 +955,7 @@ const ContentRenderer = memo(
         );
       }
       return <StreamingText content={content} />
-    }, [streamingThinkingContent, thinkingContent, mainStreamingContent, content]);
-
-    // Process content to extract file attachments and canvas elements
+    }, [streamingThinkingContent, thinkingContent, mainStreamingContent, content]);    // Process content to extract file attachments and canvas elements
     const processedContent = useMemo(() => {
       // For streaming content, use the dedicated renderer
       if (isStreaming) {
@@ -991,10 +991,8 @@ const ContentRenderer = memo(
 
       // Add newly extracted thinking blocks
       thinkingBlocks.forEach((block, index) => {
-        // Use a unique key based on content and index
-        const blockKey = `thinking-extracted-${index}-${block.substring(0, 10)}`;
         finalThinkingBlocks.push(
-          <ThinkingContent key={blockKey} content={block} />
+          <ThinkingContent key={`thinking-${index}`} content={block} />
         )
       })
 
@@ -1022,7 +1020,7 @@ const ContentRenderer = memo(
               copyToClipboard={copyToClipboard}
               copied={copied}
             />
-            {canvasComponents}
+            {canvasElements.length > 0 && canvasComponents}
           </>
         )
       }
@@ -1097,7 +1095,7 @@ const ContentRenderer = memo(
         <>
           {finalThinkingBlocks}
           {parts}
-          {canvasComponents}
+          {canvasElements.length > 0 && canvasComponents}
         </>
       )
     }, [content, isDarkTheme, isStreaming, remarkPlugins, copyToClipboard, copied, thinkingContent, renderStreamingContent, extractCanvasElements]);
@@ -1957,6 +1955,7 @@ CollapsibleUserMessage.displayName = "CollapsibleUserMessage"
         )}
         onMouseEnter={() => setShowActions(true)}
         onMouseLeave={() => setShowActions(false)}
+
       >
         <div className="flex-shrink-0 mt-1">
           {message.role === "user" ? (
@@ -2170,8 +2169,10 @@ const BrowsingReferences = memo(({ sources, query }: { sources?: any[], query?: 
                 className="group p-3 rounded-lg border bg-background/50 hover:bg-muted/50 transition-colors flex flex-col"
               >
                 <div className="flex items-start gap-2">
-                  <div className="flex-shrink-0 h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-xs text-primary font-medium">{index + 1}</span>
+                  <div className="flex-shrink-0">
+                    <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
+                      <span className="text-xs text-primary font-medium">{index + 1}</span>
+                    </div>
                   </div>
                   <div className="flex-1 min-w-0">
                     <h5 className="text-sm font-medium truncate group-hover:text-primary transition-colors">{source.title || `Source ${index + 1}`}</h5>
