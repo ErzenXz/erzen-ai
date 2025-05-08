@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,9 +20,13 @@ import {
   Loader2,
   Filter,
   SortAsc,
+  FolderPlus,
 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 
 interface Project {
   id: string
@@ -60,6 +63,7 @@ export function ProjectGrid({
   const [searchQuery, setSearchQuery] = React.useState("")
   const [sortBy, setSortBy] = React.useState<"updated" | "name" | "created">("updated")
   const [isLoadingProject, setIsLoadingProject] = React.useState<string | null>(null)
+  const [showDialog, setShowDialog] = React.useState(false)
 
   // Filter and sort projects
   const filteredProjects = React.useMemo(() => {
@@ -107,7 +111,15 @@ export function ProjectGrid({
     }, 800)
   }
 
-
+  const handleCreateProject = () => {
+    // If parent provided a create function, use it
+    if (typeof onCreateProject === 'function') {
+      onCreateProject()
+    } else {
+      // Otherwise show our local dialog
+      setShowDialog(true)
+    }
+  }
 
   // Simple placeholder loading projects
   const loadingPlaceholders = Array(6)
@@ -144,7 +156,7 @@ export function ProjectGrid({
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold">Projects</h1>
             <Button
-              onClick={onCreateProject}
+              onClick={handleCreateProject}
               className="gap-2 rounded-xl bg-primary hover:bg-primary/90 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 px-5 py-2.5 h-auto"
             >
               <Plus className="h-4 w-4" />
@@ -230,179 +242,176 @@ export function ProjectGrid({
       <div className="flex-1 overflow-hidden">
         <ScrollArea className="h-full">
           <div className="max-w-7xl mx-auto p-4">
-            <AnimatePresence mode="wait">
-              {isLoading ? (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
-                >
-                  {loadingPlaceholders}
-                </motion.div>
-              ) : filteredProjects.length === 0 ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
-                  className="flex flex-col items-center justify-center py-16 text-center"
-                >
-                  <div className="mb-6">
-                    <div className="w-20 h-20 rounded-md bg-muted/50 flex items-center justify-center">
-                      <FolderRoot className="h-10 w-10 text-muted-foreground" />
-                    </div>
+            {isLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {loadingPlaceholders}
+              </div>
+            ) : filteredProjects.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="mb-6">
+                  <div className="w-20 h-20 rounded-md bg-muted/50 flex items-center justify-center">
+                    <FolderRoot className="h-10 w-10 text-muted-foreground" />
                   </div>
-                  <h3 className="text-2xl font-medium mb-3">No projects found</h3>
-                  <p className="text-muted-foreground max-w-md mb-6">
-                    {searchQuery
-                      ? `No projects matching "${searchQuery}"`
-                      : filter === "starred"
-                        ? "You haven't starred any projects yet"
-                        : filter === "recent"
-                          ? "No recent projects found"
-                          : "Create your first project to get started"}
-                  </p>
-                  <Button
-                    onClick={onCreateProject}
-                    className="gap-2"
-                  >
-                    <Plus className="mr-1 h-4 w-4" />
-                    Create Project
-                  </Button>
-                </motion.div>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
+                </div>
+                <h3 className="text-2xl font-medium mb-3">No projects found</h3>
+                <p className="text-muted-foreground max-w-md mb-6">
+                  {searchQuery
+                    ? `No projects matching "${searchQuery}"`
+                    : filter === "starred"
+                      ? "You haven't starred any projects yet"
+                      : filter === "recent"
+                        ? "No recent projects found"
+                        : "Create your first project to get started"}
+                </p>
+                <Button
+                  onClick={handleCreateProject}
+                  className="gap-2"
                 >
-                  {filteredProjects.map((project, index) => (
-                    <motion.div
-                      key={project.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{
-                        opacity: 1,
-                        y: 0,
-                        transition: { delay: index * 0.05 }
-                      }}
-                    >
-                      <Card
-                        className={cn(
-                          "h-full overflow-hidden border group cursor-pointer transition-all duration-200",
-                          "hover:shadow hover:border-primary/20 hover:-translate-y-0.5",
-                          isLoadingProject === project.id && "pointer-events-none opacity-80"
+                  <Plus className="mr-1 h-4 w-4" />
+                  Create Project
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {filteredProjects.map((project) => (
+                  <Card
+                    key={project.id}
+                    className={cn(
+                      "h-full overflow-hidden border group cursor-pointer transition-all duration-200",
+                      "hover:shadow hover:border-primary/20 hover:-translate-y-0.5",
+                      isLoadingProject === project.id && "pointer-events-none opacity-80"
+                    )}
+                    onClick={() => handleProjectClick(project.id)}
+                  >
+                    <CardContent className="p-6 flex flex-col gap-4 h-full relative">
+                      {isLoadingProject === project.id && (
+                        <div className="absolute inset-0 bg-background/80 z-10 flex items-center justify-center">
+                          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between">
+                        <div className="truncate">
+                          <div className="font-medium text-xl truncate overflow-hidden">{project.name}</div>
+                        </div>
+
+                        {onToggleStar && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onToggleStar(project.id, !project.starred)
+                            }}
+                            className="text-muted-foreground hover:text-amber-400 transition-colors focus:outline-none flex-shrink-0 ml-2 p-1.5 rounded-full hover:bg-amber-500/10"
+                          >
+                            {project.starred ? (
+                              <Star className="h-5 w-5 fill-amber-400 text-amber-400 drop-shadow-sm animate-pulse-soft" />
+                            ) : (
+                              <StarOff className="h-5 w-5" />
+                            )}
+                          </button>
                         )}
-                        onClick={() => handleProjectClick(project.id)}
-                      >
-                        <CardContent className="p-6 flex flex-col gap-4 h-full relative">
-                          {isLoadingProject === project.id && (
-                            <div className="absolute inset-0 bg-background/80 z-10 flex items-center justify-center">
-                              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                      </div>
+
+                      <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem] break-words">
+                        {project.description ?? "No description provided for this project"}
+                      </p>
+
+                      <div className="mt-auto pt-4 flex flex-col gap-3">
+                        <div className="flex flex-wrap gap-2">
+                          <div className="rounded-md px-2 py-0.5 text-xs bg-muted/50 text-muted-foreground flex items-center gap-1.5">
+                            <MessageSquare className="h-3 w-3" />
+                            {project._count?.threads ?? 0} threads
+                          </div>
+                          <div className="rounded-md px-2 py-0.5 text-xs bg-muted/50 text-muted-foreground flex items-center gap-1.5">
+                            <FileCode className="h-3 w-3" />
+                            {project._count?.files ?? 0} files
+                          </div>
+                          {project.collaborators && project.collaborators > 0 && (
+                            <div className="rounded-md px-2 py-0.5 text-xs bg-muted/50 text-muted-foreground flex items-center gap-1.5">
+                              <Users className="h-3 w-3" />
+                              {project.collaborators} collaborator{project.collaborators > 1 ? "s" : ""}
                             </div>
                           )}
-
-                          <div className="flex items-center justify-between">
-                            <div className="truncate">
-                              <div className="font-medium text-xl truncate overflow-hidden">{project.name}</div>
-                            </div>
-
-                            {onToggleStar && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  onToggleStar(project.id, !project.starred)
-                                }}
-                                className="text-muted-foreground hover:text-amber-400 transition-colors focus:outline-none flex-shrink-0 ml-2 p-1.5 rounded-full hover:bg-amber-500/10"
-                              >
-                                {project.starred ? (
-                                  <Star className="h-5 w-5 fill-amber-400 text-amber-400 drop-shadow-sm animate-pulse-soft" />
-                                ) : (
-                                  <StarOff className="h-5 w-5" />
-                                )}
-                              </button>
-                            )}
-                          </div>
-
-                          <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem] break-words">
-                            {project.description ?? "No description provided for this project"}
-                          </p>
-
-                          <div className="mt-auto pt-4 flex flex-col gap-3">
-                            <div className="flex flex-wrap gap-2">
-                              <div className="rounded-md px-2 py-0.5 text-xs bg-muted/50 text-muted-foreground flex items-center gap-1.5">
-                                <MessageSquare className="h-3 w-3" />
-                                {project._count?.threads ?? 0} threads
-                              </div>
-                              <div className="rounded-md px-2 py-0.5 text-xs bg-muted/50 text-muted-foreground flex items-center gap-1.5">
-                                <FileCode className="h-3 w-3" />
-                                {project._count?.files ?? 0} files
-                              </div>
-                              {project.collaborators && project.collaborators > 0 && (
-                                <div className="rounded-md px-2 py-0.5 text-xs bg-muted/50 text-muted-foreground flex items-center gap-1.5">
-                                  <Users className="h-3 w-3" />
-                                  {project.collaborators} collaborator{project.collaborators > 1 ? "s" : ""}
-                                </div>
-                              )}
-                            </div>
-                            <div className="text-xs text-muted-foreground flex items-center gap-2">
-                              <Clock className="h-3 w-3" />
-                              Updated {new Date(project.updatedAt).toLocaleDateString()}
-                            </div>
-                          </div>
-
-                          <div
-                            className="absolute right-4 bottom-4 opacity-0 group-hover:opacity-100 transition-all duration-200"
-                          >
-                            <Button size="sm" className="rounded-md h-8 w-8 p-0">
-                              <ArrowUpRight className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))}
-
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{
-                      opacity: 1,
-                      y: 0,
-                      transition: { delay: filteredProjects.length * 0.05 }
-                    }}
-                  >
-                    <Card
-                      className="h-full overflow-hidden border-dashed border cursor-pointer transition-all hover:shadow group hover:-translate-y-0.5"
-                      onClick={onCreateProject}
-                    >
-                      <div className="flex items-center justify-center h-full p-8">
-                        <div className="text-center">
-                          <div className="mb-4">
-                            <div className="bg-muted/50 h-16 w-16 rounded-md flex items-center justify-center mx-auto">
-                              <Plus className="h-8 w-8 text-muted-foreground" />
-                            </div>
-                          </div>
-                          <h3 className="text-xl font-medium mb-2">Create New Project</h3>
-                          <p className="text-sm text-muted-foreground mb-4">
-                            Start a new AI-assisted project
-                          </p>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="opacity-0 group-hover:opacity-100 transition-all duration-200"
-                          >
-                            Get started
-                          </Button>
+                        </div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-2">
+                          <Clock className="h-3 w-3" />
+                          Updated {new Date(project.updatedAt).toLocaleDateString()}
                         </div>
                       </div>
-                    </Card>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+
+                      <div
+                        className="absolute right-4 bottom-4 opacity-0 group-hover:opacity-100 transition-all duration-200"
+                      >
+                        <Button size="sm" className="rounded-md h-8 w-8 p-0">
+                          <ArrowUpRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+
+                <Card
+                  className="h-full overflow-hidden border-dashed border cursor-pointer transition-all hover:shadow group hover:-translate-y-0.5"
+                  onClick={handleCreateProject}
+                >
+                  <div className="flex items-center justify-center h-full p-8">
+                    <div className="text-center">
+                      <div className="mb-4">
+                        <div className="bg-muted/50 h-16 w-16 rounded-md flex items-center justify-center mx-auto">
+                          <Plus className="h-8 w-8 text-muted-foreground" />
+                        </div>
+                      </div>
+                      <h3 className="text-xl font-medium mb-2">Create New Project</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Start a new AI-assisted project
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="opacity-0 group-hover:opacity-100 transition-all duration-200"
+                      >
+                        Get started
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            )}
           </div>
         </ScrollArea>
       </div>
+      
+      {/* Custom dialog that doesn't use the useProject hook */}
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Please use the sidebar</DialogTitle>
+            <DialogDescription>
+              The project creation feature is available through the sidebar interface.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex flex-col gap-4 py-4">
+            <div className="flex items-center gap-4">
+              <div className="bg-blue-500/10 p-3 rounded-md">
+                <FolderPlus className="h-5 w-5 text-blue-500" />
+              </div>
+              <div>
+                <h4 className="text-sm font-medium">Create from sidebar</h4>
+                <p className="text-sm text-muted-foreground">
+                  Click the folder plus icon in the sidebar to create a new project.
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button onClick={() => setShowDialog(false)}>
+              Got it
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

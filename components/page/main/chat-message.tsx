@@ -23,7 +23,15 @@ import {
   Download,
   MoreHorizontal,
   Pencil,
+  Maximize2,
+  FileCode,
+  BookOpen,
+  Eye,
+  Code,
+  ExternalLink,
+  GitBranch,
 } from "lucide-react"
+import Editor from "@monaco-editor/react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import ReactMarkdown from "react-markdown"
@@ -53,6 +61,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import TextareaAutosize from "react-textarea-autosize"
 
 const remarkPlugins = [
   remarkGfm,
@@ -71,6 +80,11 @@ interface ChatMessageProps {
   onEdit?: (messageId: string) => void
   onReport?: (messageId: string) => void
   onPlay?: (messageId: string) => void
+  onRetry?: (messageId: string) => void
+  onBranchOff?: (messageId: string) => void
+  isEditing?: boolean
+  onSaveEdit?: (messageId: string, newContent: string) => void
+  onCancelEdit?: () => void
 }
 
 // Customize the syntax highlighting theme
@@ -195,6 +209,30 @@ MarkdownRenderer.displayName = "MarkdownRenderer"
 const StreamingText = memo(({ content }: { content: string }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const [renderMode, setRenderMode] = useState<'direct' | 'markdown'>('direct')
+  const [canvasElements, setCanvasElements] = useState<Array<{type: 'creative' | 'webdev', title: string, content: string}>>([])
+  // Extract canvas elements from content
+  useEffect(() => {
+    // Check for canvas elements in streaming content
+    const canvasRegex = /<canvas\s+type="(creative|webdev)"\s+title="([^"]+)">([\s\S]*?)<\/canvas>/g;
+    const extractedCanvasElements: Array<{type: 'creative' | 'webdev', title: string, content: string}> = [];
+
+    let match;
+    while ((match = canvasRegex.exec(content)) !== null) {
+      const [fullMatch, type, title, canvasContent] = match;
+      // Only add if we have actual content or if the canvas element is complete
+      if (canvasContent && canvasContent.trim() && fullMatch.includes('</canvas>')) {
+        extractedCanvasElements.push({
+          type: type as 'creative' | 'webdev',
+          title: title || 'Untitled Canvas',
+          content: canvasContent.trim()
+        });
+      }
+    }
+
+    if (extractedCanvasElements.length > 0) {
+      setCanvasElements(extractedCanvasElements);
+    }
+  }, [content]);
 
   // Force styles to apply immediately after mount
   useEffect(() => {
@@ -360,11 +398,24 @@ const StreamingText = memo(({ content }: { content: string }) => {
       .replace(/\n+$/, "\n")
   }, [content])
 
+  // Clean the content of canvas tags for display
+  const cleanedContent = useMemo(() => {
+    let cleaned = normalizedContent;
+    canvasElements.forEach(canvas => {
+      // Use a more precise regex to match the full canvas element
+      const canvasRegex = new RegExp(
+        `<canvas\\s+type="${canvas.type}"\\s+title="${canvas.title}">[\\s\\S]*?<\\/canvas>`, 'g'
+      );
+      cleaned = cleaned.replace(canvasRegex, ''); // Remove the canvas tag completely
+    });
+    return cleaned;
+  }, [normalizedContent, canvasElements]);
+
   // Create HTML directly instead of using ReactMarkdown for streaming
   // This will be more immediately styled by the browser
   const createMarkdownHtml = useMemo(() => {
     // Simple markdown parser for immediate display
-    return normalizedContent
+    return cleanedContent
       // Headers
       .replace(/^# (.*$)/gim, '<h1 class="urgent-md-h1">$1</h1>')
       .replace(/^## (.*$)/gim, '<h2 class="urgent-md-h2">$1</h2>')
@@ -399,10 +450,15 @@ const StreamingText = memo(({ content }: { content: string }) => {
       .replace(/<\/p><p>/gim, '</p>\n<p>');
 
 
-  }, [normalizedContent]);
+  }, [cleanedContent]);
 
   // Generate a unique ID for this component instance
   const uniqueId = useMemo(() => `streaming-${Math.random().toString(36).substring(2, 9)}`, []);
+
+  // Get the current theme
+  const isDarkTheme = typeof document !== "undefined"
+    ? document.documentElement.classList.contains("dark")
+    : false
 
   return (
     <div className="relative streaming-markdown-container urgent-streaming-styles"
@@ -421,9 +477,18 @@ const StreamingText = memo(({ content }: { content: string }) => {
             remarkPlugins={remarkPlugins}
             rehypePlugins={[rehypeKatex]}
           >
-            {normalizedContent}
+            {cleanedContent}
           </ReactMarkdown>
         )}
+        {canvasElements.map((canvas, index) => (
+          <Canvas
+            key={`streaming-canvas-${index}`}
+            type={canvas.type}
+            title={canvas.title}
+            content={canvas.content}
+            isDarkTheme={isDarkTheme}
+          />
+        ))}
         <span className="ml-0.5 inline-block h-4 w-1.5 animate-cursor-blink bg-primary/80"></span>
       </div>
       <div className="absolute left-0 right-0 bottom-0 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none opacity-30"></div>
@@ -530,7 +595,7 @@ const ResearchStatus = memo(({ status }: { status: any }) => {
   // Handle different statuses in the research flow
   let statusMessage = '';
   let detailMessage = '';
-  
+
   switch (status.status) {
     case 'started':
       statusMessage = 'Research initiated';
@@ -574,14 +639,14 @@ const ResearchStatus = memo(({ status }: { status: any }) => {
       <div className="relative bg-muted/30 rounded-lg p-3 overflow-hidden">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2">
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
               className="h-4 w-4 text-primary"
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
               strokeLinejoin="round"
             >
               <circle cx="12" cy="12" r="10"/>
@@ -601,7 +666,7 @@ const ResearchStatus = memo(({ status }: { status: any }) => {
           <div className="border-l-2 border-primary/20 pl-4 py-1 space-y-2">
             <div className="text-sm text-foreground/90 font-light leading-relaxed">
               {detailMessage}
-              
+
               {/* Display sources if available */}
               {status.sources && status.sources.length > 0 && (
                 <div className="mt-2">
@@ -636,10 +701,10 @@ const BrowsingStatus = memo(({ status, searchQuery, progress, message, reference
   references?: any;
 }) => {
   const [expanded, setExpanded] = useState(false);
-  
+
   // Get the browsing history from the message property
   const searchHistory = message?.history || [];
-  
+
   const getMessage = (currentStatus: string) => {
     switch (currentStatus) {
       case 'started':
@@ -662,13 +727,13 @@ const BrowsingStatus = memo(({ status, searchQuery, progress, message, reference
         return `Processing ${currentStatus}...`;
     }
   };
-  
+
   // Return null if no status (should not happen)
   if (!status) return null;
-  
+
   const isCompleted = ['completed', 'skipped', 'error'].includes(status);
   const hasReferences = references && references.length > 0;
-  
+
   return (
     <div className="mt-4 border rounded-lg overflow-hidden bg-accent/30">
       <div className="p-3 flex items-center justify-between gap-2">
@@ -699,7 +764,7 @@ const BrowsingStatus = memo(({ status, searchQuery, progress, message, reference
             )}
           </div>
         </div>
-        
+
         {/* Only show the toggle if there's a history to display */}
         {searchHistory.length > 0 && (
           <Button
@@ -709,7 +774,7 @@ const BrowsingStatus = memo(({ status, searchQuery, progress, message, reference
             onClick={() => setExpanded(!expanded)}
           >
             <ChevronDown
-              className={cn("h-4 w-4 text-muted-foreground transition-transform", 
+              className={cn("h-4 w-4 text-muted-foreground transition-transform",
                 expanded ? "transform rotate-180" : ""
               )}
             />
@@ -717,7 +782,7 @@ const BrowsingStatus = memo(({ status, searchQuery, progress, message, reference
           </Button>
         )}
       </div>
-      
+
       {/* Expandable search history timeline */}
       {expanded && searchHistory.length > 0 && (
         <div className="px-4 pb-3 pt-1">
@@ -725,12 +790,12 @@ const BrowsingStatus = memo(({ status, searchQuery, progress, message, reference
             {searchHistory.map((item: {status: string, timestamp: string}, index: number) => (
               <div key={`history-${index}`} className="relative">
                 {/* Timeline dot */}
-                <div className="absolute -left-6 top-1 h-3 w-3 rounded-full border-2 border-background" 
-                  style={{ 
-                    backgroundColor: ['completed', 'error', 'skipped'].includes(item.status) 
-                      ? (item.status === 'error' ? 'var(--destructive)' : item.status === 'skipped' ? 'var(--muted)' : 'var(--primary)') 
+                <div className="absolute -left-6 top-1 h-3 w-3 rounded-full border-2 border-background"
+                  style={{
+                    backgroundColor: ['completed', 'error', 'skipped'].includes(item.status)
+                      ? (item.status === 'error' ? 'var(--destructive)' : item.status === 'skipped' ? 'var(--muted)' : 'var(--primary)')
                       : 'var(--muted-foreground)'
-                  }} 
+                  }}
                 />
                 <div className="text-xs">
                   <span className="text-muted-foreground mr-1">{new Date(item.timestamp).toLocaleTimeString()}</span>
@@ -741,7 +806,7 @@ const BrowsingStatus = memo(({ status, searchQuery, progress, message, reference
           </div>
         </div>
       )}
-      
+
       {/* Progress bar for searching status */}
       {status === 'searching' && typeof progress === 'number' && (
         <Progress value={progress} className="h-1 rounded-none" />
@@ -862,9 +927,30 @@ const ContentRenderer = memo(
           setMainStreamingContent(content.substring(0, openPos));
         }
       }
-    }, [content, isStreaming, isInThinkingBlock]);
+    }, [content, isStreaming, isInThinkingBlock]);    // Extract canvas elements from content with cleaner handling
+    const extractCanvasElements = useCallback((text: string) => {
+      const canvasRegex = /<canvas\s+type="(creative|webdev)"\s+title="([^"]+)">([\s\S]*?)<\/canvas>/g;
+      const canvasElements: Array<{type: 'creative' | 'webdev', title: string, content: string}> = [];
+      let cleanedContent = text;
 
-    // Split the content processing into smaller functions for better performance
+      let match;
+      while ((match = canvasRegex.exec(text)) !== null) {
+        const [fullMatch, type, title, content] = match;
+        if (content && content.trim()) {
+          canvasElements.push({
+            type: type as 'creative' | 'webdev',
+            title: title || 'Untitled Canvas',
+            content: content.trim()
+          });
+
+          // Replace canvas elements with placeholders in the main content
+          cleanedContent = cleanedContent.replace(fullMatch, ''); // Remove completely instead of showing placeholder
+        }
+      }
+
+      return { cleanedContent, canvasElements };
+    }, []);
+
     // Handle streaming content separately
     const renderStreamingContent = useCallback(() => {
       if (streamingThinkingContent) {
@@ -877,9 +963,7 @@ const ContentRenderer = memo(
         );
       }
       return <StreamingText content={content} />
-    }, [streamingThinkingContent, thinkingContent, mainStreamingContent, content]);
-
-    // Process content to extract file attachments
+    }, [streamingThinkingContent, thinkingContent, mainStreamingContent, content]);    // Process content to extract file attachments and canvas elements
     const processedContent = useMemo(() => {
       // For streaming content, use the dedicated renderer
       if (isStreaming) {
@@ -899,6 +983,10 @@ const ContentRenderer = memo(
         mainContent = mainContent.replace(match[0], '')
       }
 
+      // Extract canvas elements
+      const { cleanedContent, canvasElements } = extractCanvasElements(mainContent);
+      mainContent = cleanedContent;
+
       // Combine extracted thinking blocks with existing thinkingContent
       let finalThinkingBlocks: JSX.Element[] = []
 
@@ -911,16 +999,25 @@ const ContentRenderer = memo(
 
       // Add newly extracted thinking blocks
       thinkingBlocks.forEach((block, index) => {
-        // Use a unique key based on content and index
-        const blockKey = `thinking-extracted-${index}-${block.substring(0, 10)}`;
         finalThinkingBlocks.push(
-          <ThinkingContent key={blockKey} content={block} />
+          <ThinkingContent key={`thinking-${index}`} content={block} />
         )
       })
 
+      // Prepare canvas elements
+      const canvasComponents = canvasElements.map((canvas, index) => (
+        <Canvas
+          key={`canvas-${index}`}
+          type={canvas.type}
+          title={canvas.title}
+          content={canvas.content}
+          isDarkTheme={isDarkTheme}
+        />
+      ));
+
       // Check if content contains file attachments
       if (!mainContent.match(fileAttachmentRegex)) {
-        // If no file attachments, render as normal markdown
+        // If no file attachments, render as normal markdown with canvas components
         return (
           <>
             {finalThinkingBlocks}
@@ -931,6 +1028,7 @@ const ContentRenderer = memo(
               copyToClipboard={copyToClipboard}
               copied={copied}
             />
+            {canvasElements.length > 0 && canvasComponents}
           </>
         )
       }
@@ -1005,16 +1103,29 @@ const ContentRenderer = memo(
         <>
           {finalThinkingBlocks}
           {parts}
+          {canvasElements.length > 0 && canvasComponents}
         </>
       )
-    }, [content, isDarkTheme, isStreaming, remarkPlugins, copyToClipboard, copied, thinkingContent, renderStreamingContent]);
+    }, [content, isDarkTheme, isStreaming, remarkPlugins, copyToClipboard, copied, thinkingContent, renderStreamingContent, extractCanvasElements]);
 
     return processedContent
   },
 )
 ContentRenderer.displayName = "ContentRenderer"
 
-export const ChatMessage = memo(function ChatMessage({ message, isLast, onRegenerate, onEdit, onReport, onPlay }: Readonly<ChatMessageProps>) {
+export const ChatMessage = memo(function ChatMessage({
+  message,
+  isLast,
+  onRegenerate,
+  onEdit,
+  onReport,
+  onPlay,
+  onRetry,
+  onBranchOff,
+  isEditing,
+  onSaveEdit,
+  onCancelEdit
+}: Readonly<ChatMessageProps>) {
   const messageRef = useRef<HTMLDivElement>(null)
   const [copied, setCopied] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -1023,6 +1134,7 @@ export const ChatMessage = memo(function ChatMessage({ message, isLast, onRegene
   const [isVisible, setIsVisible] = useState(false)
   const [extractedThinking, setExtractedThinking] = useState<string | null>(null)
   const [cleanedContent, setCleanedContent] = useState<string | null>(null)
+  const [editedContent, setEditedContent] = useState<string>(message.content || "")
   const isDarkTheme = typeof document !== "undefined" ? document.documentElement.classList.contains("dark") : false
   const speechRef = useRef<HTMLAudioElement | null>(null)
   const shouldAutoScrollRef = useRef(true)
@@ -1032,6 +1144,11 @@ export const ChatMessage = memo(function ChatMessage({ message, isLast, onRegene
   const [isTtsLoading, setIsTtsLoading] = useState(false)
   const abortControllerRef = useRef<AbortController | null>(null)
   const debugAudioPlayerRef = useRef<HTMLAudioElement | null>(null)
+
+  // Update editedContent when message content changes
+  useEffect(() => {
+    setEditedContent(message.content || "")
+  }, [message.content])
 
   // Detect if content is streaming
   const isStreaming = useMemo(() => {
@@ -1291,6 +1408,35 @@ export const ChatMessage = memo(function ChatMessage({ message, isLast, onRegene
       onReport(message.id)
     }
   }, [onReport, message.id])
+
+  // Handle retry button click
+  const handleRetry = useCallback(() => {
+    if (onRetry && message.id) {
+      onRetry(message.id)
+    }
+  }, [onRetry, message.id])
+
+  // Handle branch off button click
+  const handleBranchOff = useCallback(() => {
+    if (onBranchOff && message.id) {
+      onBranchOff(message.id)
+    }
+  }, [onBranchOff, message.id])
+
+  // Handle save edit button click
+  const handleSaveEdit = useCallback(() => {
+    if (onSaveEdit && message.id) {
+      onSaveEdit(message.id, editedContent)
+    }
+  }, [onSaveEdit, message.id, editedContent])
+
+  // Handle cancel edit button click
+  const handleCancelEdit = useCallback(() => {
+    if (onCancelEdit) {
+      setEditedContent(message.content || "")
+      onCancelEdit()
+    }
+  }, [onCancelEdit, message.content])
 
   const handlePlay = useCallback(async () => {
     if (!message.content) {
@@ -1864,6 +2010,7 @@ CollapsibleUserMessage.displayName = "CollapsibleUserMessage"
         )}
         onMouseEnter={() => setShowActions(true)}
         onMouseLeave={() => setShowActions(false)}
+
       >
         <div className="flex-shrink-0 mt-1">
           {message.role === "user" ? (
@@ -1990,6 +2137,14 @@ CollapsibleUserMessage.displayName = "CollapsibleUserMessage"
                       Edit message
                     </DropdownMenuItem>
                   )}
+                  <DropdownMenuItem onClick={handleRetry}>
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Retry from here
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleBranchOff}>
+                    <GitBranch className="w-4 h-4 mr-2" />
+                    Branch off here
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleReport}>
                     <Flag className="w-4 h-4 mr-2" />
                     Report message
@@ -2016,13 +2171,41 @@ CollapsibleUserMessage.displayName = "CollapsibleUserMessage"
           )}
 
           <div className="markdown-wrapper max-w-full">
-            {messageContent}
-            
+            {isEditing ? (
+              <div className="border rounded-md p-2 mb-4">
+                <TextareaAutosize
+                  value={editedContent}
+                  onChange={(e) => setEditedContent(e.target.value)}
+                  className="w-full p-2 bg-background border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 min-h-[100px]"
+                  placeholder="Edit your message..."
+                  autoFocus
+                />
+                <div className="flex justify-end mt-2 space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCancelEdit}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleSaveEdit}
+                  >
+                    Save
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              messageContent
+            )}
+
             {/* Show browsing references if available */}
             {message.browsingStatus && message.browsingStatus.status === 'completed' && message.browsingStatus.sources && (
               <BrowsingReferences sources={message.browsingStatus.sources} query={message.browsingStatus.query} />
             )}
-            
+
             {/* Debug audio player - only visible when playing */}
             {isPlaying && (
               <div className="mt-4 p-3 bg-muted rounded-md">
@@ -2050,11 +2233,11 @@ ChatMessage.displayName = "ChatMessage";
 // Add a new component for displaying references at the bottom of messages
 const BrowsingReferences = memo(({ sources, query }: { sources?: any[], query?: string }) => {
   if (!sources || sources.length === 0) return null;
-  
+
   // Separate text and image sources
   const textSources = sources.filter(s => s.source !== 'tavily_image');
   const imageSources = sources.filter(s => s.source === 'tavily_image');
-  
+
   return (
     <div className="mt-6 pt-3 border-t border-muted">
       {query && (
@@ -2069,16 +2252,18 @@ const BrowsingReferences = memo(({ sources, query }: { sources?: any[], query?: 
           <h4 className="text-sm font-medium mb-2">Web Sources</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {textSources.map((source, index) => (
-              <a 
+              <a
                 key={`ref-${index}`}
-                href={source.url} 
-                target="_blank" 
+                href={source.url}
+                target="_blank"
                 rel="noopener noreferrer"
                 className="group p-3 rounded-lg border bg-background/50 hover:bg-muted/50 transition-colors flex flex-col"
               >
                 <div className="flex items-start gap-2">
-                  <div className="flex-shrink-0 h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-xs text-primary font-medium">{index + 1}</span>
+                  <div className="flex-shrink-0">
+                    <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
+                      <span className="text-xs text-primary font-medium">{index + 1}</span>
+                    </div>
                   </div>
                   <div className="flex-1 min-w-0">
                     <h5 className="text-sm font-medium truncate group-hover:text-primary transition-colors">{source.title || `Source ${index + 1}`}</h5>
@@ -2093,24 +2278,24 @@ const BrowsingReferences = memo(({ sources, query }: { sources?: any[], query?: 
           </div>
         </div>
       )}
-      
+
       {/* Image sources as a responsive grid gallery */}
       {imageSources.length > 0 && (
         <div className="mt-3">
           <h4 className="text-sm font-medium mb-2">Image Results</h4>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {imageSources.map((source, index) => (
-              <a 
+              <a
                 key={`img-${index}`}
-                href={source.url} 
-                target="_blank" 
+                href={source.url}
+                target="_blank"
                 rel="noopener noreferrer"
                 className="relative group rounded-md overflow-hidden border hover:border-primary/50 transition-colors aspect-square"
               >
-                <img 
-                  src={source.url} 
+                <img
+                  src={source.url}
                   alt={source.title || `Image ${index + 1}`}
-                  className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                  className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
                   <p className="text-xs font-medium text-foreground truncate w-full">
@@ -2126,4 +2311,355 @@ const BrowsingReferences = memo(({ sources, query }: { sources?: any[], query?: 
   );
 });
 BrowsingReferences.displayName = "BrowsingReferences";
+
+// Canvas component for creative writing and web development
+const Canvas = memo(({ type, title, content, isDarkTheme }: {
+  type: 'creative' | 'webdev';
+  title: string;
+  content: string;
+  isDarkTheme: boolean;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [editedContent, setEditedContent] = useState(content);
+
+  // For web preview in iframe
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Update preview in iframe
+  const updatePreview = useCallback(() => {
+    if (type === 'webdev' && iframeRef.current) {
+      const iframe = iframeRef.current;
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+
+      if (iframeDoc) {
+        iframeDoc.open();
+        iframeDoc.write(editedContent);
+        iframeDoc.close();
+      }
+    }
+  }, [editedContent, type]);
+
+  // Initialize preview when first showing it
+  useEffect(() => {
+    if (showPreview) {
+      updatePreview();
+    }
+  }, [showPreview, updatePreview]);
+
+  // Export content for creative writing
+  const handleExport = useCallback(() => {
+    const blob = new Blob([editedContent], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title || 'canvas-export'}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [editedContent, title]);
+
+  // Export HTML for web development
+  const handleExportHtml = useCallback(() => {
+    const blob = new Blob([editedContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title || 'canvas-export'}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [editedContent, title]);
+
+  // Open in new tab for web development
+  const handleOpenInNewTab = useCallback(() => {
+    const blob = new Blob([editedContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    // Don't revoke immediately to allow loading in the new tab
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }, [editedContent]);
+
+  // Handle editor value change
+  const handleEditorChange = useCallback((value: string | undefined) => {
+    if (value !== undefined) {
+      setEditedContent(value);
+    }
+  }, []);
+
+  return (
+    <>
+      {/* Collapsed preview box */}
+      <div
+        className="relative mt-6 mb-3 p-0 border border-primary/20 rounded-xl bg-gradient-to-r from-background/95 to-background/90 cursor-pointer hover:bg-gradient-to-r hover:from-background/90 hover:to-background/80 transition-all shadow-sm hover:shadow-md hover:border-primary/30 overflow-hidden group"
+        onClick={() => setIsOpen(true)}
+      >
+        <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+        <div className="flex items-center gap-4 p-4 relative z-10">
+          {type === 'creative' ? (
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shadow-inner border border-primary/10">
+              <BookOpen className="h-5 w-5 text-primary" />
+            </div>
+          ) : (
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shadow-inner border border-primary/10">
+              <FileCode className="h-5 w-5 text-primary" />
+            </div>
+          )}
+          <div className="flex-1">
+            <h3 className="text-sm font-medium bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+              {title || (type === 'creative' ? 'Creative Canvas' : 'Web Canvas')}
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              {type === 'creative'
+                ? 'Click to open and edit your creative content'
+                : 'Click to open and edit your web development project'}
+            </p>
+          </div>
+          <div className="bg-background/80 backdrop-blur-sm p-2 rounded-lg border border-primary/20 hover:bg-background shadow-sm group-hover:shadow-md group-hover:border-primary/30 transition-all duration-300">
+            <Maximize2 className="h-4 w-4 text-primary" />
+          </div>
+        </div>
+        <div className="h-1 w-full bg-gradient-to-r from-primary/30 to-primary/10"></div>
+      </div>
+
+      {/* Full modal dialog */}
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent className="max-w-6xl h-[85vh] flex flex-col p-0 gap-0 rounded-2xl shadow-xl border border-primary/20 overflow-hidden backdrop-blur-sm bg-background/95 animate-in zoom-in-105 duration-200">
+          <div className="flex items-center justify-between p-5 bg-gradient-to-r from-background via-background/95 to-background/90 backdrop-blur-md border-b border-primary/10 shadow-sm">
+            <h2 className="text-lg font-semibold flex items-center gap-3">
+              {type === 'creative' ? (
+                <>
+                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shadow-inner">
+                    <BookOpen className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent font-bold">
+                      Creative Canvas
+                    </span>
+                    <span className="text-xs text-muted-foreground font-normal">{title}</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shadow-inner">
+                    <FileCode className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent font-bold">
+                      Web Canvas
+                    </span>
+                    <span className="text-xs text-muted-foreground font-normal">{title}</span>
+                  </div>
+                </>
+              )}
+            </h2>
+            <div className="flex items-center gap-2">
+              {type === 'creative' ? (
+                <Button variant="outline" size="sm" onClick={handleExport} className="rounded-lg shadow-sm hover:shadow-md transition-all border-primary/20 hover:border-primary/40 bg-background/80 backdrop-blur-sm">
+                  <Download className="h-4 w-4 mr-1.5" />
+                  Export Markdown
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowPreview(!showPreview)}
+                    className="rounded-lg shadow-sm hover:shadow-md transition-all border-primary/20 hover:border-primary/40 bg-background/80 backdrop-blur-sm"
+                  >
+                    {showPreview ? (
+                      <>
+                        <Code className="h-4 w-4 mr-1.5" />
+                        Show Code
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="h-4 w-4 mr-1.5" />
+                        Preview
+                      </>
+                    )}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleExportHtml} className="rounded-lg shadow-sm hover:shadow-md transition-all border-primary/20 hover:border-primary/40 bg-background/80 backdrop-blur-sm">
+                    <Download className="h-4 w-4 mr-1.5" />
+                    Export HTML
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleOpenInNewTab} className="rounded-lg shadow-sm hover:shadow-md transition-all border-primary/20 hover:border-primary/40 bg-background/80 backdrop-blur-sm">
+                    <ExternalLink className="h-4 w-4 mr-1.5" />
+                    Open in New Tab
+                  </Button>
+                </>
+              )}
+              {/* Removed duplicate close button - using only the Radix UI default close button */}
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-hidden">
+            {type === 'creative' ? (
+              <div className="h-full flex flex-row">
+                <div className="flex-1 border-r border-primary/10">
+                  <div className="h-full w-full">
+                    <div className="h-8 bg-muted/30 border-b border-primary/10 flex items-center px-4">
+                      <span className="text-xs font-medium text-muted-foreground">Editor</span>
+                    </div>
+                    <Editor
+                      value={editedContent}
+                      language="markdown"
+                      onChange={handleEditorChange}
+                      options={{
+                        minimap: { enabled: false },
+                        scrollBeyondLastLine: false,
+                        wordWrap: "on",
+                        wrappingIndent: "same",
+                        lineNumbers: "on",
+                        renderLineHighlight: "all",
+                        automaticLayout: true,
+                        padding: { top: 16 },
+                        fontSize: 14,
+                        fontFamily: "'Fira Code', 'SF Mono', Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+                        folding: true,
+                        formatOnPaste: true,
+                        suggestOnTriggerCharacters: true,
+                        scrollbar: {
+                          useShadows: true,
+                          vertical: "visible",
+                          horizontal: "visible",
+                          verticalScrollbarSize: 8,
+                          horizontalScrollbarSize: 8
+                        },
+                        quickSuggestions: {
+                          other: true,
+                          comments: true,
+                          strings: true
+                        }
+                      }}
+                      theme={isDarkTheme ? "vs-dark" : "light"}
+                      loading={
+                        <div className="flex h-full w-full items-center justify-center">
+                          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                        </div>
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="flex-1 overflow-auto bg-muted/5">
+                  <div className="h-8 bg-muted/30 border-b border-primary/10 flex items-center px-4">
+                    <span className="text-xs font-medium text-muted-foreground">Preview</span>
+                  </div>
+                  <div className="prose-content p-8 h-[calc(100%-2rem)] overflow-auto">
+                    <ReactMarkdown
+                      remarkPlugins={remarkPlugins}
+                      rehypePlugins={[rehypeKatex]}
+                    >
+                      {editedContent}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="h-full flex">
+                {!showPreview ? (
+                  <div className="flex-1 h-full">
+                    <div className="h-8 bg-muted/30 border-b border-primary/10 flex items-center px-4">
+                      <span className="text-xs font-medium text-muted-foreground">HTML Editor</span>
+                    </div>
+                    <Editor
+                      value={editedContent}
+                      language="html"
+                      onChange={handleEditorChange}
+                      options={{
+                        minimap: { enabled: true },
+                        scrollBeyondLastLine: false,
+                        wordWrap: "on",
+                        lineNumbers: "on",
+                        renderLineHighlight: "all",
+                        renderWhitespace: "selection",
+                        automaticLayout: true,
+                        formatOnPaste: true,
+                        formatOnType: true,
+                        fontSize: 14,
+                        fontFamily: "'Fira Code', 'SF Mono', Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+                        tabSize: 2,
+                        scrollbar: {
+                          useShadows: true,
+                          vertical: "visible",
+                          horizontal: "visible",
+                          verticalScrollbarSize: 8,
+                          horizontalScrollbarSize: 8
+                        },
+                        bracketPairColorization: {
+                          enabled: true,
+                        },
+                        guides: {
+                          bracketPairs: true,
+                          indentation: true,
+                          highlightActiveIndentation: true
+                        },
+                        quickSuggestions: {
+                          other: true,
+                          comments: true,
+                          strings: true
+                        }
+                      }}
+                      theme={isDarkTheme ? "vs-dark" : "light"}
+                      loading={
+                        <div className="flex h-full w-full items-center justify-center">
+                          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                        </div>
+                      }
+                    />
+                  </div>
+                ) : (
+                  <div className="flex-1 h-full">
+                    <div className="h-8 bg-muted/30 border-b border-primary/10 flex items-center px-4">
+                      <span className="text-xs font-medium text-muted-foreground">Live Preview</span>
+                    </div>
+                    <div className="bg-white h-[calc(100%-2rem)]">
+                      <iframe
+                        ref={iframeRef}
+                        title="Web Preview"
+                        className="w-full h-full border-0"
+                        sandbox="allow-scripts allow-same-origin"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Status bar for info */}
+          <div className="border-t border-primary/10 py-3 px-5 flex justify-between items-center bg-gradient-to-r from-background/95 to-background/90 backdrop-blur-sm text-xs text-muted-foreground">
+            <div className="flex items-center">
+              <Badge variant="outline" className="mr-2 bg-primary/5 border-primary/20 text-primary/80 font-normal">
+                {type === 'creative' ? 'Markdown' : 'HTML'}
+              </Badge>
+              <span>{editedContent.length} characters</span>
+            </div>
+            <div className="flex items-center gap-1">
+              {type === 'creative' ? (
+                <>
+                  <BookOpen className="h-3 w-3 mr-1 text-primary/70" />
+                  <span className="text-muted-foreground/80">Edit and preview your creative content</span>
+                </>
+              ) : showPreview ? (
+                <>
+                  <Eye className="h-3 w-3 mr-1 text-primary/70" />
+                  <span className="text-muted-foreground/80">Viewing live preview</span>
+                </>
+              ) : (
+                <>
+                  <Code className="h-3 w-3 mr-1 text-primary/70" />
+                  <span className="text-muted-foreground/80">Edit HTML code</span>
+                </>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+});
+Canvas.displayName = "Canvas";
 

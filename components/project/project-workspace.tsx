@@ -6,6 +6,7 @@ import { CodeEditor, ThemeOption, editorThemes } from "@/components/project/code
 import { ProjectThreadsView } from "@/components/project/project-threads"
 import { FilePreview } from "@/components/project/file-preview"
 import { ProjectPreview } from "@/components/project/project-preview"
+import { ChatMessage } from "@/components/page/main/chat-message"
 import {
   FileX,
   Save,
@@ -41,6 +42,8 @@ import {
   Sun,
   Moon,
   Play,
+  ChevronLeft,
+  PlusCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
@@ -86,13 +89,19 @@ import {
 } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
 
-export function ProjectWorkspace() {
+interface ProjectWorkspaceProps {
+  onBackToProjects: () => void;
+}
+
+export function ProjectWorkspace({ onBackToProjects }: ProjectWorkspaceProps) {
   const {
     currentProject,
     projectFiles,
     saveFile,
     loadFile,
     currentThread,
+    projectThreads,
+    selectProjectThread,
     fetchFileVersions,
     revertToVersion,
     processAIInstruction,
@@ -110,7 +119,7 @@ export function ProjectWorkspace() {
   const [isLoading, setIsLoading] = React.useState(true)
 
   // Add a state for the active tab
-  const [activeTab, setActiveTab] = React.useState<"editor" | "threads">("editor")
+  const [activeTab, setActiveTab] = React.useState<"editor" | "composer">("editor")
 
   // Create a new boolean state for preview mode
   const [isPreviewMode, setIsPreviewMode] = React.useState(false)
@@ -395,7 +404,7 @@ export function ProjectWorkspace() {
       if (response.threadId && !currentThread) {
         // If a new thread was created, select it and switch to the threads tab
         // selectProjectThread(response.threadId)
-        setActiveTab("threads")
+        setActiveTab("composer")
       } else if (currentThread) {
         // If we're in an existing thread, reload the thread to get new messages
         // reloadThread(currentThread.id)
@@ -488,7 +497,7 @@ export function ProjectWorkspace() {
     }
   }
 
-  const handleSwitchTab = (tab: "editor" | "threads") => {
+  const handleSwitchTab = (tab: "editor" | "composer") => {
     setActiveTab(tab)
     // If user has unsaved changes when switching tabs, show a warning
     if (tab !== "editor" && hasUnsavedChanges) {
@@ -544,6 +553,11 @@ export function ProjectWorkspace() {
     setIsLoading(projectIsLoading);
   }, [projectIsLoading]);
 
+  // Use the passed-in callback for navigation
+  const handleBackToProjects = () => {
+    onBackToProjects();
+  }
+
   if (!currentProject) {
     return (
       <div className="flex h-full w-full items-center justify-center">
@@ -580,15 +594,43 @@ export function ProjectWorkspace() {
       <div className="border-b bg-background/80 backdrop-blur-sm">
         <div className="flex items-center justify-between px-4 py-2.5">
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-medium truncate max-w-[200px]">{currentProject.name}</h2>
-            <Badge variant="outline" className="text-xs bg-muted/50 text-muted-foreground border-border">
-              {fileCount} files
-            </Badge>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 rounded-md mr-1" 
+                    onClick={handleBackToProjects}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Back to Projects</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <h2 className="text-lg font-medium truncate max-w-[250px]">{currentProject.name}</h2>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 rounded-md flex items-center gap-1"
+                    onClick={() => setShowNewThreadDialog(true)}
+                  >
+                    <PlusCircle className="h-3.5 w-3.5" />
+                    <span>New Thread</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Create a new thread</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
 
           <Tabs
             value={activeTab}
-            onValueChange={(value) => handleSwitchTab(value as "editor" | "threads")}
+            onValueChange={(value) => handleSwitchTab(value as "editor" | "composer")}
             className="mx-auto"
           >
             <TabsList className="grid w-[280px] grid-cols-2 p-1 border rounded-md">
@@ -600,11 +642,11 @@ export function ProjectWorkspace() {
                 Editor
               </TabsTrigger>
               <TabsTrigger
-                value="threads"
+                value="composer"
                 className="flex items-center gap-1.5 px-3 rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
               >
-                <MessageSquare className="h-3.5 w-3.5" />
-                Threads
+                <Sparkles className="h-3.5 w-3.5 text-purple-500" />
+                Composer
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -905,9 +947,135 @@ export function ProjectWorkspace() {
             </ResizablePanel>
           </ResizablePanelGroup>
         ) : (
-          <div className="h-full flex flex-col">
-            <ProjectThreadsView />
-          </div>
+          <>
+            {/* Composer / AI Agent View */}
+            <div className="flex-1 flex flex-col h-full">
+              {/* Composer Header */}
+              <div className="border-b p-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-medium">
+                    {currentThread ? `Composer: ${currentThread.title}` : "Composer"}
+                  </h3>
+                  {/* TODO: Add more context/info if needed */} 
+                </div>
+                <Popover> {/* Popover for Thread History */} 
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded-sm">
+                      <History className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72 p-0 border shadow-xl">
+                    <CommandUI>
+                      <CommandInput placeholder="Search threads..." />
+                      <CommandList>
+                        <CommandEmpty>No threads found.</CommandEmpty>
+                        <CommandGroup heading="Threads">
+                          {projectThreads && projectThreads.length > 0 ? (
+                            projectThreads.map((thread) => (
+                              <CommandItem
+                                key={thread.id}
+                                value={thread.id}
+                                onSelect={() => {
+                                  selectProjectThread(thread.id);
+                                  // Optionally close popover on select: 
+                                  // document.dispatchEvent(new KeyboardEvent('keydown', {'key': 'Escape'}));
+                                }}
+                                className={cn(
+                                  "flex justify-between items-center",
+                                  currentThread?.id === thread.id && "bg-accent text-accent-foreground"
+                                )}
+                              >
+                                <span className="truncate">{thread.title || "Untitled Thread"}</span>
+                                {currentThread?.id === thread.id && <Check className="h-4 w-4 ml-2" />} 
+                              </CommandItem>
+                            ))
+                          ) : (
+                            <div className="text-center text-xs text-muted-foreground p-4">
+                              No composer threads yet.
+                            </div>
+                          )}
+                        </CommandGroup>
+                        <CommandGroup>
+                          <CommandItem onSelect={() => setShowNewThreadDialog(true)} className="text-primary">
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Create New Thread
+                          </CommandItem>
+                        </CommandGroup>
+                      </CommandList>
+                    </CommandUI>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Message Area */}
+              <ScrollArea className="flex-1 p-4">
+                {currentThread ? (
+                  <div className="space-y-4">
+                    {/* Removed the h3 from here, moved to header */} 
+                    {currentThread.messages?.map((msg: any, index: number) => (
+                      <ChatMessage
+                        key={msg.id}
+                        message={msg}
+                        // Pass necessary props, adapt as needed from app/page.tsx version
+                        isLast={index === (currentThread.messages?.length ?? 0) - 1}
+                        // Add other props like onRegenerate, onEdit if needed later
+                      />
+                    ))}
+                    {/* Placeholder if no messages */} 
+                    {(!currentThread.messages || currentThread.messages.length === 0) && (
+                      <p className="text-muted-foreground text-center py-10">No messages in this thread yet.</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex h-full items-center justify-center">
+                    <div className="text-center text-muted-foreground">
+                      <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>Select a thread or start a new one to use the Composer.</p>
+                      <Button variant="outline" size="sm" className="mt-4" onClick={() => setShowNewThreadDialog(true)}>
+                        <PlusCircle className="h-4 w-4 mr-2" />
+                        New Thread
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </ScrollArea>
+
+              {/* AI Assistant Input (Copied from Editor view) */}
+              <div className="border-t p-3 px-4 bg-background">
+                <form onSubmit={handleAgentSubmit} className="flex gap-2 w-full max-w-5xl mx-auto">
+                  <div className="relative flex-1 min-w-0">
+                    <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+                      <Cpu className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <Input
+                      placeholder="Ask AI to help with your code..."
+                      value={agentInstruction}
+                      onChange={(e) => setAgentInstruction(e.target.value)}
+                      className="flex-1 min-w-0 text-sm pl-9 pr-10 py-2 h-9 rounded-md"
+                    />
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <kbd className="hidden md:inline-flex items-center gap-1 px-1.5 border rounded text-xs font-mono text-muted-foreground">
+                        <LucideCommand className="h-3 w-3" />
+                        <span>↵</span>
+                      </kbd>
+                    </div>
+                  </div>
+                  <Button
+                    type="submit"
+                    className="flex-shrink-0 rounded-md h-9"
+                    disabled={isProcessing || !agentInstruction.trim()}
+                  >
+                    {isProcessing ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <ArrowRight className="h-4 w-4 mr-2" />
+                    )}
+                    {isProcessing ? "Processing..." : "Send"}
+                  </Button>
+                </form>
+              </div>
+            </div>
+          </>
         )}
       </div>
 

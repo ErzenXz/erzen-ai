@@ -560,6 +560,58 @@ export async function renameThread(
   return response.json();
 }
 
+export async function updateThreadMessage(
+  threadId: string,
+  messageId: string,
+  data: { content: string }
+): Promise<Message> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/chat/thread/${threadId}/message/${messageId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error ?? "Failed to update message");
+  }
+  return response.json();
+}
+
+export async function branchThreadAtMessage(
+  threadId: string,
+  messageId: string
+): Promise<ChatThread> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/chat/thread/${threadId}/branch/${messageId}`,
+    {
+      method: "POST",
+    }
+  );
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error ?? "Failed to branch thread");
+  }
+  return response.json();
+}
+
+export async function retryThreadMessage(
+  threadId: string,
+  messageId: string
+): Promise<void> {
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/intelligence/chat/thread/${threadId}/retry/${messageId}`,
+    {
+      method: "DELETE",
+    }
+  );
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error ?? "Failed to retry message");
+  }
+}
+
 // New local API methods for XenAI backend services
 const LOCAL_API_BASE = "/api";
 
@@ -635,7 +687,7 @@ export async function updateLocalUser(
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to update user");
+      throw new Error(errorData.error ?? "Failed to update user");
     }
 
     return await response.json();
@@ -653,7 +705,7 @@ export async function deleteLocalUser(id: string) {
 
     if (!response.ok && response.status !== 204) {
       const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to delete user");
+      throw new Error(errorData.error ?? "Failed to delete user");
     }
 
     return true;
@@ -688,7 +740,7 @@ export async function createProject(data: {
   );
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.error || "Failed to create project");
+    throw new Error(errorData.error ?? "Failed to create project");
   }
   return response.json();
 }
@@ -706,7 +758,7 @@ export async function updateProject(
   );
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.error || "Failed to update project");
+    throw new Error(errorData.error ?? "Failed to update project");
   }
   return response.json();
 }
@@ -723,7 +775,7 @@ export async function deleteProject(
   );
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.error || "Failed to update project");
+    throw new Error(errorData.error ?? "Failed to update project");
   }
   return response.json();
 }
@@ -753,7 +805,7 @@ export async function createProjectFile(
   );
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.error || "Failed to create project file");
+    throw new Error(errorData.error ?? "Failed to create project file");
   }
   return response.json();
 }
@@ -767,7 +819,7 @@ export async function fetchProjectFile(
   );
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.error || "Failed to fetch project file");
+    throw new Error(errorData.error ?? "Failed to fetch project file");
   }
   return response.json();
 }
@@ -789,7 +841,7 @@ export async function updateProjectFile(
   );
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.error || "Failed to update project file");
+    throw new Error(errorData.error ?? "Failed to update project file");
   }
   return response.json();
 }
@@ -803,7 +855,7 @@ export async function fetchProjectFileVersions(
   );
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.error || "Failed to fetch project file versions");
+    throw new Error(errorData.error ?? "Failed to fetch project file versions");
   }
   return response.json() as Promise<CurrentVersion[]>;
 }
@@ -825,7 +877,7 @@ export async function revertProjectFileVersion(
   );
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.error || "Failed to update project file");
+    throw new Error(errorData.error ?? "Failed to update project file");
   }
   return response.json();
 }
@@ -851,7 +903,7 @@ export async function processAgentInstruction(
   );
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.error || "Failed to process agent instruction");
+    throw new Error(errorData.error ?? "Failed to process agent instruction");
   }
   return response.json();
 }

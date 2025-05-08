@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react"
 import {
   Globe, Brain, Loader2, FolderRoot, ArrowLeft, Clock, MessageSquarePlus,
-  FolderPlus, Code, BookOpen, Bot, Play, Check, ArrowRight
+  FolderPlus, Code, BookOpen, Bot, Play, Check, ArrowRight, GitBranch, RefreshCw
 } from "lucide-react"
 import { TextSelectionButton } from "@/components/page/main/text-selection-button"
 import { readFileAsText } from "@/lib/utils"
@@ -48,7 +48,13 @@ import { AgentRunDialog } from "@/components/agent/agent-run-dialog"
 import type { Agent } from "@/lib/types"
 import { useAgents } from "@/hooks/use-agents"
 import { cn } from "@/lib/utils"
-import { getTextInputCompletions, fetchModels } from "@/lib/api"
+import {
+  getTextInputCompletions,
+  fetchModels,
+  updateThreadMessage,
+  retryThreadMessage,
+  branchThreadAtMessage
+} from "@/lib/api"
 
 // Define types for template data
 interface Template {
@@ -253,20 +259,60 @@ export default function Home() {
     const messageToEdit = currentThread.messages.find(msg => msg.id === messageId)
     if (!messageToEdit) return
 
-    setMessage(messageToEdit.content || "")
+    // Set the editing message ID
     setIsEditingMessage(messageId)
-
-    // Focus the input
-    const inputElement = document.querySelector('textarea') as HTMLTextAreaElement
-    if (inputElement) {
-      inputElement.focus()
-    }
 
     toast({
       title: "Edit mode",
-      description: "Edit your message and send it again",
+      description: "Edit your message directly in the chat",
     })
   }, [currentThread, toast])
+
+  const handleSaveEdit = useCallback(async (messageId: string, newContent: string) => {
+    if (!currentThread) return
+
+    try {
+      // Call the API to update the message
+      await updateThreadMessage(currentThread.id, messageId, { content: newContent })
+
+      // Clear editing state
+      setIsEditingMessage(null)
+
+      // Set the message in the input field and send it
+      setMessage(newContent)
+
+      // Use setTimeout to ensure the state update happens before submitting
+      setTimeout(() => {
+        // Simulate sending the message
+        if (selectedModel) {
+          sendMessage(newContent, selectedModel, browseMode, reasoning, research)
+
+          toast({
+            title: "Message updated",
+            description: "Your edited message has been sent",
+          })
+        } else {
+          toast({
+            title: "Error",
+            description: "Please select a model first",
+            variant: "destructive",
+          })
+        }
+      }, 100)
+    } catch (error) {
+      console.error("Error updating message:", error)
+      toast({
+        title: "Error",
+        description: "Failed to update message",
+        variant: "destructive",
+      })
+    }
+  }, [currentThread, selectedModel, browseMode, reasoning, research, sendMessage, toast])
+
+  const handleCancelEdit = useCallback(() => {
+    // Clear editing state
+    setIsEditingMessage(null)
+  }, [])
 
   const handlePlayMessage = useCallback((messageId: string) => {
     // In a real app, you would implement audio playback logic here
@@ -275,6 +321,89 @@ export default function Home() {
       description: "Audio playback would start here in a real implementation",
     })
   }, [toast])
+
+  const handleRetryMessage = useCallback(async (messageId: string) => {
+    if (!currentThread) return;
+
+    try {
+      toast({
+        title: "Retrying from message",
+        description: "All messages after this point will be removed",
+      });
+
+      // Find the message to retry
+      const messageToRetry = currentThread.messages.find(msg => msg.id === messageId);
+      if (!messageToRetry) {
+        throw new Error("Message not found");
+      }
+
+      // Call the API to retry the message
+      await retryThreadMessage(currentThread.id, messageId);
+
+      // Get the content of the message to retry
+      const messageContent = messageToRetry.content || "";
+
+      // If it's a user message, we need to resend it
+      if (messageToRetry.role === "user" && selectedModel) {
+        // Set the message in the input field
+        setMessage(messageContent);
+
+        // Use setTimeout to ensure the state update happens before submitting
+        setTimeout(() => {
+          // Send the message again
+          sendMessage(messageContent, selectedModel, browseMode, reasoning, research);
+
+          toast({
+            title: "Success",
+            description: "Message has been retried",
+          });
+        }, 100);
+      } else {
+        // For assistant messages, just refresh the thread
+        setCurrentThread(currentThread.id);
+
+        toast({
+          title: "Success",
+          description: "Thread has been updated",
+        });
+      }
+    } catch (error) {
+      console.error("Error retrying message:", error);
+      toast({
+        title: "Error",
+        description: "Failed to retry from this message",
+        variant: "destructive",
+      });
+    }
+  }, [currentThread, selectedModel, browseMode, reasoning, research, sendMessage, setCurrentThread, toast])
+
+  const handleBranchOffMessage = useCallback(async (messageId: string) => {
+    if (!currentThread) return;
+
+    try {
+      toast({
+        title: "Creating branch",
+        description: "Creating a new thread from this message",
+      });
+
+      const newThread = await branchThreadAtMessage(currentThread.id, messageId);
+
+      // Switch to the new thread
+      setCurrentThread(newThread.id);
+
+      toast({
+        title: "Success",
+        description: "New thread created",
+      });
+    } catch (error) {
+      console.error("Error branching thread:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create branch from this message",
+        variant: "destructive",
+      });
+    }
+  }, [currentThread, setCurrentThread, toast])
 
   // Handle text selected with the "Edit with AI" button
   const handleEditWithAI = useCallback((selectedText: string) => {
@@ -1102,8 +1231,8 @@ export default function Home() {
         />
 
         <div className="flex-1 flex flex-col">
-          {/* Hide header in chat mode, show in other modes */}
-          {(!currentThread?.id || showProjectsGrid || showAgentsGrid || currentProjectId) && (
+          {/* Hide header in chat mode, show in other modes. Crucially, DO NOT show when in ProjectWorkspace */}
+          {(!currentThread?.id || showProjectsGrid || showAgentsGrid || (currentProjectId && currentProjectThreadId)) && (
             <header className="border-b p-4">
             {/* Chat mode header - simplified */}
             {!showProjectsGrid && !showAgentsGrid && !currentProjectId && (
@@ -1173,22 +1302,7 @@ export default function Home() {
 
             {/* Project threads view header - just back button and title */}
             {currentProjectId && !currentProjectThreadId && !showProjectsGrid && !showAgentsGrid && (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Button variant="ghost" size="sm" onClick={handleBackToProjects}
-                    className="hover:bg-primary/5 transition-colors">
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back to Projects
-                  </Button>
-                  <h2 className="text-lg font-semibold">
-                    {projects.find(p => p.id === currentProjectId)?.name}
-                  </h2>
-                </div>
-                <Button size="sm" onClick={() => {}} className="bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary">
-                  <MessageSquarePlus className="h-4 w-4 mr-2" />
-                  New Thread
-                </Button>
-              </div>
+              <></>
             )}
 
             {/* Project workspace header */}
@@ -1216,7 +1330,7 @@ export default function Home() {
           {/* Show project workspace when a project is selected */}
           {currentProjectId && !currentProjectThreadId && !showProjectsGrid && !showAgentsGrid && !showAgentDetails ? (
             <ProjectProvider initialProjectId={currentProjectId}>
-              <ProjectWorkspace />
+              <ProjectWorkspace onBackToProjects={handleBackToProjects} />
             </ProjectProvider>
           ) : (
             <ScrollArea
@@ -2004,6 +2118,11 @@ export default function Home() {
                         onEdit={msg.role === "user" ? handleEditMessage : undefined}
                         onReport={handleReportMessage}
                         onPlay={handlePlayMessage}
+                        onRetry={handleRetryMessage}
+                        onBranchOff={handleBranchOffMessage}
+                        isEditing={isEditingMessage === msg.id}
+                        onSaveEdit={handleSaveEdit}
+                        onCancelEdit={handleCancelEdit}
                       />
                     ))}
 

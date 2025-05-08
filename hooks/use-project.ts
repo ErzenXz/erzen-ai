@@ -11,8 +11,9 @@ import React, {
 import type {
   Project,
   ProjectFile,
-  SingleProjectThread,
+  SingleProjectThread as BaseSingleProjectThread,
   CurrentVersion,
+  Message,
 } from "@/lib/types";
 import { nanoid } from "nanoid";
 import { toast } from "@/hooks/use-toast";
@@ -28,7 +29,13 @@ import {
   processAgentInstruction,
   fetchProjectFile,
   createProject as apiCreateProject,
+  fetchThreadMessages,
 } from "@/lib/api";
+
+// Extend the base thread type to include messages
+interface SingleProjectThread extends BaseSingleProjectThread {
+  messages?: Message[];
+}
 
 // Extend the Project type to include files array
 interface ProjectWithFiles extends Project {
@@ -60,13 +67,13 @@ interface ProjectContextValue {
   ) => Promise<void>;
   deleteFile: (path: string) => Promise<void>;
   renameFile: (oldPath: string, newPath: string) => Promise<void>;
-  // Add thread-related functionality
+  // Update thread types in context value
   currentThread: SingleProjectThread | null;
   setCurrentThread: (thread: SingleProjectThread | null) => void;
   loadThread: (threadId: string) => Promise<SingleProjectThread | null>;
   threads: SingleProjectThread[];
   projectThreads: SingleProjectThread[];
-  selectProjectThread: (threadId: string | null) => void;
+  selectProjectThread: (threadId: string | null) => Promise<void>;
   // Add new methods
   fetchFileVersions: (filePath: string) => Promise<CurrentVersion[]>;
   revertToVersion: (filePath: string, versionNumber: number) => Promise<void>;
@@ -659,50 +666,59 @@ export function ProjectProvider({
 
   // Load a thread by ID
   const loadThread = useCallback(
-    async (threadId: string): Promise<SingleProjectThread | null> => {
-      if (!currentProject) {
-        return null;
-      }
-
-      try {
-        setIsLoading(true);
-        // In a real app, this would be an API call
-        await new Promise((resolve) => setTimeout(resolve, 300));
-
-        // Simulate fetching thread data
-        // In a real implementation, you would fetch actual thread data from the API
-        const thread: SingleProjectThread = {
-          id: threadId,
-          title: `Thread ${threadId.substring(0, 5)}`,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          userId: "current-user",
-          projectId: currentProject.id,
-        };
-
-        setCurrentThread(thread);
-        return thread;
-      } catch (err) {
-        console.error("Failed to load thread:", err);
-        setError("Failed to load thread");
-        return null;
-      } finally {
-        setIsLoading(false);
-      }
+    async (threadId: string) => {
+      // Basic implementation - find thread locally
+      const thread = projectThreads.find((t) => t.id === threadId);
+      return thread || null;
     },
-    [currentProject]
+    [projectThreads]
   );
 
   const selectProjectThread = useCallback(
-    (threadId: string | null) => {
+    async (threadId: string | null) => {
       if (threadId) {
         const thread = projectThreads.find((t) => t.id === threadId);
-        setCurrentThread(thread || null);
+        if (thread) {
+          // Check if messages are already loaded or need fetching
+          if (!thread.messages && currentProject?.id) {
+            try {
+              setIsLoading(true); // Indicate loading state
+              // Call fetchThreadMessages with only threadId
+              const rawMessages: any[] = await fetchThreadMessages(threadId); // Add : any[] type for now
+              // Convert createdAt strings to Date objects and assign to timestamp
+              const messagesWithDates = rawMessages.map((msg) => ({
+                ...msg,
+                timestamp: new Date(msg.createdAt), // Use createdAt for the timestamp
+              }));
+              const threadWithMessages = {
+                ...thread,
+                messages: messagesWithDates,
+              }; // Use converted messages
+              setCurrentThread(threadWithMessages);
+              // Update the thread in the main projectThreads array as well
+              setProjectThreads((prev) =>
+                prev.map((t) => (t.id === threadId ? threadWithMessages : t))
+              );
+              setError(null);
+            } catch (err) {
+              console.error("Failed to fetch thread messages:", err);
+              setError("Failed to load messages for this thread.");
+              setCurrentThread(thread); // Set thread even if messages fail
+            } finally {
+              setIsLoading(false);
+            }
+          } else {
+            // Messages already loaded or no project context, just set the thread
+            setCurrentThread(thread);
+          }
+        } else {
+          setCurrentThread(null);
+        }
       } else {
         setCurrentThread(null);
       }
     },
-    [projectThreads]
+    [projectThreads, currentProject?.id] // Add currentProject?.id dependency
   );
 
   const value = useMemo<ProjectContextValue>(
