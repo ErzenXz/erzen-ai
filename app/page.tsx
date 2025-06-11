@@ -53,10 +53,10 @@ export default function ChatPage() {
     async (e: React.FormEvent) => {
       e.preventDefault()
       if (!input.trim() || !userId) return
-      await append({ role: 'user', content: input })
+      await append({ role: 'user', content: input }, { body: { model: selectedModel } })
       setInput("")
     },
-    [input, userId, append, setInput]
+    [input, userId, append, setInput, selectedModel]
   )
 
   const handleUpdateMessage = useCallback(

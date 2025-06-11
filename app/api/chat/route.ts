@@ -1,5 +1,5 @@
 import { streamText, CoreMessage } from "ai";
-import { groq } from "@ai-sdk/groq";
+import { getLanguageModel } from "@/lib/providers";
 import { auth } from "@clerk/nextjs/server";
 import { PrismaClient } from "@prisma/client";
 import { nanoid } from "nanoid";
@@ -15,8 +15,17 @@ export async function POST(req: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  let { messages, id: threadId }: { messages: CoreMessage[]; id?: string } =
-    await req.json();
+  let {
+    messages,
+    id: threadId,
+    model = "llama3-8b-8192",
+    tools,
+  }: {
+    messages: CoreMessage[];
+    id?: string;
+    model?: string;
+    tools?: any[];
+  } = await req.json();
 
   // Get the last user message
   const userMessage = messages[messages.length - 1];
@@ -60,10 +69,11 @@ export async function POST(req: Request) {
   });
 
   const result = await streamText({
-    model: groq("llama3-8b-8192"),
+    model: getLanguageModel(model),
     system: `As an AI assistant, you'll engage in a friendly, helpful conversation. 
              If a user's query could be interpreted in multiple ways, you'll ask clarifying questions to ensure you understand their intent.`,
     messages,
+    ...(tools ? { tools: tools as any, toolChoice: "auto" } : {}),
     onFinish: async ({ text }) => {
       // Save the assistant's final response to the database
       await prisma.chatMessage.create({
