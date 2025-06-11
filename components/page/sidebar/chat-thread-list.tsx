@@ -48,7 +48,7 @@ interface ChatThreadListProps {
   hasMore?: boolean
   searchQuery?: string
   onSearchChange?: (query: string) => void
-  projects: Project[]
+  projects?: Project[]
   onViewProjects?: () => void
   onProjectSelect?: (projectId: string) => void
   onNewProject?: () => void
@@ -348,11 +348,11 @@ export function ChatThreadList({
   hasMore,
   searchQuery = "",
   onSearchChange,
-  projects,
-  onViewProjects,
-  onProjectSelect,
-  onNewProject,
-  onViewAgents,
+  projects: _projects,
+  onViewProjects: _onViewProjects,
+  onProjectSelect: _onProjectSelect,
+  onNewProject: _onNewProject,
+  onViewAgents: _onViewAgents,
 }: ChatThreadListProps) {
   const { user, isLoading } = useAuth()
   const [collapsed, setCollapsed] = useState(false)
@@ -519,33 +519,6 @@ export function ChatThreadList({
   const topSpacerHeight = isUsingVirtualScrolling ? visibleRange.start * 58 : 0; // Approximate height per item
   const bottomSpacerHeight = isUsingVirtualScrolling ? Math.max(0, (threads.length - visibleRange.end) * 58) : 0;
 
-  // Memoize navigation buttons to prevent unnecessary re-renders
-  const AgentsButton = useMemo(() => (
-    <NavigationButton
-      icon={Bot}
-      title="Agents"
-      description="Automate your workflows"
-      badgeText="BETA"
-      badgeColor="purple-500"
-      colorClass="border-purple-300/30 bg-purple-500/10 text-purple-500 group-hover:bg-purple-500/15"
-      collapsed={collapsed}
-      onClick={onViewAgents || (() => {})}
-    />
-  ), [collapsed, onViewAgents]);
-
-  const ProjectsButton = useMemo(() => (
-    <NavigationButton
-      icon={FolderRoot}
-      title="Projects"
-      description={`${projects.length} ${projects.length === 1 ? 'project' : 'projects'}`}
-      badgeText="BETA"
-      badgeColor="blue-500"
-      colorClass="border-blue-300/30 bg-blue-500/10 text-blue-500 group-hover:bg-blue-500/15"
-      collapsed={collapsed}
-      onClick={onViewProjects || (() => {})}
-    />
-  ), [collapsed, projects.length, onViewProjects]);
-
   if (isMobile && !mobileVisible) {
     return (
       <Button
@@ -677,52 +650,26 @@ export function ChatThreadList({
         </div>
 
         <div className={cn("p-4 space-y-4", collapsed ? "px-2" : "")}>
-          {collapsed ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  onClick={onNewThread}
-                  className="w-full h-10 bg-primary/10 hover:bg-primary/20 text-primary border-primary/20"
-                  variant="outline"
-                >
-                  <MessageSquarePlus className="w-5 h-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">New Chat</TooltipContent>
-            </Tooltip>
-          ) : (
-            <>
-              <div className="flex gap-2 w-full">
-                <Button onClick={onNewThread} className="flex-[2]" variant="default">
-                  <MessageSquarePlus className="w-4 h-4 mr-2" />
-                  New Chat
-                </Button>
-                <Button onClick={() => onNewProject?.()} className="flex-[1]" variant="outline">
-                  <FolderPlus className="w-4 h-4" />
-                </Button>
-              </div>
+          <div className="flex gap-2 w-full">
+            <Button onClick={onNewThread} className="w-full" variant="default">
+              <MessageSquarePlus className="w-4 h-4 mr-2" />
+              New Chat
+            </Button>
+          </div>
 
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search chats..."
-                  className="pl-8 h-9"
-                  value={localSearchQuery}
-                  onChange={handleSearchChange}
-                />
-              </div>
-            </>
-          )}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search chats..."
+              className="pl-8 h-9"
+              value={localSearchQuery}
+              onChange={handleSearchChange}
+            />
+          </div>
         </div>
 
         <ScrollArea className="flex-1" onScroll={handleScroll}>
           <div className="space-y-1 p-2" ref={threadListRef}>
-            {/* Agents Section */}
-            {AgentsButton}
-
-            {/* Projects Section */}
-            {ProjectsButton}
-
             {/* Recent Chats Header */}
             {!collapsed && threads.length > 0 && (
               <div className="px-3 pt-4">

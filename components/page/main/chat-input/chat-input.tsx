@@ -10,6 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import TextareaAutosize from "react-textarea-autosize"
 import { CommandMenu } from "./command-menu"
 import { EmojiPicker } from "./emoji-picker"
+import { ModelSelector } from "@/components/page/main/model-selector"
 
 interface ChatInputProps {
   message: string
@@ -27,6 +28,15 @@ interface ChatInputProps {
   maxLength?: number
   onCommandExecute?: (command: string) => void
   onKeyDown?: (e: React.KeyboardEvent) => void
+  selectedModel?: string
+  onModelChange?: (model: string) => void
+  models?: any[]
+  browseMode?: boolean
+  onBrowseModeChange?: (value: boolean) => void
+  reasoning?: boolean
+  onReasoningChange?: (value: boolean) => void
+  research?: boolean
+  onResearchChange?: (value: boolean) => void
 }
 
 export function ChatInput({
@@ -44,6 +54,15 @@ export function ChatInput({
   placeholder = "Type your message...",
   onCommandExecute,
   onKeyDown,
+  selectedModel,
+  onModelChange,
+  models,
+  browseMode,
+  onBrowseModeChange,
+  reasoning,
+  onReasoningChange,
+  research,
+  onResearchChange,
 }: ChatInputProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const commandMenuContainerRef = useRef<HTMLDivElement>(null)
@@ -349,6 +368,12 @@ export function ChatInput({
 
   return (
     <TooltipProvider>
+      {/* Model selector (shows only if props provided) */}
+      {onModelChange && models && (
+        <div className="mb-2 flex justify-end">
+          <ModelSelector value={selectedModel ?? ""} onChange={onModelChange} />
+        </div>
+      )}
       <div className="animate-apple-fade">
         <form onSubmit={onSubmit} className="w-full relative">
           <div className="flex gap-2 transition-all duration-300 ease-in-out">

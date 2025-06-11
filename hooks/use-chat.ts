@@ -8,9 +8,15 @@ import { nanoid } from "nanoid";
 
 // A new, simplified hook that wraps the Vercel AI SDK's useChat hook
 // and adds the application-specific logic for managing threads and projects.
-export function useAppChat() {
+export function useAppChat(): any {
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [projectThreads, setProjectThreads] = useState<ChatThread[]>([]);
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [currentProjectThreadId, setCurrentProjectThreadId] = useState<
+    string | null
+  >(null);
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +41,7 @@ export function useAppChat() {
     },
     // The Vercel hook will automatically save new messages to the backend
     // via POST /api/chat. Our endpoint there saves it to the DB.
-  });
+  }) as any;
 
   const loadThreads = useCallback(
     async (forceRefresh: boolean = false) => {
@@ -141,9 +147,41 @@ export function useAppChat() {
 
   const hasMore = false;
 
+  // --- Project selection helpers (stub implementations) ---
+  const selectProject = useCallback(async (projectId: string | null) => {
+    setCurrentProjectId(projectId);
+    // In a real implementation, you would load project-specific threads here.
+    // We'll just reset projectThreads for now.
+    if (projectId === null) {
+      setProjectThreads([]);
+    } else {
+      // TODO: fetch project threads from API if needed.
+      setProjectThreads([]);
+    }
+  }, []);
+
+  const selectProjectThread = useCallback((threadId: string | null) => {
+    setCurrentProjectThreadId(threadId);
+  }, []);
+
+  // --- Chat sending helper (very thin wrapper around append) ---
+  const sendMessage = useCallback(
+    async (
+      content: string,
+      _model: string,
+      _browseMode?: boolean,
+      _reasoning?: boolean,
+      _research?: boolean
+    ) => {
+      await append({ role: "user", content });
+    },
+    [append]
+  );
+
   return {
     threads,
     projects,
+    projectThreads,
     currentThread: currentThread ? { ...currentThread, messages } : null,
     messages,
     setMessages,
@@ -161,5 +199,12 @@ export function useAppChat() {
     hasMore,
     input,
     setInput,
+    sendMessage,
+    searchQuery,
+    setSearchQuery,
+    currentProjectId,
+    selectProject,
+    selectProjectThread,
+    currentProjectThreadId,
   };
 }

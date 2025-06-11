@@ -14,6 +14,16 @@ import remarkMath from "remark-math"
 
 interface ChatMessageProps {
   message: Message
+  isLast?: boolean
+  onRegenerate?: () => void
+  onEdit?: (messageId: string) => void
+  onReport?: (messageId: string) => void
+  onPlay?: (messageId: string) => void
+  onRetry?: (messageId: string) => void
+  onBranchOff?: (messageId: string) => void
+  isEditing?: boolean
+  onSaveEdit?: (messageId: string, content: string) => void
+  onCancelEdit?: () => void
 }
 
 export const ChatMessage = memo(function ChatMessage({

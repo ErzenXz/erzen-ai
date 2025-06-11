@@ -167,3 +167,26 @@ export async function fetchThreadMessages(
   );
   return res.data;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Text Input Completions                                                     */
+/* -------------------------------------------------------------------------- */
+
+export async function getTextInputCompletions(
+  prompt: string,
+  maxSuggestions: number = 10
+): Promise<string[]> {
+  try {
+    const res = await axiosInstance.post<{ completions: string[] }>(
+      "/api/completions",
+      {
+        prompt,
+        maxSuggestions,
+      }
+    );
+    return res.data.completions;
+  } catch (error) {
+    console.error("Failed to fetch completions", error);
+    return [];
+  }
+}
