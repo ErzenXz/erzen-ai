@@ -3,6 +3,8 @@ import type { Metadata } from 'next';
 import { Inter, Roboto_Mono } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Analytics } from "@vercel/analytics/react"
+import { ClerkProvider } from '@clerk/nextjs'
+import { dark } from '@clerk/themes'
 
 // Primary font for headings and UI elements
 const inter = Inter({
@@ -54,19 +56,30 @@ export default function RootLayout({
   readonly children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${robotoMono.variable}`}>
-      <body className={inter.className}>
-        <ThemeProvider
-          attribute="data-theme"
-          defaultTheme="system"
-          enableSystem
-          enableColorScheme
-          themes={["light", "dark", "blue", "green", "purple", "yellow", "pink", "orange", "teal", "gray", "system"]}
-        >
-          {children}
-          <Analytics />
-        </ThemeProvider>
-      </body>
-    </html>
+    <ClerkProvider
+      appearance={{
+        baseTheme: dark,
+        variables: {
+          colorPrimary: '#6366f1',   // Tailwind indigo-500 equivalent
+          colorText: '#ffffff',
+          colorBackground: '#0a0a0a',
+        },
+      }}
+    >
+      <html lang="en" suppressHydrationWarning className={`${inter.variable} ${robotoMono.variable}`}>
+        <body className={inter.className}>
+          <ThemeProvider
+            attribute="data-theme"
+            defaultTheme="system"
+            enableSystem
+            enableColorScheme
+            themes={["light", "dark", "blue", "green", "purple", "yellow", "pink", "orange", "teal", "gray", "system"]}
+          >
+            {children}
+            <Analytics />
+          </ThemeProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

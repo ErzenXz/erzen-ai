@@ -10,12 +10,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import TextareaAutosize from "react-textarea-autosize"
 import { CommandMenu } from "./command-menu"
 import { EmojiPicker } from "./emoji-picker"
-import { ModelSelector } from "@/components/page/main/model-selector"
 
 interface ChatInputProps {
   message: string
   onMessageChange: (message: string) => void
   onSubmit: (e: React.FormEvent) => void
+  onStop?: () => void
   onToggleFileUpload: () => void
   isLoading: boolean
   isDisabled: boolean
@@ -27,25 +27,13 @@ interface ChatInputProps {
   maxLength?: number
   onCommandExecute?: (command: string) => void
   onKeyDown?: (e: React.KeyboardEvent) => void
-
-  // Model selector props
-  selectedModel?: string
-  onModelChange?: (model: string) => void
-  models?: any[]
-
-  // Web search and reasoning props
-  browseMode?: boolean
-  onBrowseModeChange?: (enabled: boolean) => void
-  reasoning?: boolean
-  onReasoningChange?: (enabled: boolean) => void
-  research?: boolean
-  onResearchChange?: (enabled: boolean) => void
 }
 
 export function ChatInput({
   message,
   onMessageChange,
   onSubmit,
+  onStop,
   onToggleFileUpload,
   isLoading,
   isDisabled,
@@ -56,19 +44,6 @@ export function ChatInput({
   placeholder = "Type your message...",
   onCommandExecute,
   onKeyDown,
-
-  // Model selector props
-  selectedModel,
-  onModelChange,
-  models,
-
-  // Web search and reasoning props
-  browseMode,
-  onBrowseModeChange,
-  reasoning,
-  onReasoningChange,
-  research,
-  onResearchChange,
 }: ChatInputProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const commandMenuContainerRef = useRef<HTMLDivElement>(null)
@@ -375,90 +350,6 @@ export function ChatInput({
   return (
     <TooltipProvider>
       <div className="animate-apple-fade">
-        {/* Model selector and toggles toolbar */}
-        <div className="flex items-center gap-1.5 mb-2 ml-1">
-          {/* Use our improved model selector */}
-          {selectedModel && onModelChange && models && models.length > 0 && (
-            <div className="flex-shrink-0">
-              <ModelSelector
-                value={selectedModel}
-                onChange={onModelChange}
-              />
-            </div>
-          )}
-
-          {/* Web search toggle */}
-          {onBrowseModeChange && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (onBrowseModeChange) {
-                      onBrowseModeChange(!browseMode);
-                      // If turning off browse mode, also turn off reasoning
-                      if (browseMode && reasoning && onReasoningChange) {
-                        onReasoningChange(false);
-                      }
-                    }
-                  }}
-                  className={`relative flex items-center gap-1 px-2 py-1 rounded-full transition-all duration-200 text-xs h-7
-                    ${browseMode ?
-                      'bg-primary/10 text-primary ring-1 ring-primary/20 shadow-sm' :
-                      'hover:bg-accent/50 text-muted-foreground hover:text-foreground'}
-                  `}
-                >
-                  <Globe className={`w-3.5 h-3.5 transition-colors ${browseMode ? 'text-primary' : ''}`} />
-                  <span className="font-medium">Web Search</span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top">Search the web for information</TooltipContent>
-            </Tooltip>
-          )}
-
-          {/* Research toggle - independent button */}
-          {onResearchChange && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => onResearchChange && onResearchChange(!research)}
-                  className={`relative flex items-center gap-1 px-2 py-1 rounded-full transition-all duration-200 text-xs h-7
-                    ${research ?
-                      'bg-primary/10 text-primary ring-1 ring-primary/20 shadow-sm' :
-                      'hover:bg-accent/50 text-muted-foreground hover:text-foreground'}
-                  `}
-                >
-                  <Binoculars className={`w-3.5 h-3.5 transition-colors ${research ? 'text-primary' : ''}`} />
-                  <span className="font-medium">Research</span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top">Research any topic in depth</TooltipContent>
-            </Tooltip>
-          )}
-
-          {/* Reasoning toggle - can be enabled independently now */}
-          {onReasoningChange && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => onReasoningChange && onReasoningChange(!reasoning)}
-                  className={`relative flex items-center gap-1 px-2 py-1 rounded-full transition-all duration-200 text-xs h-7
-                    ${reasoning ?
-                      'bg-primary/10 text-primary ring-1 ring-primary/20 shadow-sm' :
-                      'hover:bg-accent/50 text-muted-foreground hover:text-foreground'}
-                  `}
-                >
-                  <Brain className={`w-3.5 h-3.5 transition-colors ${reasoning ? 'text-primary' : ''}`} />
-                  <span className="font-medium">Reasoning</span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top">Think before responding</TooltipContent>
-            </Tooltip>
-          )}
-        </div>
-
         <form onSubmit={onSubmit} className="w-full relative">
           <div className="flex gap-2 transition-all duration-300 ease-in-out">
             <Tooltip>
@@ -596,6 +487,20 @@ export function ChatInput({
               </TooltipTrigger>
               <TooltipContent side="top">Send message</TooltipContent>
             </Tooltip>
+
+            {isLoading && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full"
+                onClick={onStop}
+                aria-label="Stop generating"
+              >
+                <div className="animate-spin">
+                  <Loader2 size={20} />
+                </div>
+              </Button>
+            )}
           </div>
 
           {uploadedFilesCount > 0 && !showFileUpload && (

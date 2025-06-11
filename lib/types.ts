@@ -1,23 +1,32 @@
-export interface Message {
-  id: string;
-  content: string;
-  role: "user" | "assistant" | "model" | "system";
-  timestamp: Date;
-  chatId?: string;
-  createdAt?: string;
-  thinking?: boolean;
-  thinkingContent?: string;
-  researchStatus?: any;
-  browsingStatus?: any;
+import { Message } from "ai/react";
+
+// The base message type from the Vercel AI SDK, which can be extended
+export type AppMessage = Message;
+
+// Represents a single chat message stored in the database
+export interface ChatMessage extends AppMessage {
+  // Potentially add other app-specific message properties here in the future
+  // For now, it matches the Vercel AI SDK's Message type
 }
 
+// Represents a full chat thread, including its messages
 export interface ChatThread {
   id: string;
-  title: string | null;
-  createdAt: string;
-  updatedAt: string;
+  title: string;
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
   userId: string;
-  messages: Message[];
+  messages: ChatMessage[];
+}
+
+// Represents a project
+export interface Project {
+  id: string;
+  name: string;
+  description: string | null;
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+  userId: string;
 }
 
 export interface AIModel {
@@ -79,20 +88,6 @@ export interface ChatResponse {
     thinking: string;
   };
   chatId: string;
-}
-
-export interface Project {
-  id: string;
-  name: string;
-  description: string;
-  ownerId: string;
-  createdAt: string;
-  updatedAt: string;
-  _count?: {
-    files: number;
-    threads: number;
-    collaborators: number;
-  };
 }
 
 export interface SingleProject {
@@ -278,3 +273,5 @@ export interface AgentStepResult {
   endTime: string;
   errorMessage?: string;
 }
+
+export type { AppMessage as Message };
