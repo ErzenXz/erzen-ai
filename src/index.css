@@ -1,0 +1,696 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+
+    --radius: 1rem;
+  }
+
+  .dark {
+    --background: 224 71% 4%;
+    --foreground: 213 31% 91%;
+
+    --card: 224 71% 4%;
+    --card-foreground: 213 31% 91%;
+
+    --popover: 224 71% 4%;
+    --popover-foreground: 213 31% 91%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 215 28% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 215 28% 17%;
+    --muted-foreground: 217.9 10.6% 64.9%;
+
+    --accent: 215 28% 17%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 215 28% 17%;
+    --input: 215 28% 17%;
+    --ring: 216 34% 17%;
+  }
+
+  .theme-blue {
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 217 91% 60%;
+    --accent: 217 91% 60%;
+    --accent-foreground: 0 0% 100%;
+    --secondary: 217 30% 96%;
+    --secondary-foreground: 217 91% 25%;
+    --muted: 217 30% 94%;
+    --muted-foreground: 217 30% 40%;
+  }
+
+  .dark.theme-blue {
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 217 91% 60%;
+    --accent: 217 45% 20%;
+    --accent-foreground: 217 91% 80%;
+    --secondary: 217 30% 15%;
+    --secondary-foreground: 217 91% 80%;
+    --muted: 217 30% 12%;
+    --muted-foreground: 217 30% 65%;
+    --card: 217 45% 6%;
+    --card-foreground: 217 91% 85%;
+    --popover: 217 45% 6%;
+    --popover-foreground: 217 91% 85%;
+    --border: 217 30% 20%;
+    --input: 217 30% 20%;
+  }
+
+  .theme-green {
+    --primary: 142 71% 45%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 142 71% 45%;
+    --accent: 142 71% 45%;
+    --accent-foreground: 0 0% 100%;
+    --secondary: 142 30% 96%;
+    --secondary-foreground: 142 71% 25%;
+    --muted: 142 30% 94%;
+    --muted-foreground: 142 30% 40%;
+  }
+
+  .dark.theme-green {
+    --primary: 142 71% 45%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 142 71% 45%;
+    --accent: 142 45% 20%;
+    --accent-foreground: 142 71% 80%;
+    --secondary: 142 30% 15%;
+    --secondary-foreground: 142 71% 80%;
+    --muted: 142 30% 12%;
+    --muted-foreground: 142 30% 65%;
+    --card: 142 45% 6%;
+    --card-foreground: 142 71% 85%;
+    --popover: 142 45% 6%;
+    --popover-foreground: 142 71% 85%;
+    --border: 142 30% 20%;
+    --input: 142 30% 20%;
+  }
+
+  .theme-purple {
+    --primary: 263 85% 70%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 263 85% 70%;
+    --accent: 263 85% 70%;
+    --accent-foreground: 0 0% 100%;
+    --secondary: 263 30% 96%;
+    --secondary-foreground: 263 85% 35%;
+    --muted: 263 30% 94%;
+    --muted-foreground: 263 30% 40%;
+  }
+
+  .dark.theme-purple {
+    --primary: 263 85% 70%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 263 85% 70%;
+    --accent: 263 45% 20%;
+    --accent-foreground: 263 85% 80%;
+    --secondary: 263 30% 15%;
+    --secondary-foreground: 263 85% 80%;
+    --muted: 263 30% 12%;
+    --muted-foreground: 263 30% 65%;
+    --card: 263 45% 6%;
+    --card-foreground: 263 85% 85%;
+    --popover: 263 45% 6%;
+    --popover-foreground: 263 85% 85%;
+    --border: 263 30% 20%;
+    --input: 263 30% 20%;
+  }
+
+  .theme-orange {
+    --primary: 25 95% 53%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 25 95% 53%;
+    --accent: 25 95% 53%;
+    --accent-foreground: 0 0% 100%;
+    --secondary: 25 30% 96%;
+    --secondary-foreground: 25 95% 25%;
+    --muted: 25 30% 94%;
+    --muted-foreground: 25 30% 40%;
+  }
+
+  .dark.theme-orange {
+    --primary: 25 95% 53%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 25 95% 53%;
+    --accent: 25 45% 20%;
+    --accent-foreground: 25 95% 80%;
+    --secondary: 25 30% 15%;
+    --secondary-foreground: 25 95% 80%;
+    --muted: 25 30% 12%;
+    --muted-foreground: 25 30% 65%;
+    --card: 25 45% 6%;
+    --card-foreground: 25 95% 85%;
+    --popover: 25 45% 6%;
+    --popover-foreground: 25 95% 85%;
+    --border: 25 30% 20%;
+    --input: 25 30% 20%;
+  }
+
+  .theme-pink {
+    --primary: 330 81% 60%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 330 81% 60%;
+    --accent: 330 81% 60%;
+    --accent-foreground: 0 0% 100%;
+    --secondary: 330 30% 96%;
+    --secondary-foreground: 330 81% 30%;
+    --muted: 330 30% 94%;
+    --muted-foreground: 330 30% 40%;
+  }
+
+  .dark.theme-pink {
+    --primary: 330 81% 60%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 330 81% 60%;
+    --accent: 330 45% 20%;
+    --accent-foreground: 330 81% 80%;
+    --secondary: 330 30% 15%;
+    --secondary-foreground: 330 81% 80%;
+    --muted: 330 30% 12%;
+    --muted-foreground: 330 30% 65%;
+    --card: 330 45% 6%;
+    --card-foreground: 330 81% 85%;
+    --popover: 330 45% 6%;
+    --popover-foreground: 330 81% 85%;
+    --border: 330 30% 20%;
+    --input: 330 30% 20%;
+  }
+
+  .theme-teal {
+    --primary: 173 80% 40%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 173 80% 40%;
+    --accent: 173 80% 40%;
+    --accent-foreground: 0 0% 100%;
+    --secondary: 173 30% 96%;
+    --secondary-foreground: 173 80% 20%;
+    --muted: 173 30% 94%;
+    --muted-foreground: 173 30% 40%;
+  }
+
+  .dark.theme-teal {
+    --primary: 173 80% 40%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 173 80% 40%;
+    --accent: 173 45% 20%;
+    --accent-foreground: 173 80% 80%;
+    --secondary: 173 30% 15%;
+    --secondary-foreground: 173 80% 80%;
+    --muted: 173 30% 12%;
+    --muted-foreground: 173 30% 65%;
+    --card: 173 45% 6%;
+    --card-foreground: 173 80% 85%;
+    --popover: 173 45% 6%;
+    --popover-foreground: 173 80% 85%;
+    --border: 173 30% 20%;
+    --input: 173 30% 20%;
+  }
+
+  .theme-red {
+    --primary: 0 84% 60%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 0 84% 60%;
+    --accent: 0 84% 60%;
+    --accent-foreground: 0 0% 100%;
+    --secondary: 0 30% 96%;
+    --secondary-foreground: 0 84% 30%;
+    --muted: 0 30% 94%;
+    --muted-foreground: 0 30% 40%;
+  }
+
+  .dark.theme-red {
+    --primary: 0 84% 60%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 0 84% 60%;
+    --accent: 0 45% 20%;
+    --accent-foreground: 0 84% 80%;
+    --secondary: 0 30% 15%;
+    --secondary-foreground: 0 84% 80%;
+    --muted: 0 30% 12%;
+    --muted-foreground: 0 30% 65%;
+    --card: 0 45% 6%;
+    --card-foreground: 0 84% 85%;
+    --popover: 0 45% 6%;
+    --popover-foreground: 0 84% 85%;
+    --border: 0 30% 20%;
+    --input: 0 30% 20%;
+  }
+
+  .theme-indigo {
+    --primary: 231 48% 48%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 231 48% 48%;
+    --accent: 231 48% 48%;
+    --accent-foreground: 0 0% 100%;
+    --secondary: 231 30% 96%;
+    --secondary-foreground: 231 48% 24%;
+    --muted: 231 30% 94%;
+    --muted-foreground: 231 30% 40%;
+  }
+
+  .dark.theme-indigo {
+    --primary: 231 48% 48%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 231 48% 48%;
+    --accent: 231 45% 20%;
+    --accent-foreground: 231 48% 80%;
+    --secondary: 231 30% 15%;
+    --secondary-foreground: 231 48% 80%;
+    --muted: 231 30% 12%;
+    --muted-foreground: 231 30% 65%;
+    --card: 231 45% 6%;
+    --card-foreground: 231 48% 85%;
+    --popover: 231 45% 6%;
+    --popover-foreground: 231 48% 85%;
+    --border: 231 30% 20%;
+    --input: 231 30% 20%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  
+  /* Beautiful text selection styling */
+  ::selection {
+    background: hsl(var(--primary) / 0.25);
+    color: inherit;
+    text-shadow: none;
+  }
+  
+  ::-moz-selection {
+    background: hsl(var(--primary) / 0.25);
+    color: inherit;
+    text-shadow: none;
+  }
+  
+  /* Enhanced selection for code blocks and special elements */
+  code ::selection,
+  pre ::selection,
+  .prose ::selection {
+    background: hsl(var(--primary) / 0.35);
+    color: inherit;
+    text-shadow: none;
+  }
+  
+  code ::-moz-selection,
+  pre ::-moz-selection,
+  .prose ::-moz-selection {
+    background: hsl(var(--primary) / 0.35);
+    color: inherit;
+    text-shadow: none;
+  }
+  
+  /* Dark mode adjustments */
+  .dark ::selection {
+    background: hsl(var(--primary) / 0.3);
+    color: inherit;
+  }
+  
+  .dark ::-moz-selection {
+    background: hsl(var(--primary) / 0.3);
+    color: inherit;
+  }
+  
+  .dark code ::selection,
+  .dark pre ::selection,
+  .dark .prose ::selection {
+    background: hsl(var(--primary) / 0.4);
+    color: inherit;
+  }
+  
+  .dark code ::-moz-selection,
+  .dark pre ::-moz-selection,
+  .dark .prose ::-moz-selection {
+    background: hsl(var(--primary) / 0.4);
+    color: inherit;
+  }
+}
+
+.accent-text {
+  @apply text-slate-600;
+}
+
+body {
+  font-family:
+    "Inter Variable",
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    "Noto Sans",
+    sans-serif,
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Segoe UI Symbol",
+    "Noto Color Emoji";
+}
+
+/* only use this to update the style of the auth input fields. use a different class for all other input fields */
+.auth-input-field {
+  @apply w-full px-4 py-3 rounded-lg bg-white border border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow shadow-sm hover:shadow;
+}
+
+/* only use this to update the style of the auth buttons. use the button class for all other buttons */
+.auth-button {
+  @apply w-full px-4 py-3 rounded bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+/* Enhanced theme-aware scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted)) hsl(var(--background));
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+
+*::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted));
+  border-radius: 3px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+/* Theme-aware focus rings */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background;
+}
+
+/* Enhanced card styling */
+.themed-card {
+  @apply bg-card text-card-foreground border border-border/50 shadow-sm;
+}
+
+/* Enhanced button variants */
+.btn-primary {
+  @apply bg-primary text-primary-foreground hover:bg-primary/90 border border-primary;
+}
+
+.btn-secondary {
+  @apply bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border;
+}
+
+.btn-accent {
+  @apply bg-accent text-accent-foreground hover:bg-accent/80 border border-border;
+}
+
+/* Enhanced input styling */
+.themed-input {
+  background-color: hsl(var(--input));
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+
+/* Markdown Content Styles */
+.markdown-content {
+  @apply text-foreground;
+}
+
+/* Ensure list styles are visible */
+.markdown-content ul {
+  list-style-type: disc;
+  list-style-position: outside;
+  margin-left: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.markdown-content ol {
+  list-style-type: decimal;
+  list-style-position: outside;
+  margin-left: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.markdown-content li {
+  padding-left: 0.5rem;
+  margin-bottom: 0.25rem;
+  line-height: 1.6;
+}
+
+.markdown-content li::marker {
+  color: hsl(var(--primary) / 0.8);
+}
+
+/* Nested lists */
+.markdown-content ul ul,
+.markdown-content ol ol,
+.markdown-content ul ol,
+.markdown-content ol ul {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.markdown-content ul ul {
+  list-style-type: circle;
+}
+
+.markdown-content ul ul ul {
+  list-style-type: square;
+}
+
+/* Task lists (checkboxes) */
+.markdown-content input[type="checkbox"] {
+  margin-right: 0.75rem;
+  margin-top: 0.25rem;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+/* Blockquotes */
+.markdown-content blockquote {
+  border-left: 4px solid hsl(var(--primary));
+  padding-left: 1.5rem;
+  padding-right: 1rem;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  margin: 1.5rem 0;
+  font-style: italic;
+  background: linear-gradient(to right, hsl(var(--muted) / 0.5), hsl(var(--muted) / 0.2));
+  border-radius: 0 0.75rem 0.75rem 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.markdown-content blockquote::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, hsl(var(--primary) / 0.05), transparent);
+  pointer-events: none;
+}
+
+/* Tables */
+.markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border) / 0.5);
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+}
+
+.markdown-content thead {
+  background: linear-gradient(to right, hsl(var(--muted) / 0.6), hsl(var(--muted) / 0.4));
+}
+
+.markdown-content th,
+.markdown-content td {
+  padding: 1rem 1.5rem;
+  text-align: left;
+  border-bottom: 1px solid hsl(var(--border) / 0.3);
+}
+
+.markdown-content th {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.markdown-content tbody tr:hover {
+  background-color: hsl(var(--muted) / 0.3);
+}
+
+/* Code blocks */
+.markdown-content pre {
+  margin: 1.5rem 0;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.markdown-content code {
+  background-color: hsl(var(--muted) / 0.8);
+  color: hsl(var(--foreground));
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  border: 1px solid hsl(var(--border) / 0.4);
+}
+
+/* Inline code in pre blocks shouldn't have extra styling */
+.markdown-content pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+/* Headings */
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+  scroll-margin-top: 1rem;
+}
+
+/* Links */
+.markdown-content a {
+  word-break: break-word;
+}
+
+/* Definition lists */
+.markdown-content dl {
+  margin: 1.5rem 0;
+}
+
+.markdown-content dt {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.markdown-content dd {
+  margin-left: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Details and summary */
+.markdown-content details {
+  border: 1px solid hsl(var(--border) / 0.3);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.markdown-content details[open] > summary {
+  margin-bottom: 0.75rem;
+}
+
+.markdown-content summary {
+  font-weight: 500;
+  cursor: pointer;
+  color: hsl(var(--primary));
+  transition: color 0.2s ease;
+}
+
+.markdown-content summary:hover {
+  color: hsl(var(--primary) / 0.8);
+}
+
+/* Horizontal rules */
+.markdown-content hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(to right, transparent, hsl(var(--border)), transparent);
+  margin: 2rem 0;
+}
+
+/* Mark, kbd, abbr */
+.markdown-content mark {
+  background-color: hsl(45 100% 85% / 0.5);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+}
+
+.dark .markdown-content mark {
+  background-color: hsl(45 100% 25% / 0.2);
+}
+
+.markdown-content kbd {
+  background-color: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.markdown-content abbr {
+  border-bottom: 1px dotted hsl(var(--muted-foreground));
+  cursor: help;
+}
+
+/* Sup and sub */
+.markdown-content sup,
+.markdown-content sub {
+  font-size: 0.75rem;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+
+.markdown-content sup {
+  top: -0.5em;
+}
+
+.markdown-content sub {
+  bottom: -0.25em;
+}
