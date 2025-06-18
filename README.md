@@ -1,6 +1,8 @@
 # ErzenAI Open
 
-![ErzenAI Open](https://raw.githubusercontent.com/erzenai/erzen-ai-open/main/erzenai-banner.png)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FErzenXz%2Ferzen-ai&project-name=ErzenAI&env=VITE_CONVEX_URL,CONVEX_DEPLOY_KEY)
+
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/ErzenXz/erzen-ai#VITE_CONVEX_URL=YourValue&CONVEX_DEPLOY_KEY=YourValue)
 
 **ErzenAI Open** is a powerful, open-source AI chat platform that brings together the best of modern AI into a single, cohesive interface. It's designed to be a flexible, feature-rich, and self-hostable alternative to mainstream AI chat services.
 
