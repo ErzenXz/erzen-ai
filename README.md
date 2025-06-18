@@ -12,7 +12,7 @@ ErzenAI isn't just another AI chat app—it's a comprehensive AI platform design
 
 ### 🚀 Key Highlights
 
-- **20+ AI Models**: Access to cutting-edge models from OpenAI, Google, Anthropic, Groq, and more
+- **75+ AI Models**: Access to cutting-edge models from OpenAI, Google, Anthropic, Groq, and more
 - **Advanced Reasoning**: Native support for thinking/reasoning models like o1, o3, Claude, and Gemini
 - **Real-time Streaming**: Lightning-fast response streaming with optimistic UI updates
 - **Powerful Tools**: Integrated web search, image generation, code analysis, and more
@@ -72,7 +72,7 @@ Access the world's most advanced AI models from a single interface:
 **Customization & Control:**
 
 - **Custom System Prompts**: Tailor AI behavior to your needs
-- **Model-Specific Settings**: Temperature, max tokens, reasoning effort
+- **Model-Specific Settings**: Temperature, reasoning effort
 - **Favorite Models**: Quick access to your preferred AI models
 - **Flexible Tool Configuration**: Enable/disable tools per conversation
 
@@ -130,19 +130,21 @@ Use your own API keys for unlimited access to any supported provider without cre
 
 ## 📊 ErzenAI vs Alternatives
 
-| Feature                    | ErzenAI           | ChatGPT Plus   | Claude Pro        | Other OSS    |
-| -------------------------- | ----------------- | -------------- | ----------------- | ------------ |
-| **Multi-Provider Access**  | ✅ 20+ Models     | ❌ OpenAI Only | ❌ Anthropic Only | ⚠️ Limited   |
-| **Real-time Streaming**    | ✅ All Models     | ✅             | ✅                | ⚠️ Basic     |
-| **Advanced Reasoning**     | ✅ Native Support | ✅ o1 Models   | ✅ Claude Models  | ❌           |
-| **Web Search Integration** | ✅ Tavily API     | ✅ Browsing    | ❌                | ⚠️ Limited   |
-| **Image Generation**       | ✅ Built-in       | ❌             | ❌                | ❌           |
-| **Code Analysis**          | ✅ Advanced       | ⚠️ Basic       | ⚠️ Basic          | ⚠️ Basic     |
-| **Conversation Branching** | ✅                | ❌             | ❌                | ❌           |
-| **Self-Hosting**           | ✅ Full Control   | ❌             | ❌                | ✅           |
-| **API Access**             | ✅ Planned        | ✅             | ❌                | ⚠️ Limited   |
-| **Monthly Cost**           | **Free-$20**      | $20            | $20               | Free         |
-| **Usage Limits**           | ✅ Flexible       | ❌ Fixed       | ❌ Fixed          | ✅ Unlimited |
+| Feature                    | ErzenAI           | ChatGPT Plus           | Claude Pro             | Other OSS    |
+| -------------------------- | ----------------- | ---------------------- | ---------------------- | ------------ |
+| **Multi-Provider Access**  | ✅ 75+ Models     | ❌ OpenAI Only         | ❌ Anthropic Only      | ⚠️ Limited   |
+| **Real-time Streaming**    | ✅ All Models     | ✅                     | ✅                     | ⚠️ Basic     |
+| **Advanced Reasoning**     | ✅ Native Support | ✅ o1/o3 Models        | ✅ Claude 3.7 Sonnet   | ❌           |
+| **Web Search Integration** | ✅ Tavily API     | ✅ Search with Bing    | ✅ Research Mode       | ⚠️ Limited   |
+| **Image Generation**       | ✅ Built-in       | ✅ DALL-E Integration  | ❌                     | ❌           |
+| **Image Analysis**         | ✅ Multi-modal    | ✅ Vision Capabilities | ✅ Vision Capabilities | ⚠️ Limited   |
+| **Code Analysis**          | ✅ Advanced       | ✅ Advanced            | ✅ Advanced            | ⚠️ Basic     |
+| **Conversation Branching** | ✅                | ❌                     | ❌                     | ❌           |
+| **Tool Integrations**      | ✅ 10+ Built-in   | ⚠️ Limited Plugins     | ✅ MCP Protocol        | ❌           |
+| **Self-Hosting**           | ✅ Full Control   | ❌                     | ❌                     | ✅           |
+| **API Access**             | ✅ Planned        | ✅                     | ✅                     | ⚠️ Limited   |
+| **Monthly Cost**           | **Free-$20**      | $20                    | $20                    | Free         |
+| **Usage Limits**           | ✅ Flexible       | ❌ Fixed               | ❌ Fixed               | ✅ Unlimited |
 
 ## 🚀 Performance Metrics
 
@@ -263,6 +265,54 @@ pnpm dev
 ```
 
 Your app will be available at `http://localhost:5173`
+
+## 🔐 Production Authentication
+
+For deployments, Convex requires you to provide your own cryptographic keys for signing JSON Web Tokens (JWTs). This is a critical security measure to ensure you have full control over your authentication system.
+
+### Generating Your Keys
+
+You can generate the required `JWKS` and `JWT_PRIVATE_KEY` using the `convex` CLI:
+
+```bash
+npx convex auth keys
+```
+
+This command will generate two files:
+
+- `jwks.json`: Your public JSON Web Key Set.
+- `jwt_private_key.pem`: Your private key for signing tokens.
+
+### Storing Your Keys
+
+You need to add these keys as environment variables in your Convex Dashboard.
+
+1.  **Copy the JWKS Key**:
+
+    - Open `jwks.json`.
+    - Copy the entire JSON content.
+    - In your [Convex Dashboard](https://dashboard.convex.dev/), create a new environment variable named `JWKS` and paste the JSON content as its value.
+
+2.  **Copy the Private Key**:
+    - Open `jwt_private_key.pem`.
+    - Copy the entire key, including `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----`.
+    - In your Convex Dashboard, create a new environment variable named `JWT_PRIVATE_KEY` and paste the key content as its value.
+
+Your final production environment variables should look like this:
+
+```env
+# Authentication (GitHub OAuth)
+AUTH_GITHUB_ID=your-github-oauth-client-id
+AUTH_GITHUB_SECRET=your-github-oauth-client-secret
+
+# Authentication (Convex JWT)
+JWKS={"keys":[{"use":"sig","e":"AQAB","kty":"RSA","n":"..."}]}
+JWT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+
+# ... other API keys
+```
+
+> **Important**: Keep your `jwt_private_key.pem` file secure and do not commit it to version control. The `jwks.json` file can be shared as it contains public information.
 
 ## 🌐 Production Deployment
 
@@ -531,6 +581,6 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 [**Get Started Now**](https://erzen-ai.vercel.app) | [**View Demo**](https://erzen-ai.vercel.app/homepage) | [**Join Community**](https://github.com/ErzenXz/erzen-ai/discussions)
 
-Made with ❤️ by the ErzenAI Team
+Made with ❤️ by Erzen Krasniqi
 
 </div>

@@ -24,7 +24,7 @@ const features = [
   {
     icon: Brain,
     title: "Multi-Model AI Access",
-    description: "Choose from GPT-4, Claude, Gemini, Mistral, and 20+ other cutting-edge models. Switch seamlessly between providers to find the perfect AI for your task."
+    description: "Choose from o3, o1, GPT-4o, Claude 4.0, Gemini 2.5 Pro, DeepSeek R1, and 75+ other cutting-edge models. Switch seamlessly between providers to find the perfect AI for your task."
   },
   {
     icon: Zap,
@@ -69,7 +69,7 @@ const features = [
 ];
 
 const stats = [
-  { label: "AI Models", value: "20+" },
+  { label: "AI Models", value: "75+" },
   { label: "Languages Supported", value: "50+" },
   { label: "Uptime", value: "99.9%" },
   { label: "Response Time", value: "<2s" }
@@ -111,7 +111,7 @@ const pricingPlans = [
       "Advanced code assistance",
       "Image generation & analysis",
       "Smart memory system",
-      "Team collaboration tools",
+      "Team collaboration tools (coming soon)",
       "Priority support"
     ],
     popular: true,
@@ -131,9 +131,9 @@ const pricingPlans = [
       "1,000 web searches per month",
       "Unlimited model switching",
       "Custom AI instructions",
-      "Advanced analytics",
-      "Team management",
-      "White-label options",
+      "Advanced analytics (coming soon)",
+      "Team management (coming soon)",
+      "White-label options (coming soon)",
       "Dedicated support"
     ],
     popular: false,
@@ -146,13 +146,13 @@ const testimonials = [
   {
     name: "Sarah Chen",
     role: "Software Engineer",
-    content: "ErzenAI has revolutionized how I approach coding problems. The AI assistance is incredibly accurate and helpful.",
+    content: "ErzenAI has revolutionized how I approach coding problems. Having access to multiple AI models in one place saves me so much time.",
     rating: 5
   },
   {
     name: "Marcus Johnson",
     role: "Product Manager",
-    content: "The team collaboration features are game-changing. We can share insights and build on each other's conversations.",
+    content: "The variety of AI models and real-time streaming makes ErzenAI my go-to tool for research and content creation.",
     rating: 5
   },
   {
