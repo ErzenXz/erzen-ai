@@ -220,7 +220,7 @@ export function Homepage() {
             
             <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed">
               Experience the next generation of AI-powered conversations. Get instant answers, generate creative content, 
-              and boost your productivity with ErzenAI's advanced language models.
+              and boost your productivity with advanced language models.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
