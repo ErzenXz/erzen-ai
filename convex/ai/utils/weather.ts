@@ -1,3 +1,5 @@
+"use node";
+
 import { api } from "../../_generated/api";
 
 // Helper function to get weather data

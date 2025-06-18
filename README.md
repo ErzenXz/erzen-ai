@@ -4,6 +4,8 @@
 
 [![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/ErzenXz/erzen-ai#VITE_CONVEX_URL=YourValue&CONVEX_DEPLOY_KEY=YourValue)
 
+[![DeepWiki Docs](https://img.shields.io/badge/DeepWiki-Docs-blue)](https://deepwiki.com/ErzenXz/erzen-ai)
+
 > **ErzenAI** is a revolutionary, open-source AI chat platform that unifies the power of multiple AI providers into a single, elegant interface. Built for developers, teams, and AI enthusiasts who demand flexibility, performance, and complete control over their AI interactions.
 
 ## 🌟 Why ErzenAI?
@@ -525,7 +527,7 @@ pnpm dlx vite-bundle-analyzer dist
 
 ### Getting Help
 
-- 📖 **Documentation**: Comprehensive guides and API reference
+- �� **Documentation**: [View on DeepWiki](https://deepwiki.com/ErzenXz/erzen-ai)
 - 💬 **GitHub Discussions**: Community support and feature requests
 - 🐛 **Issues**: Bug reports and feature requests
 - 📧 **Contact**: Direct support for enterprise users

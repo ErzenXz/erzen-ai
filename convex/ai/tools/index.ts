@@ -76,7 +76,7 @@ export function createAvailableTools(
   }
 
   if (enabledTools.includes("url_fetch")) {
-    availableTools.url_fetch = createUrlFetchTool();
+    availableTools.url_fetch = createUrlFetchTool(ctx);
   }
 
   if (enabledTools.includes("code_analysis")) {

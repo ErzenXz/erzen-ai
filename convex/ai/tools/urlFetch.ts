@@ -2,7 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import { browseUrl } from "../utils/browse";
 
-export function createUrlFetchTool() {
+export function createUrlFetchTool(ctx: any) {
   return tool({
     description:
       "Fetch and analyze content from web URLs. Use ONLY when users provide specific URLs they want analyzed, or when you need to access content from a particular webpage for research. Do NOT use for general web searches (use web_search instead) or for information you can provide directly.",
