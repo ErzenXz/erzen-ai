@@ -554,14 +554,42 @@ export const MessageInput = memo(function MessageInput({ onSendMessage, disabled
     setSelectedProvider(typedProvider);
     setSelectedModel(model);
     if (preferences) {
-      void updatePreferences({ ...preferences, aiProvider: typedProvider, model });
+      void updatePreferences({
+        aiProvider: typedProvider,
+        model: model,
+        temperature: preferences.temperature,
+        enabledTools: preferences.enabledTools,
+        favoriteModels: preferences.favoriteModels,
+        hideUserInfo: preferences.hideUserInfo,
+        showToolOutputs: preferences.showToolOutputs,
+        showMessageMetadata: preferences.showMessageMetadata,
+        showThinking: preferences.showThinking,
+        systemPrompt: preferences.systemPrompt,
+        useCustomSystemPrompt: preferences.useCustomSystemPrompt,
+        theme: preferences.theme,
+        colorTheme: preferences.colorTheme,
+      });
     }
   };
   
   const handleToolsChange = (tools: ValidTool[]) => {
     setEnabledTools(tools);
     if (preferences) {
-      void updatePreferences({ ...preferences, enabledTools: tools });
+      void updatePreferences({
+        aiProvider: preferences.aiProvider,
+        model: preferences.model,
+        temperature: preferences.temperature,
+        enabledTools: tools,
+        favoriteModels: preferences.favoriteModels,
+        hideUserInfo: preferences.hideUserInfo,
+        showToolOutputs: preferences.showToolOutputs,
+        showMessageMetadata: preferences.showMessageMetadata,
+        showThinking: preferences.showThinking,
+        systemPrompt: preferences.systemPrompt,
+        useCustomSystemPrompt: preferences.useCustomSystemPrompt,
+        theme: preferences.theme,
+        colorTheme: preferences.colorTheme,
+      });
     }
   };
 
@@ -1083,34 +1111,120 @@ export const MessageInput = memo(function MessageInput({ onSendMessage, disabled
                 </Tooltip>
               </TooltipProvider>
               {modelSupportsTools && (
-                <DialogContent className="max-w-md w-[90vw]">
-                  <DialogHeader>
-                    <DialogTitle>Available Tools</DialogTitle>
+                <DialogContent className="max-w-2xl w-[95vw] max-h-[85vh] overflow-hidden flex flex-col">
+                  <DialogHeader className="pb-4">
+                    <DialogTitle className="flex items-center gap-2 text-xl">
+                      <Wrench className="h-5 w-5 text-primary" />
+                      Available Tools
+                    </DialogTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Enable tools to enhance AI capabilities. {enabledTools.length} of {availableTools.length} tools enabled.
+                    </p>
                   </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    {availableTools.map((tool: any) => {
-                      const IconComponent = tool.icon;
-                      return (
-                        <div key={tool.id} className="flex items-center justify-between">
-                          <Label htmlFor={`tool-${tool.id}`} className="flex items-center gap-3 cursor-pointer">
-                            <IconComponent size={16} />
-                            <div className="flex flex-col">
-                              <span className="font-medium">{tool.name}</span>
-                              <span className="text-xs text-muted-foreground">{tool.description}</span>
-                            </div>
-                            {tool.premium && (
-                              <Badge variant="secondary" className="ml-2 text-xs">Pro</Badge>
+                  <div className="flex-1 overflow-y-auto px-1">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4 place-items-stretch">
+                      {availableTools.map((tool: any) => {
+                        const IconComponent = tool.icon;
+                        const isEnabled = enabledTools.includes(tool.id);
+                        return (
+                          <div 
+                            key={tool.id} 
+                            className={cn(
+                              "relative p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer group hover:shadow-md h-full",
+                              isEnabled 
+                                ? "bg-primary/5 border-primary/30 shadow-sm" 
+                                : "bg-muted/20 border-border/50 hover:border-border/80"
                             )}
-                          </Label>
-                          <Switch
-                            id={`tool-${tool.id}`}
-                            checked={enabledTools.includes(tool.id)}
-                            onCheckedChange={() => handleToggleTool(tool.id)}
-                          />
+                            onClick={() => handleToggleTool(tool.id)}
+                          >
+                            {/* Enabled indicator */}
+                            {isEnabled && (
+                              <div className="absolute top-3 right-12 w-3 h-3 bg-primary rounded-full shadow-sm ring-2 ring-background"></div>
+                            )}
+                            
+                            <div className="flex items-start gap-3 h-full">
+                              <div className={cn(
+                                "p-2.5 rounded-lg transition-colors flex-shrink-0",
+                                isEnabled 
+                                  ? "bg-primary/15 text-primary" 
+                                  : "bg-muted text-muted-foreground group-hover:bg-muted/80"
+                              )}>
+                                <IconComponent size={18} />
+                              </div>
+                              
+                              <div className="flex-1 min-w-0 space-y-1.5 flex flex-col justify-start">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className={cn(
+                                    "font-medium text-sm leading-tight",
+                                    isEnabled ? "text-primary" : "text-foreground"
+                                  )}>
+                                    {tool.name}
+                                  </h4>
+                                  {tool.premium && (
+                                    <Badge variant="secondary" className="text-xs px-1.5 py-0.5 h-5 flex-shrink-0">
+                                      Pro
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground leading-relaxed pr-8">
+                                  {tool.description}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {/* Switch */}
+                            <div className="absolute top-4 right-4">
+                              <Switch
+                                id={`tool-${tool.id}`}
+                                checked={isEnabled}
+                                onCheckedChange={() => handleToggleTool(tool.id)}
+                                className="data-[state=checked]:bg-primary"
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    
+                    {/* Empty State */}
+                    {availableTools.length === 0 && (
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+                          <Wrench size={24} className="text-muted-foreground" />
                         </div>
-                      );
-                    })}
+                        <h4 className="font-medium text-sm mb-1">No Tools Available</h4>
+                        <p className="text-xs text-muted-foreground max-w-sm">
+                          Tools are currently being loaded or none are configured for this model.
+                        </p>
+                      </div>
+                    )}
                   </div>
+                  
+                  {/* Footer with summary */}
+                  {availableTools.length > 0 && (
+                    <div className="pt-4 border-t border-border/50">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Tools help the AI perform specialized tasks
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 bg-primary rounded-full"></div>
+                            <span className="text-xs text-muted-foreground">
+                              {enabledTools.length} enabled
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 bg-muted-foreground/50 rounded-full"></div>
+                            <span className="text-xs text-muted-foreground">
+                              {availableTools.length - enabledTools.length} available
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </DialogContent>
               )}
             </Dialog>

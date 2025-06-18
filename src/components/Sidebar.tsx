@@ -141,8 +141,19 @@ export const Sidebar = memo(function Sidebar({
   const toggleUserInfoVisibility = async () => {
     if (preferences) {
       await updatePreferences({
-        ...preferences,
+        aiProvider: preferences.aiProvider,
+        model: preferences.model,
+        temperature: preferences.temperature,
+        enabledTools: preferences.enabledTools,
+        favoriteModels: preferences.favoriteModels,
         hideUserInfo: !preferences.hideUserInfo,
+        showToolOutputs: preferences.showToolOutputs,
+        showMessageMetadata: preferences.showMessageMetadata,
+        showThinking: preferences.showThinking,
+        systemPrompt: preferences.systemPrompt,
+        useCustomSystemPrompt: preferences.useCustomSystemPrompt,
+        theme: preferences.theme,
+        colorTheme: preferences.colorTheme,
       });
     }
   };
