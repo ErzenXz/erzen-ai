@@ -11,6 +11,7 @@ import { createUrlFetchTool } from "./urlFetch";
 import { createCodeAnalysisTool } from "./codeAnalysis";
 import { createImageGenerationTool } from "./imageGeneration";
 import { createMCPTools, getMCPToolInfo } from "./mcp";
+import { canvasTool } from "./canvas";
 
 // Export all tool creators
 export {
@@ -26,6 +27,7 @@ export {
   createImageGenerationTool,
   createMCPTools,
   getMCPToolInfo,
+  canvasTool,
 };
 
 // Helper function to create tools based on enabled tools and model capabilities
@@ -91,6 +93,10 @@ export async function createAvailableTools(
 
   if (enabledTools.includes("image_generation")) {
     availableTools.image_generation = createImageGenerationTool(ctx);
+  }
+
+  if (enabledTools.includes("canvas")) {
+    availableTools.canvas = canvasTool;
   }
 
   // Add MCP tools if servers are provided
@@ -177,6 +183,14 @@ export const TOOL_CONFIGS = {
     name: "Image Generation",
     description: "Generate images from text descriptions using AI",
     requiresApiKey: "cloudflare",
+    category: "creative",
+  },
+  canvas: {
+    id: "canvas",
+    name: "Canvas",
+    description:
+      "Create interactive markdown documents or code projects with live preview",
+    requiresApiKey: null,
     category: "creative",
   },
 } as const;

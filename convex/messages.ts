@@ -104,6 +104,15 @@ export const add = mutation({
       })
     ),
     isError: v.optional(v.boolean()),
+    canvasData: v.optional(
+      v.object({
+        type: v.union(v.literal("markdown"), v.literal("code")),
+        title: v.string(),
+        content: v.string(),
+        language: v.optional(v.string()),
+        updatedAt: v.number(),
+      })
+    ),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -136,6 +145,7 @@ export const add = mutation({
       toolCallId: args.toolCallId,
       generationMetrics: args.generationMetrics,
       isError: args.isError,
+      canvasData: args.canvasData,
     });
   },
 });
@@ -169,6 +179,15 @@ export const update = mutation({
       })
     ),
     isError: v.optional(v.boolean()),
+    canvasData: v.optional(
+      v.object({
+        type: v.union(v.literal("markdown"), v.literal("code")),
+        title: v.string(),
+        content: v.string(),
+        language: v.optional(v.string()),
+        updatedAt: v.number(),
+      })
+    ),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -193,6 +212,7 @@ export const update = mutation({
     if (args.generationMetrics)
       update.generationMetrics = args.generationMetrics;
     if (args.isError) update.isError = args.isError;
+    if (args.canvasData) update.canvasData = args.canvasData;
 
     await ctx.db.patch(args.messageId, update);
   },
@@ -410,6 +430,7 @@ export const editMessage = mutation({
         toolCalls: message.toolCalls,
         toolCallId: message.toolCallId,
         generationMetrics: message.generationMetrics,
+        canvasData: message.canvasData,
       });
     }
 
@@ -528,6 +549,7 @@ export const retryMessage = mutation({
         toolCalls: msg.toolCalls,
         toolCallId: msg.toolCallId,
         generationMetrics: msg.generationMetrics,
+        canvasData: msg.canvasData,
       });
     }
 
@@ -615,5 +637,39 @@ export const migrateMessagesToMainBranch = mutation({
     }
 
     return { migratedCount: unbrandedMessages.length };
+  },
+});
+
+export const updateCanvas = mutation({
+  args: {
+    messageId: v.id("messages"),
+    canvasData: v.object({
+      type: v.union(v.literal("markdown"), v.literal("code")),
+      title: v.string(),
+      content: v.string(),
+      language: v.optional(v.string()),
+      updatedAt: v.number(),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    // Get the message and verify ownership through conversation
+    const message = await ctx.db.get(args.messageId);
+    if (!message) {
+      throw new Error("Message not found");
+    }
+
+    const conversation = await ctx.db.get(message.conversationId);
+    if (!conversation || conversation.userId !== userId) {
+      throw new Error("Not authorized to update this message");
+    }
+
+    await ctx.db.patch(args.messageId, {
+      canvasData: args.canvasData,
+    });
   },
 });

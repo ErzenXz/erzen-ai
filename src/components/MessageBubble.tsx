@@ -33,6 +33,7 @@ import {
   DropdownMenuSeparator 
 } from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Canvas } from "./Canvas";
 
 interface MessageBubbleProps {
   message: {
@@ -61,6 +62,13 @@ interface MessageBubbleProps {
     isEdited?: boolean;
     editedAt?: number;
     isError?: boolean;
+    canvasData?: {
+      type: "markdown" | "code";
+      title: string;
+      content: string;
+      language?: string;
+      updatedAt: number;
+    };
   };
   messagePosition?: number; // Position of this message in the conversation
   currentBranchId?: string; // Current active branch
@@ -1395,6 +1403,21 @@ export const MessageBubble = memo(function MessageBubble({ message, messagePosit
           {message.toolCalls && message.toolCalls.length > 0 && (
             <div className="mt-3">
               <ToolCallsGroup toolCalls={message.toolCalls} />
+            </div>
+          )}
+
+          {/* Canvas rendering */}
+          {message.canvasData && (
+            <div className="mt-4">
+              <Canvas
+                messageId={message._id}
+                canvasData={message.canvasData}
+                isEditable={!isSharedView}
+                onUpdate={(updatedData) => {
+                  // Optimistically update the message in UI if needed
+                  // The actual update is handled by the Canvas component
+                }}
+              />
             </div>
           )}
 

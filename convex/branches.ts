@@ -49,6 +49,7 @@ async function copyMessagesFromBranch(
       toolCalls: message.toolCalls,
       toolCallId: message.toolCallId,
       generationMetrics: message.generationMetrics,
+      canvasData: message.canvasData,
     });
   }
 
@@ -292,6 +293,7 @@ export const branchOffConversation = mutation({
         toolCalls: message.toolCalls,
         toolCallId: message.toolCallId,
         generationMetrics: message.generationMetrics,
+        canvasData: message.canvasData,
       });
     }
 

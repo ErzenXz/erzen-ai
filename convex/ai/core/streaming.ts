@@ -497,6 +497,27 @@ export async function generateStreamingResponse(
           });
         }
 
+        // Handle canvas tool specially
+        if (part.toolName === "canvas" && part.result) {
+          try {
+            const canvasData =
+              typeof part.result === "string"
+                ? JSON.parse(part.result)
+                : part.result;
+
+            // Update message with canvas data
+            await ctx.runMutation(api.messages.update, {
+              messageId,
+              content: accumulatedContent.trim(),
+              thinking: accumulatedReasoning,
+              toolCalls,
+              canvasData,
+            });
+          } catch (error) {
+            console.error("Failed to parse canvas data:", error);
+          }
+        }
+
         const toolCallIndex = toolCalls.findIndex(
           (call) => call.id === part.toolCallId
         );

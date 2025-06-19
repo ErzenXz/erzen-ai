@@ -21,6 +21,7 @@ import type * as ai_index from "../ai/index.js";
 import type * as ai_providers_constants from "../ai/providers/constants.js";
 import type * as ai_providers_index from "../ai/providers/index.js";
 import type * as ai_tools_calculator from "../ai/tools/calculator.js";
+import type * as ai_tools_canvas from "../ai/tools/canvas.js";
 import type * as ai_tools_codeAnalysis from "../ai/tools/codeAnalysis.js";
 import type * as ai_tools_datetime from "../ai/tools/datetime.js";
 import type * as ai_tools_imageGeneration from "../ai/tools/imageGeneration.js";
@@ -70,6 +71,7 @@ declare const fullApi: ApiFromModules<{
   "ai/providers/constants": typeof ai_providers_constants;
   "ai/providers/index": typeof ai_providers_index;
   "ai/tools/calculator": typeof ai_tools_calculator;
+  "ai/tools/canvas": typeof ai_tools_canvas;
   "ai/tools/codeAnalysis": typeof ai_tools_codeAnalysis;
   "ai/tools/datetime": typeof ai_tools_datetime;
   "ai/tools/imageGeneration": typeof ai_tools_imageGeneration;

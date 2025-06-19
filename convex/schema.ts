@@ -90,6 +90,15 @@ const applicationTables = {
     isEdited: v.optional(v.boolean()),
     editedAt: v.optional(v.number()),
     isError: v.optional(v.boolean()),
+    canvasData: v.optional(
+      v.object({
+        type: v.union(v.literal("markdown"), v.literal("code")),
+        title: v.string(),
+        content: v.string(),
+        language: v.optional(v.string()), // For code canvas (html, css, js, etc.)
+        updatedAt: v.number(),
+      })
+    ),
   })
     .index("by_conversation", ["conversationId"])
     .index("by_conversation_branch", ["conversationId", "branchId"])

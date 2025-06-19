@@ -297,6 +297,7 @@ export const duplicate = mutation({
         toolCalls: message.toolCalls,
         toolCallId: message.toolCallId,
         generationMetrics: message.generationMetrics,
+        canvasData: message.canvasData,
       });
     }
 
@@ -744,6 +745,7 @@ export const getSharedMessages = query({
         attachments: msg.attachments,
         toolCalls: msg.toolCalls,
         generationMetrics: msg.generationMetrics,
+        canvasData: msg.canvasData,
       })),
     };
   },
@@ -929,6 +931,7 @@ export const importConversation = mutation({
             isEdited: message.isEdited,
             editedAt: message.editedAt,
             isError: message.isError,
+            canvasData: message.canvasData,
           });
           messageIdMap.set(message._id, newMessageId);
         }
@@ -988,6 +991,7 @@ export const importConversation = mutation({
           isEdited: message.isEdited,
           editedAt: message.editedAt,
           isError: message.isError,
+          canvasData: message.canvasData,
         });
         messageIdMap.set(message._id, newMessageId);
       }
