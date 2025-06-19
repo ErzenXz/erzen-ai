@@ -80,7 +80,7 @@ Access the world's most advanced AI models from a single interface:
 
 **Tool Extensibility:**
 
-- **External Tool Servers (MCP)**: Connect to external tool servers using `HTTP`, `SSE` (Server-Sent Events), and `stdio` protocols, allowing for the integration of custom, self-hosted tools.
+- **External Tool Servers (MCP)**: Connect to external tool servers using `HTTP` and `SSE` (Server-Sent Events), allowing for the integration of custom, self-hosted tools.
 
 **User Experience:**
 
@@ -465,26 +465,23 @@ pnpm dev
 
 ## 📋 Roadmap
 
-### Short Term (Q1 2025)
+### Near Term (Q3 2025)
+- [ ] **Team Collaboration**: Multi-user conversation sharing and editing.
+- [ ] **Advanced Analytics**: Granular usage statistics and cost-tracking dashboards.
+- [ ] **Plugin System**: Initial release of a client-side plugin system for third-party tool integration.
+- [ ] **stdio for MCP**: Add support for `stdio`-based external tool servers.
 
-- [ ] **Team Collaboration**: Multi-user conversation sharing
-- [ ] **API Access**: REST API for programmatic access
-- [ ] **Plugin System**: Third-party tool integration
-- [ ] **Advanced Analytics**: Usage statistics and insights
+### Mid Term (Q4 2025 - Q1 2026)
+- [ ] **API Access**: Public REST API for programmatic access to conversations and AI models.
+- [ ] **Enterprise Features**: SSO integration (SAML, OIDC) and advanced admin controls.
+- [ ] **Mobile Apps**: Native iOS and Android applications with offline support.
+- [ ] **Custom AI Training**: User-friendly interface for fine-tuning models on personal or company data.
 
-### Medium Term (Q2-Q3 2025)
-
-- [ ] **Mobile Apps**: Native iOS and Android applications
-- [ ] **Enterprise Features**: SSO, advanced admin controls
-- [ ] **Custom AI Training**: Fine-tuning capabilities
-- [ ] **Workflow Automation**: AI-powered task automation
-
-### Long Term (Q4 2025+)
-
-- [ ] **Multi-Modal AI**: Advanced vision and audio processing
-- [ ] **AI Agents**: Autonomous task completion
-- [ ] **Integration Hub**: Connect with popular productivity tools
-- [ ] **On-Premise**: Enterprise self-hosting solutions
+### Long Term (Q2 2026 and beyond)
+- [ ] **AI Agents**: Develop autonomous agents capable of completing complex, multi-step tasks.
+- [ ] **Multi-Modal AI**: Introduce advanced vision, audio, and video processing capabilities.
+- [ ] **Workflow Automation**: Build a visual workflow editor to automate AI-powered tasks and connect with external services.
+- [ ] **On-Premise Deployment**: Offer a version of ErzenAI that can be deployed on-premise for maximum data security.
 
 ## 🔧 Troubleshooting
 
