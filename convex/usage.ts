@@ -43,6 +43,16 @@ function dollarsToCredits(dollars: number): number {
   return Math.ceil(dollars * 100); // 1 credit = $0.01
 }
 
+// Import image models from centralized location
+import { IMAGE_MODELS } from "../src/lib/models";
+
+// Calculate cost in credits for image generation
+function calculateImageCost(imageModel: string): number {
+  const model = IMAGE_MODELS[imageModel];
+  const pricing = model?.pricing || IMAGE_MODELS["fast-image-ai"].pricing;
+  return dollarsToCredits(pricing);
+}
+
 // Calculate cost in credits based on token usage
 function calculateTokenCost(
   model: string,
@@ -355,6 +365,145 @@ export const incrementSearches = mutation({
     });
 
     return null;
+  },
+});
+
+export const checkImageCreditsAvailable = query({
+  args: {
+    imageModel: v.string(),
+  },
+  returns: v.object({
+    hasCredits: v.boolean(),
+    requiredCredits: v.number(),
+    availableCredits: v.number(),
+    wouldExceedSpending: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    // Get existing usage record without creating one (queries are read-only)
+    const existingUsage = await ctx.db
+      .query("userUsage")
+      .withIndex("by_user", (q: any) => q.eq("userId", userId))
+      .unique();
+
+    // Create a usage object with proper defaults
+    let usage: {
+      plan: "free" | "pro" | "ultra";
+      creditsUsed: number;
+      creditsLimit: number;
+      maxSpendingDollars: number;
+      dollarsSpent: number;
+      resetDate: number;
+    };
+
+    if (!existingUsage) {
+      // Use default free plan values if no usage record exists
+      const planLimits = PLAN_LIMITS.free;
+      usage = {
+        plan: "free",
+        creditsUsed: 0,
+        creditsLimit: planLimits.credits,
+        maxSpendingDollars: planLimits.maxSpendingDollars,
+        dollarsSpent: 0,
+        resetDate: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 days from now
+      };
+    } else {
+      // Check if we need to reset monthly usage (but don't actually reset in a query)
+      if (Date.now() >= existingUsage.resetDate) {
+        const planLimits = PLAN_LIMITS[existingUsage.plan];
+        usage = {
+          plan: existingUsage.plan,
+          creditsUsed: 0,
+          creditsLimit: planLimits.credits,
+          maxSpendingDollars: planLimits.maxSpendingDollars,
+          dollarsSpent: 0,
+          resetDate: existingUsage.resetDate,
+        };
+      } else {
+        usage = {
+          plan: existingUsage.plan,
+          creditsUsed: existingUsage.creditsUsed,
+          creditsLimit: existingUsage.creditsLimit,
+          maxSpendingDollars: existingUsage.maxSpendingDollars,
+          dollarsSpent: existingUsage.dollarsSpent,
+          resetDate: existingUsage.resetDate,
+        };
+      }
+    }
+
+    const requiredCredits = calculateImageCost(args.imageModel);
+    const availableCredits = usage.creditsLimit - usage.creditsUsed;
+    const hasCredits = availableCredits >= requiredCredits;
+
+    // Check if this would exceed spending limit
+    const requiredDollars = requiredCredits / 100; // Convert credits back to dollars
+    const wouldExceedSpending =
+      usage.dollarsSpent + requiredDollars > usage.maxSpendingDollars;
+
+    return {
+      hasCredits,
+      requiredCredits,
+      availableCredits,
+      wouldExceedSpending,
+    };
+  },
+});
+
+export const deductImageCredits = mutation({
+  args: {
+    imageModel: v.string(),
+  },
+  returns: v.object({
+    creditsDeducted: v.number(),
+    dollarsSpent: v.number(),
+    remainingCredits: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    const usage = await ensureUsageRecord(ctx, userId);
+    if (!usage) {
+      throw new Error("Failed to create usage record");
+    }
+
+    const creditsToDeduct = calculateImageCost(args.imageModel);
+    const dollarsToSpend = creditsToDeduct / 100; // Convert credits to dollars
+
+    // Check if user has enough credits
+    const availableCredits = usage.creditsLimit - usage.creditsUsed;
+    if (availableCredits < creditsToDeduct) {
+      throw new Error(
+        `Insufficient credits. Required: ${creditsToDeduct}, Available: ${availableCredits}`
+      );
+    }
+
+    // Check spending limit
+    if (usage.dollarsSpent + dollarsToSpend > usage.maxSpendingDollars) {
+      throw new Error(
+        `Would exceed monthly spending limit of $${usage.maxSpendingDollars}`
+      );
+    }
+
+    const newCreditsUsed = usage.creditsUsed + creditsToDeduct;
+    const newDollarsSpent = usage.dollarsSpent + dollarsToSpend;
+
+    await ctx.db.patch(usage._id, {
+      creditsUsed: newCreditsUsed,
+      dollarsSpent: newDollarsSpent,
+    });
+
+    return {
+      creditsDeducted: creditsToDeduct,
+      dollarsSpent: dollarsToSpend,
+      remainingCredits: usage.creditsLimit - newCreditsUsed,
+    };
   },
 });
 

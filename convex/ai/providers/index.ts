@@ -125,18 +125,33 @@ export function createAIModel(args: {
       }
 
       case "groq":
-        baseModel = groq(args.model as any, { apiKey: args.apiKey } as any);
+        baseModel = groq(
+          args.model as any,
+          {
+            apiKey: args.apiKey,
+            baseURL: args.baseUrl,
+          } as any
+        );
         break;
 
       case "openrouter":
         baseModel = openrouterProvider(
           args.model as any,
-          { apiKey: args.apiKey } as any
+          {
+            apiKey: args.apiKey,
+            baseURL: args.baseUrl,
+          } as any
         );
         break;
 
       case "deepseek":
-        baseModel = deepseek(args.model as any, { apiKey: args.apiKey } as any);
+        baseModel = deepseek(
+          args.model as any,
+          {
+            apiKey: args.apiKey,
+            baseURL: args.baseUrl,
+          } as any
+        );
         break;
 
       case "grok":
@@ -149,24 +164,26 @@ export function createAIModel(args: {
       case "cohere":
         baseModel = cohereProvider(
           args.model as any,
-          { apiKey: args.apiKey } as any
+          {
+            apiKey: args.apiKey,
+            baseURL: args.baseUrl,
+          } as any
         );
         break;
 
       case "mistral":
         baseModel = mistralProvider(
           args.model as any,
-          { apiKey: args.apiKey } as any
+          {
+            apiKey: args.apiKey,
+            baseURL: args.baseUrl,
+          } as any
         );
         break;
 
       default:
         throw new Error(`Unsupported provider: ${args.provider}`);
     }
-
-    console.log(
-      `[AI Provider] Base model created for ${args.provider}/${args.model}`
-    );
 
     // Apply reasoning middleware as fallback for providers without native thinking
     const needsMiddleware = !["openai", "anthropic", "google"].includes(
@@ -240,27 +257,41 @@ export function getProviderApiKey(
     // Use built-in keys only as fallback
     if (provider === "openai") {
       apiKey =
-        process.env.CONVEX_OPENAI_API_KEY || process.env.OPENAI_API_KEY || "";
+        process.env.CONVEX_OPENAI_API_KEY ?? process.env.OPENAI_API_KEY ?? "";
     } else if (provider === "google") {
-      apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || "";
+      apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY ?? "";
     } else if (provider === "anthropic") {
-      apiKey = process.env.ANTHROPIC_API_KEY || "";
+      apiKey = process.env.ANTHROPIC_API_KEY ?? "";
     } else if (provider === "openrouter") {
-      apiKey = process.env.OPENROUTER_API_KEY || "";
+      apiKey = process.env.OPENROUTER_API_KEY ?? "";
     } else if (provider === "groq") {
-      apiKey = process.env.GROQ_API_KEY || "";
+      apiKey = process.env.GROQ_API_KEY ?? "";
     } else if (provider === "deepseek") {
-      apiKey = process.env.DEEPSEEK_API_KEY || "";
+      apiKey = process.env.DEEPSEEK_API_KEY ?? "";
     } else if (provider === "grok") {
-      apiKey = process.env.GROK_API_KEY || "";
+      apiKey = process.env.GROK_API_KEY ?? "";
     } else if (provider === "cohere") {
-      apiKey = process.env.COHERE_API_KEY || "";
+      apiKey = process.env.COHERE_API_KEY ?? "";
     } else if (provider === "mistral") {
-      apiKey = process.env.MISTRAL_API_KEY || "";
+      apiKey = process.env.MISTRAL_API_KEY ?? "";
+    } else if (provider === "tavily") {
+      apiKey = process.env.TAVILY_API_KEY ?? "";
+    } else if (provider === "openweather") {
+      apiKey = process.env.OPENWEATHER_API_KEY ?? "";
+    } else if (provider === "firecrawl") {
+      apiKey = process.env.FIRECRAWL_API_KEY ?? "";
     }
   }
 
-  return { apiKey, usingUserKey };
+  const result = { apiKey, usingUserKey };
+  console.log(`[getProviderApiKey Debug] Final result for ${provider}:`, {
+    usingUserKey: result.usingUserKey,
+    hasApiKey: !!result.apiKey,
+    keyLength: result.apiKey?.length || 0,
+    keyPreview: result.apiKey || "none",
+  });
+
+  return result;
 }
 
 // Export constants and types

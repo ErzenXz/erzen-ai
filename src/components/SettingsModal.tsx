@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Eye, EyeOff, Key, Trash2, Zap, Infinity as InfinityIcon, Settings, User, UserCog, FileText, Brain, Edit, Camera, Lock, Wrench, Sun, Moon, Monitor, Palette, Upload } from "lucide-react";
+import { IMAGE_MODELS, ImageModelId, getImageModelInfo, getImageModelDisplayName } from "@/lib/models";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -30,6 +31,7 @@ interface UserPreferences {
   showThinking?: boolean;
   systemPrompt?: string;
   useCustomSystemPrompt?: boolean;
+  imageModel?: ImageModelId;
   theme?: "light" | "dark" | "system";
   colorTheme?: string;
 }
@@ -189,6 +191,13 @@ const PROVIDER_CONFIGS = {
     description: "Weather data API",
     hasBuiltIn: true,
   },
+  firecrawl: {
+    name: "Firecrawl",
+    models: [],
+    keyPlaceholder: "fc-...",
+    description: "AI-ready web scraping and crawling",
+    hasBuiltIn: true,
+  },
 };
 
 const COLOR_THEMES = [
@@ -283,6 +292,7 @@ export function SettingsModal({ onClose, preferences }: SettingsModalProps) {
         showThinking: preferences.showThinking ?? false,
         systemPrompt: preferences.systemPrompt ?? "You are ErzenAI, an intelligent AI assistant created to help users with a wide variety of tasks. You are knowledgeable, helpful, and friendly. You can assist with questions, provide explanations, help with analysis, creative tasks, coding, and much more. Always strive to be accurate, clear, and helpful in your responses.",
         useCustomSystemPrompt: preferences.useCustomSystemPrompt ?? true,
+        imageModel: preferences.imageModel ?? "fast-image-ai",
         theme: preferences.theme ?? "system",
         colorTheme: preferences.colorTheme ?? "default",
       });
@@ -320,9 +330,10 @@ export function SettingsModal({ onClose, preferences }: SettingsModalProps) {
       hideUserInfo: settings.hideUserInfo,
       showToolOutputs: settings.showToolOutputs,
       showMessageMetadata: settings.showMessageMetadata,
-      showThinking: settings.showThinking,
-      systemPrompt: settings.systemPrompt,
-      useCustomSystemPrompt: settings.useCustomSystemPrompt,
+              showThinking: settings.showThinking,
+        systemPrompt: settings.systemPrompt,
+        useCustomSystemPrompt: settings.useCustomSystemPrompt,
+        imageModel: settings.imageModel,
     });
   };
 
@@ -490,8 +501,6 @@ export function SettingsModal({ onClose, preferences }: SettingsModalProps) {
       await importConversation({ exportData: importData });
       setImportFile(null);
       
-      // Show success message
-      console.log('Conversation imported successfully');
     } catch (error) {
       console.error("Failed to import conversation:", error);
     } finally {
@@ -611,13 +620,30 @@ export function SettingsModal({ onClose, preferences }: SettingsModalProps) {
           {/* Content area */}
           <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 min-h-0">
             <TabsContent value="ai" className="space-y-6 mt-0">
-              <Card className="border-2 border-primary/20">
-                <CardHeader className="bg-primary/5 rounded-t-lg">
-                  <CardTitle className="flex items-center gap-2">
-                    <Brain className="h-5 w-5 text-primary" />
+              {/* Current Configuration Status */}
+              <div className="bg-gradient-to-r from-primary/5 to-accent/5 border border-primary/20 rounded-lg p-4 flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm font-medium">Current Setup</span>
+                </div>
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <span>AI: <strong className="text-foreground">{PROVIDER_CONFIGS[settings.aiProvider]?.name}</strong></span>
+                  <span>•</span>
+                                     <span>Images: <strong className="text-foreground">
+                     {getImageModelDisplayName(settings.imageModel || "fast-image-ai")}
+                   </strong></span>
+                </div>
+              </div>
+
+              <Card className="border-2 border-primary/20 shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-primary/10 via-primary/5 to-accent/5 rounded-t-lg border-b">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <Brain className="h-5 w-5 text-primary" />
+                    </div>
                     AI Model Configuration
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-sm">
                     Configure your preferred AI provider and model settings for optimal performance
                   </CardDescription>
                 </CardHeader>
@@ -691,18 +717,68 @@ export function SettingsModal({ onClose, preferences }: SettingsModalProps) {
                         <span>Creative</span>
                       </div>
                     </div>
+
+                    {/* Image Model */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Camera className="h-4 w-4 text-primary" />
+                        <Label htmlFor="imageModel" className="text-sm font-semibold">Image Generation Model</Label>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3">
+                        {Object.values(IMAGE_MODELS).map((model) => {
+                          const isSelected = settings.imageModel === model.id;
+                          const priceColor = model.pricing <= 0.03 ? "text-green-600" : 
+                                           model.pricing <= 0.07 ? "text-amber-600" : "text-red-600";
+                          
+                          return (
+                            <div 
+                              key={model.id}
+                              className={`relative p-4 border-2 rounded-lg cursor-pointer transition-all hover:shadow-md ${
+                                isSelected 
+                                  ? "border-primary bg-primary/5 shadow-sm" 
+                                  : "border-border hover:border-primary/50"
+                              }`}
+                              onClick={() => setSettings(prev => ({ ...prev, imageModel: model.id }))}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-3 h-3 rounded-full border-2 ${
+                                    isSelected 
+                                      ? "border-primary bg-primary" 
+                                      : "border-muted-foreground"
+                                  }`} />
+                                  <div>
+                                    <div className="font-medium text-sm">{model.displayName}</div>
+                                    <div className="text-xs text-muted-foreground">{model.description}</div>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className={`text-sm font-semibold ${priceColor}`}>${model.pricing.toFixed(2)}</div>
+                                  <div className="text-xs text-muted-foreground">per image</div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                                             <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded-md">
+                         💡 <strong>Tip:</strong> All models use Cloudflare AI for fast, high-quality generation. Choose {Object.values(IMAGE_MODELS)[0].displayName} for speed, {Object.values(IMAGE_MODELS)[1]?.displayName || "other models"} for quality, or experiment with different styles!
+                       </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
 
               {/* System Prompt Card */}
-              <Card className="border-2 border-primary/20">
-                <CardHeader className="bg-primary/5 rounded-t-lg">
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-primary" />
+              <Card className="border-2 border-primary/20 shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-primary/10 via-primary/5 to-accent/5 rounded-t-lg border-b">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <FileText className="h-5 w-5 text-primary" />
+                    </div>
                     System Prompt & Personality
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-sm">
                     Define the AI's personality and behavior. This prompt is combined with your user instructions to create a unique assistant experience.
                   </CardDescription>
                 </CardHeader>
@@ -745,13 +821,15 @@ export function SettingsModal({ onClose, preferences }: SettingsModalProps) {
 
             {/* Appearance Tab */}
             <TabsContent value="appearance" className="space-y-6 mt-0">
-              <Card className="border-2 border-primary/20">
-                <CardHeader className="bg-primary/5 rounded-t-lg">
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5 text-primary" />
+              <Card className="border-2 border-primary/20 shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-primary/10 via-primary/5 to-accent/5 rounded-t-lg border-b">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <User className="h-5 w-5 text-primary" />
+                    </div>
                     Privacy & Display
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-sm">
                     Control how your personal information is displayed and what details are shown in the interface
                   </CardDescription>
                 </CardHeader>
@@ -832,13 +910,15 @@ export function SettingsModal({ onClose, preferences }: SettingsModalProps) {
               </Card>
 
               {/* Theme Selection Card */}
-              <Card className="border-2 border-primary/20">
-                <CardHeader className="bg-primary/5 rounded-t-lg">
-                  <CardTitle className="flex items-center gap-2">
-                    <Palette className="h-5 w-5 text-primary" />
+              <Card className="border-2 border-primary/20 shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-primary/10 via-primary/5 to-accent/5 rounded-t-lg border-b">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <Palette className="h-5 w-5 text-primary" />
+                    </div>
                     Theme & Colors
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-sm">
                     Customize the appearance with light/dark mode and color themes
                   </CardDescription>
                 </CardHeader>
@@ -1182,13 +1262,15 @@ export function SettingsModal({ onClose, preferences }: SettingsModalProps) {
 
             {/* Data & Memory Tab */}
             <TabsContent value="data" className="space-y-6 mt-0">
-              <Card className="border-2 border-primary/20">
-                <CardHeader className="bg-primary/5 rounded-t-lg">
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-primary" />
+              <Card className="border-2 border-primary/20 shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-primary/10 via-primary/5 to-accent/5 rounded-t-lg border-b">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <FileText className="h-5 w-5 text-primary" />
+                    </div>
                     Custom Instructions
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-sm">
                     Add custom instructions that will be sent to the AI with every conversation (max 500 words). These work alongside your system prompt.
                   </CardDescription>
                 </CardHeader>
@@ -1225,13 +1307,15 @@ export function SettingsModal({ onClose, preferences }: SettingsModalProps) {
               </Card>
 
               {/* Memory Section */}
-              <Card className="border-2 border-primary/20">
-                <CardHeader className="bg-primary/5 rounded-t-lg">
-                  <CardTitle className="flex items-center gap-2">
-                    <Brain className="h-5 w-5 text-primary" />
+              <Card className="border-2 border-primary/20 shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-primary/10 via-primary/5 to-accent/5 rounded-t-lg border-b">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <Brain className="h-5 w-5 text-primary" />
+                    </div>
                     AI Memory Bank
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-sm">
                     View and manage things the AI has remembered about you from your conversations
                   </CardDescription>
                 </CardHeader>
@@ -1317,13 +1401,15 @@ export function SettingsModal({ onClose, preferences }: SettingsModalProps) {
               </Card>
 
               {/* Import/Export Section */}
-              <Card className="border-2 border-primary/20">
-                <CardHeader className="bg-primary/5 rounded-t-lg">
-                  <CardTitle className="flex items-center gap-2">
-                    <Upload className="h-5 w-5 text-primary" />
+              <Card className="border-2 border-primary/20 shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-primary/10 via-primary/5 to-accent/5 rounded-t-lg border-b">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <Upload className="h-5 w-5 text-primary" />
+                    </div>
                     Import Conversations
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-sm">
                     Upload a previously exported conversation JSON file to import it into your account
                   </CardDescription>
                 </CardHeader>

@@ -143,6 +143,7 @@ const applicationTables = {
     systemPrompt: v.optional(v.string()),
     useCustomSystemPrompt: v.optional(v.boolean()),
     showThinking: v.optional(v.boolean()),
+    imageModel: v.optional(v.string()),
     theme: v.optional(
       v.union(v.literal("light"), v.literal("dark"), v.literal("system"))
     ),
@@ -162,7 +163,8 @@ const applicationTables = {
       v.literal("cohere"),
       v.literal("mistral"),
       v.literal("tavily"),
-      v.literal("openweather")
+      v.literal("openweather"),
+      v.literal("firecrawl")
     ),
     apiKey: v.string(),
     isActive: v.boolean(),

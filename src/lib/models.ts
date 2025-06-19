@@ -143,7 +143,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
       "c4ai-aya-vision-8b",
     ],
     icon: "🎯",
-    isBuiltIn: false,
+    isBuiltIn: true,
   },
   mistral: {
     name: "Mistral AI",
@@ -502,7 +502,7 @@ export const MODEL_INFO: Record<string, ModelInfo> = {
   },
   "claude-sonnet-4-0": {
     id: "claude-sonnet-4-0",
-    displayName: "Claude 4 Sonnet",
+    displayName: "Claude Sonnet 4",
     provider: "anthropic",
     maxInputTokens: 200000,
     maxOutputTokens: 64000,
@@ -518,7 +518,7 @@ export const MODEL_INFO: Record<string, ModelInfo> = {
   },
   "claude-opus-4-0": {
     id: "claude-opus-4-0",
-    displayName: "Claude 4 Opus",
+    displayName: "Claude Opus 4",
     provider: "anthropic",
     maxInputTokens: 200000,
     maxOutputTokens: 32000,
@@ -1913,3 +1913,70 @@ export function createEnhancedModel(
   );
   return aiModel; // Return original model if no middleware needed
 }
+
+// Image Generation Models
+export interface ImageModelInfo {
+  id: string;
+  displayName: string;
+  description: string;
+  pricing: number; // Cost per image in dollars
+  speed: "fast" | "medium" | "slow";
+  quality: "standard" | "high" | "premium";
+  provider: "cloudflare";
+  cloudflareModel?: string; // The actual Cloudflare model ID
+}
+
+export const IMAGE_MODELS: Record<string, ImageModelInfo> = {
+  "flux-1-schnell": {
+    id: "flux-1-schnell",
+    displayName: "Flux 1 Schnell",
+    description: "Lightning fast, high-quality image generation",
+    pricing: 0.03,
+    speed: "fast",
+    quality: "high",
+    provider: "cloudflare",
+    cloudflareModel: "@cf/black-forest-labs/flux-1-schnell",
+  },
+  "flux-1-dev": {
+    id: "flux-1-dev",
+    displayName: "Flux 1 Dev",
+    description: "Advanced image generation with better quality",
+    pricing: 0.05,
+    speed: "medium",
+    quality: "premium",
+    provider: "cloudflare",
+    cloudflareModel: "@cf/black-forest-labs/flux-1-dev",
+  },
+  "stable-diffusion-xl": {
+    id: "stable-diffusion-xl",
+    displayName: "Stable Diffusion XL",
+    description: "High-resolution, detailed image generation",
+    pricing: 0.04,
+    speed: "medium",
+    quality: "high",
+    provider: "cloudflare",
+    cloudflareModel: "@cf/stabilityai/stable-diffusion-xl-base-1.0",
+  },
+  "dreamshaper-8": {
+    id: "dreamshaper-8",
+    displayName: "DreamShaper 8",
+    description: "Artistic and creative image generation",
+    pricing: 0.03,
+    speed: "fast",
+    quality: "standard",
+    provider: "cloudflare",
+    cloudflareModel: "@cf/lykon/dreamshaper-8-lcm",
+  },
+};
+
+export type ImageModelId = keyof typeof IMAGE_MODELS;
+
+export const getImageModelInfo = (
+  modelId: string
+): ImageModelInfo | undefined => {
+  return IMAGE_MODELS[modelId];
+};
+
+export const getImageModelDisplayName = (modelId: string): string => {
+  return IMAGE_MODELS[modelId]?.displayName || modelId;
+};

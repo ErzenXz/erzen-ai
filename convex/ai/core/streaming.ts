@@ -171,7 +171,7 @@ export async function generateStreamingResponse(
           typeof msg.content === "string"
             ? msg.content
             : msg.content
-                .map((c) => (c.type === "text" ? c.text || "" : ""))
+                .map((c) => (c.type === "text" ? (c.text ?? "") : ""))
                 .join(" ");
         return total + Math.ceil(content.length / 4); // Rough estimate: 4 chars per token
       }, 0);
@@ -446,9 +446,9 @@ export async function generateStreamingResponse(
 
       // Track token usage if available
       if (part.type === "finish" && part.usage) {
-        totalTokens = part.usage.totalTokens || totalTokens;
-        promptTokens = part.usage.promptTokens || promptTokens;
-        completionTokens = part.usage.completionTokens || completionTokens;
+        totalTokens = part.usage.totalTokens ?? totalTokens;
+        promptTokens = part.usage.promptTokens ?? promptTokens;
+        completionTokens = part.usage.completionTokens ?? completionTokens;
       }
 
       // Tool calls emitted by the model

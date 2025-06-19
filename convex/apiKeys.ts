@@ -48,9 +48,6 @@ function decryptApiKey(encryptedKey: string): string {
 
     return decrypted;
   } catch (error) {
-    console.error("Failed to decrypt API key:", error);
-    console.error("Encrypted key:", encryptedKey);
-    console.error("Error details:", error);
     return "";
   }
 }
@@ -71,7 +68,8 @@ export const list = query({
         v.literal("cohere"),
         v.literal("mistral"),
         v.literal("tavily"),
-        v.literal("openweather")
+        v.literal("openweather"),
+        v.literal("firecrawl")
       ),
       isActive: v.boolean(),
       hasKey: v.boolean(),
@@ -111,7 +109,8 @@ export const getByProvider = query({
       v.literal("cohere"),
       v.literal("mistral"),
       v.literal("tavily"),
-      v.literal("openweather")
+      v.literal("openweather"),
+      v.literal("firecrawl")
     ),
   },
   returns: v.union(
@@ -129,7 +128,8 @@ export const getByProvider = query({
         v.literal("cohere"),
         v.literal("mistral"),
         v.literal("tavily"),
-        v.literal("openweather")
+        v.literal("openweather"),
+        v.literal("firecrawl")
       ),
       apiKey: v.string(),
       isActive: v.boolean(),
@@ -156,9 +156,11 @@ export const getByProvider = query({
     }
 
     // Decrypt the API key before returning
+    const decryptedKey = decryptApiKey(apiKey.apiKey);
+
     return {
       ...apiKey,
-      apiKey: decryptApiKey(apiKey.apiKey),
+      apiKey: decryptedKey,
     };
   },
 });
@@ -176,7 +178,8 @@ export const upsert = mutation({
       v.literal("cohere"),
       v.literal("mistral"),
       v.literal("tavily"),
-      v.literal("openweather")
+      v.literal("openweather"),
+      v.literal("firecrawl")
     ),
     apiKey: v.string(),
   },
@@ -228,7 +231,8 @@ export const remove = mutation({
       v.literal("cohere"),
       v.literal("mistral"),
       v.literal("tavily"),
-      v.literal("openweather")
+      v.literal("openweather"),
+      v.literal("firecrawl")
     ),
   },
   returns: v.null(),
@@ -318,7 +322,8 @@ export const getApiKeyInfo = query({
         v.literal("cohere"),
         v.literal("mistral"),
         v.literal("tavily"),
-        v.literal("openweather")
+        v.literal("openweather"),
+        v.literal("firecrawl")
       ),
       hasUserKey: v.boolean(),
       keyPreview: v.optional(v.string()),

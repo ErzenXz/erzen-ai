@@ -2,65 +2,114 @@
 
 export async function browseUrl(
   url: string,
-  analysisType: string = "content"
+  analysisType: string = "content",
+  firecrawlApiKey?: string
 ): Promise<string> {
   try {
     // Validate URL format
     try {
       new URL(url);
-      console.log("[BROWSE DEBUG] URL validation passed");
     } catch {
-      console.log("[BROWSE DEBUG] URL validation failed");
       return `Error: Invalid URL format "${url}"`;
     }
 
-    const response = await fetch(url, {
+    // Check if Firecrawl API key is provided
+    if (!firecrawlApiKey) {
+      return `Error: Firecrawl API key is required to fetch URL content. Please configure your Firecrawl API key in settings.`;
+    }
+
+    // Prepare Firecrawl API request
+    const firecrawlEndpoint = "https://api.firecrawl.dev/v1/scrape";
+
+    // Configure scrape options based on analysis type
+    const scrapeOptions: any = {
+      url: url,
+      formats: ["markdown"],
+    };
+
+    // Add specific options based on analysis type
+    switch (analysisType) {
+      case "metadata":
+        scrapeOptions.formats = ["markdown"];
+        scrapeOptions.onlyMainContent = false;
+        break;
+      case "content":
+        scrapeOptions.formats = ["markdown"];
+        scrapeOptions.onlyMainContent = true;
+        break;
+      case "summary":
+        scrapeOptions.formats = ["markdown"];
+        scrapeOptions.onlyMainContent = true;
+        break;
+      case "extract":
+        scrapeOptions.formats = ["markdown", "html"];
+        scrapeOptions.onlyMainContent = true;
+        break;
+      default:
+        scrapeOptions.formats = ["markdown"];
+        scrapeOptions.onlyMainContent = true;
+    }
+
+    const response = await fetch(firecrawlEndpoint, {
+      method: "POST",
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-        Accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Cache-Control": "no-cache",
-        Pragma: "no-cache",
-        "Sec-Fetch-Dest": "document",
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-Site": "none",
-        "Sec-Fetch-User": "?1",
-        "Upgrade-Insecure-Requests": "1",
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${firecrawlApiKey}`,
       },
-      // Add timeout handling like the web search pattern
-      signal: AbortSignal.timeout(10000), // 10 second timeout
+      body: JSON.stringify(scrapeOptions),
+      signal: AbortSignal.timeout(30000), // 30 second timeout for Firecrawl
     });
 
     if (!response.ok) {
-      return `Error fetching URL "${url}": ${response.status} ${response.statusText}`;
+      const errorText = await response.text();
+      console.error("[FIRECRAWL DEBUG] API error:", response.status, errorText);
+      return `Error fetching URL "${url}" with Firecrawl: ${response.status} ${response.statusText}. ${errorText}`;
     }
 
+    const data = await response.json();
+
+    if (!data.success) {
+      return `Error: Firecrawl failed to scrape "${url}": ${data.error || "Unknown error"}`;
+    }
+
+    const scrapedData = data.data;
+
+    if (!scrapedData) {
+      return `Content from ${url}: No content found or empty response from Firecrawl.`;
+    }
+
+    // Handle different analysis types
     if (analysisType === "metadata") {
-      return `URL: ${url}\nStatus: ${response.status}\nContent-Type: ${response.headers.get("content-type")}\nContent-Length: ${response.headers.get("content-length")}`;
+      const metadata = scrapedData.metadata || {};
+      return `URL: ${url}
+Title: ${metadata.title || "N/A"}
+Description: ${metadata.description || "N/A"}
+Language: ${metadata.language || "N/A"}
+Status Code: ${metadata.statusCode || "N/A"}
+Content Type: ${metadata.contentType || "N/A"}`;
     }
 
-    const text = await response.text();
+    // Get the markdown content
+    const markdownContent = scrapedData.markdown || "";
 
-    if (!text || text.trim().length === 0) {
-      return `Content from ${url}: No content found or empty response.`;
+    if (!markdownContent || markdownContent.trim().length === 0) {
+      return `Content from ${url}: No content found or empty response from Firecrawl.`;
     }
 
-    // Basic HTML cleanup
-    const cleanText = text
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-      .replace(/<[^>]*>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
+    // For content analysis, limit the response size to avoid overwhelming the AI
+    const maxLength = analysisType === "summary" ? 3000 : 5000;
+    const truncatedContent =
+      markdownContent.length > maxLength
+        ? markdownContent.substring(0, maxLength) + "..."
+        : markdownContent;
 
-    const truncatedContent = cleanText.substring(0, 2000);
-    return `Content from ${url}:\n\n${truncatedContent}${cleanText.length > 2000 ? "..." : ""}`;
+    return `Content from ${url} (extracted with Firecrawl):
+
+${truncatedContent}`;
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
-    return `Error fetching URL "${url}": ${errorMessage}`;
+    console.error("[FIRECRAWL DEBUG] Error:", errorMessage);
+    return `Error fetching URL "${url}" with Firecrawl: ${errorMessage}`;
   }
 }

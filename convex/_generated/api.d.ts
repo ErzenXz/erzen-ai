@@ -32,7 +32,7 @@ import type * as ai_tools_weather from "../ai/tools/weather.js";
 import type * as ai_tools_webSearch from "../ai/tools/webSearch.js";
 import type * as ai_utils_browse from "../ai/utils/browse.js";
 import type * as ai_utils_errors from "../ai/utils/errors.js";
-import type * as ai_utils_images from "../ai/utils/images.js";
+import type * as ai_utils_imageProviders from "../ai/utils/imageProviders.js";
 import type * as ai_utils_search from "../ai/utils/search.js";
 import type * as ai_utils_weather from "../ai/utils/weather.js";
 import type * as ai from "../ai.js";
@@ -79,7 +79,7 @@ declare const fullApi: ApiFromModules<{
   "ai/tools/webSearch": typeof ai_tools_webSearch;
   "ai/utils/browse": typeof ai_utils_browse;
   "ai/utils/errors": typeof ai_utils_errors;
-  "ai/utils/images": typeof ai_utils_images;
+  "ai/utils/imageProviders": typeof ai_utils_imageProviders;
   "ai/utils/search": typeof ai_utils_search;
   "ai/utils/weather": typeof ai_utils_weather;
   ai: typeof ai;
