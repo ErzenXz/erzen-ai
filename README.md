@@ -52,7 +52,7 @@ Access the world's most advanced AI models from a single interface:
 
 **Creative & Analysis:**
 
-- **Image Generation**: AI-powered image creation with multiple styles
+- **Image Generation**: AI-powered image creation via Cloudflare AI, supporting models like *Flux 1 Schnell*, *Flux 1 Dev*, *Stable Diffusion XL*, and *DreamShaper 8*.
 - **Code Analysis**: Advanced code review, debugging, and optimization
 - **Mathematical Calculator**: Complex computation support
 
@@ -77,6 +77,10 @@ Access the world's most advanced AI models from a single interface:
 - **Model-Specific Settings**: Temperature, reasoning effort
 - **Favorite Models**: Quick access to your preferred AI models
 - **Flexible Tool Configuration**: Enable/disable tools per conversation
+
+**Tool Extensibility:**
+
+- **External Tool Servers (MCP)**: Connect to external tool servers using `HTTP`, `SSE` (Server-Sent Events), and `stdio` protocols, allowing for the integration of custom, self-hosted tools.
 
 **User Experience:**
 
@@ -251,14 +255,16 @@ MISTRAL_API_KEY=your-mistral-key
 # Tool APIs (optional - enables enhanced features)
 TAVILY_API_KEY=your-tavily-search-key
 OPENWEATHER_API_KEY=your-weather-key
-CLOUDFLARE_API_KEY=your-cloudflare-key
+# Cloudflare (for image generation)
+CLOUDFLARE_ACCOUNT_ID=your-cloudflare-account-id
+CLOUDFLARE_API_TOKEN=your-cloudflare-api-token
 ```
 
 **API Key Providers:**
 
 - **Tavily**: [Get API Key](https://app.tavily.com/) - For web search functionality
 - **OpenWeather**: [Get API Key](https://openweathermap.org/api) - For weather tools
-- **Cloudflare**: [Get API Key](https://dash.cloudflare.com/profile/api-tokens) - For image generation
+- **Cloudflare**: [Find Account ID & create API Token](https://dash.cloudflare.com/?to=/:account/workers-and-pages/ai) - For image generation. You need your Account ID and an API Token with "AI" permissions.
 
 ### 5. Run Development Server
 
@@ -527,7 +533,7 @@ pnpm dlx vite-bundle-analyzer dist
 
 ### Getting Help
 
-- �� **Documentation**: [View on DeepWiki](https://deepwiki.com/ErzenXz/erzen-ai)
+- 📖 **Documentation**: [View on DeepWiki](https://deepwiki.com/ErzenXz/erzen-ai)
 - 💬 **GitHub Discussions**: Community support and feature requests
 - 🐛 **Issues**: Bug reports and feature requests
 - 📧 **Contact**: Direct support for enterprise users
