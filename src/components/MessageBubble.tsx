@@ -502,111 +502,123 @@ const ToolGroupBadge = memo(({ group }: { group: { name: string; count: number; 
   }, []);
 
   const formatToolResult = (toolName: string, result: string) => {
+    let parsed: any;
+    
     try {
-      const parsed = JSON.parse(result);
-      
-      switch (toolName) {
-        case 'web_search':
-        case 'deep_search':
-          return (
-            <div className="space-y-3 max-h-80 overflow-y-auto">
-              <div className="font-medium text-sm text-blue-600 dark:text-blue-400">Search Results:</div>
-              <div className="text-xs leading-relaxed space-y-2">
-                {parsed.split('\n\n').map((paragraph: string, idx: number) => (
-                  <div key={idx} className="border-l-2 border-blue-200 dark:border-blue-800 pl-3 py-1 bg-blue-50/30 dark:bg-blue-900/10 rounded-r">
-                    <div className="whitespace-pre-wrap break-words">{paragraph.trim()}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        
-        case 'weather':
-          return (
-            <div className="space-y-2">
-              <div className="font-medium text-sm text-blue-600 dark:text-blue-400">Weather Report:</div>
-              <div className="text-sm bg-blue-50/30 dark:bg-blue-900/10 p-3 rounded border border-blue-200/30 dark:border-blue-800/30">
-                <pre className="whitespace-pre-wrap text-xs leading-relaxed">{parsed}</pre>
-              </div>
-            </div>
-          );
-        
-        case 'calculator':
-          return (
-            <div className="space-y-2">
-              <div className="font-medium text-sm text-green-600 dark:text-green-400">Calculation Result:</div>
-              <div className="text-lg font-mono bg-green-50/30 dark:bg-green-900/10 p-3 rounded border border-green-200/30 dark:border-green-800/30 text-center">
-                {parsed}
-              </div>
-            </div>
-          );
-        
-        case 'datetime':
-          return (
-            <div className="space-y-2">
-              <div className="font-medium text-sm text-purple-600 dark:text-purple-400">Date & Time:</div>
-              <div className="text-sm bg-purple-50/30 dark:bg-purple-900/10 p-3 rounded border border-purple-200/30 dark:border-purple-800/30">
-                {parsed}
-              </div>
-            </div>
-          );
-        
-        case 'thinking':
-          return (
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              <div className="font-medium text-sm text-orange-600 dark:text-orange-400">Thought Process:</div>
-              <div className="text-xs leading-relaxed bg-orange-50/30 dark:bg-orange-900/10 p-3 rounded border border-orange-200/30 dark:border-orange-800/30">
-                <SafeMarkdown content={parsed} />
-              </div>
-            </div>
-          );
-        
-        case 'url_fetch':
-          return (
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              <div className="font-medium text-sm text-indigo-600 dark:text-indigo-400">Fetched Content:</div>
-              <div className="text-xs leading-relaxed bg-indigo-50/30 dark:bg-indigo-900/10 p-3 rounded border border-indigo-200/30 dark:border-indigo-800/30">
-                <div className="whitespace-pre-wrap break-words">{parsed}</div>
-              </div>
-            </div>
-          );
-        
-        case 'code_analysis':
-          return (
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              <div className="font-medium text-sm text-emerald-600 dark:text-emerald-400">Code Analysis:</div>
-              <div className="text-xs leading-relaxed bg-emerald-50/30 dark:bg-emerald-900/10 p-3 rounded border border-emerald-200/30 dark:border-emerald-800/30">
-                <SafeMarkdown content={parsed} />
-              </div>
-            </div>
-          );
-        
-        case 'memory':
-          return (
-            <div className="space-y-2">
-              <div className="font-medium text-sm text-violet-600 dark:text-violet-400">Memory Operation:</div>
-              <div className="text-sm bg-violet-50/30 dark:bg-violet-900/10 p-3 rounded border border-violet-200/30 dark:border-violet-800/30">
-                {parsed}
-              </div>
-            </div>
-          );
-        
-        default:
-          return (
-            <div className="max-h-64 overflow-y-auto">
-              <div className="text-xs leading-relaxed bg-muted/30 p-3 rounded">
-                <div className="whitespace-pre-wrap break-words">{parsed}</div>
-              </div>
-            </div>
-          );
-      }
+      parsed = JSON.parse(result);
     } catch {
-      // If parsing fails, show raw result
-      return (
-        <div className="max-h-64 overflow-y-auto">
-          <pre className="whitespace-pre-wrap text-xs leading-relaxed bg-muted/30 p-3 rounded break-words">{result}</pre>
-        </div>
-      );
+      // If parsing fails, treat as plain text
+      parsed = result;
+    }
+
+    // Handle MCP tool results that come as objects with content property
+    if (parsed && typeof parsed === 'object' && parsed.content !== undefined) {
+      parsed = parsed.content;
+    }
+
+    // Handle arrays of content objects (some MCP tools return this format)
+    if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].content !== undefined) {
+      parsed = parsed.map(item => item.content || item).join('\n');
+    }
+
+    // Ensure we have a string to work with
+    const displayContent = typeof parsed === 'string' ? parsed : JSON.stringify(parsed, null, 2);
+    
+    switch (toolName) {
+      case 'web_search':
+      case 'deep_search':
+        return (
+          <div className="space-y-3 max-h-80 overflow-y-auto">
+            <div className="font-medium text-sm text-blue-600 dark:text-blue-400">Search Results:</div>
+            <div className="text-xs leading-relaxed space-y-2">
+              {displayContent.split('\n\n').map((paragraph: string, idx: number) => (
+                <div key={idx} className="border-l-2 border-blue-200 dark:border-blue-800 pl-3 py-1 bg-blue-50/30 dark:bg-blue-900/10 rounded-r">
+                  <div className="whitespace-pre-wrap break-words">{paragraph.trim()}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      
+      case 'weather':
+        return (
+          <div className="space-y-2">
+            <div className="font-medium text-sm text-blue-600 dark:text-blue-400">Weather Report:</div>
+            <div className="text-sm bg-blue-50/30 dark:bg-blue-900/10 p-3 rounded border border-blue-200/30 dark:border-blue-800/30">
+              <pre className="whitespace-pre-wrap text-xs leading-relaxed">{displayContent}</pre>
+            </div>
+          </div>
+        );
+      
+      case 'calculator':
+        return (
+          <div className="space-y-2">
+            <div className="font-medium text-sm text-green-600 dark:text-green-400">Calculation Result:</div>
+            <div className="text-lg font-mono bg-green-50/30 dark:bg-green-900/10 p-3 rounded border border-green-200/30 dark:border-green-800/30 text-center">
+              {displayContent}
+            </div>
+          </div>
+        );
+      
+      case 'datetime':
+        return (
+          <div className="space-y-2">
+            <div className="font-medium text-sm text-purple-600 dark:text-purple-400">Date & Time:</div>
+            <div className="text-sm bg-purple-50/30 dark:bg-purple-900/10 p-3 rounded border border-purple-200/30 dark:border-purple-800/30">
+              {displayContent}
+            </div>
+          </div>
+        );
+      
+      case 'thinking':
+        return (
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            <div className="font-medium text-sm text-orange-600 dark:text-orange-400">Thought Process:</div>
+            <div className="text-xs leading-relaxed bg-orange-50/30 dark:bg-orange-900/10 p-3 rounded border border-orange-200/30 dark:border-orange-800/30">
+              <SafeMarkdown content={displayContent} />
+            </div>
+          </div>
+        );
+      
+      case 'url_fetch':
+        return (
+          <div className="space-y-2 max-h-80 overflow-y-auto">
+            <div className="font-medium text-sm text-indigo-600 dark:text-indigo-400">Fetched Content:</div>
+            <div className="text-xs leading-relaxed bg-indigo-50/30 dark:bg-indigo-900/10 p-3 rounded border border-indigo-200/30 dark:border-indigo-800/30">
+              <div className="whitespace-pre-wrap break-words">{displayContent}</div>
+            </div>
+          </div>
+        );
+      
+      case 'code_analysis':
+        return (
+          <div className="space-y-2 max-h-80 overflow-y-auto">
+            <div className="font-medium text-sm text-emerald-600 dark:text-emerald-400">Code Analysis:</div>
+            <div className="text-xs leading-relaxed bg-emerald-50/30 dark:bg-emerald-900/10 p-3 rounded border border-emerald-200/30 dark:border-emerald-800/30">
+              <SafeMarkdown content={displayContent} />
+            </div>
+          </div>
+        );
+      
+      case 'memory':
+        return (
+          <div className="space-y-2">
+            <div className="font-medium text-sm text-violet-600 dark:text-violet-400">Memory Operation:</div>
+            <div className="text-sm bg-violet-50/30 dark:bg-violet-900/10 p-3 rounded border border-violet-200/30 dark:border-violet-800/30">
+              {displayContent}
+            </div>
+          </div>
+        );
+      
+      default:
+        // For MCP tools and other unknown tools, handle content gracefully
+        return (
+          <div className="max-h-64 overflow-y-auto">
+            <div className="text-xs leading-relaxed bg-muted/30 p-3 rounded">
+              <div className="whitespace-pre-wrap break-words">{displayContent}</div>
+            </div>
+          </div>
+        );
     }
   };
 

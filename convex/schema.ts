@@ -199,7 +199,8 @@ const applicationTables = {
     transportType: v.union(
       v.literal("stdio"),
       v.literal("sse"),
-      v.literal("http")
+      v.literal("http"),
+      v.literal("browser")
     ),
     // For stdio transport
     command: v.optional(v.string()),
@@ -207,6 +208,12 @@ const applicationTables = {
     // For SSE/HTTP transport
     url: v.optional(v.string()),
     headers: v.optional(v.record(v.string(), v.string())),
+    // For browser transport
+    runtime: v.optional(
+      v.union(v.literal("node"), v.literal("python"), v.literal("wasm"))
+    ),
+    sourceCode: v.optional(v.string()),
+    packageDependencies: v.optional(v.record(v.string(), v.string())),
     // Common fields
     isEnabled: v.boolean(),
     createdAt: v.number(),

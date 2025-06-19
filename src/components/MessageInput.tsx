@@ -267,6 +267,39 @@ export const MessageInput = memo(function MessageInput({ onSendMessage, disabled
     void loadTools();
   }, [getAvailableTools]);
 
+  // Clean up enabled tools when available tools change
+  useEffect(() => {
+    if (availableTools.length === 0) return;
+    
+    const availableToolIds = availableTools.map(tool => tool.id);
+    const cleanedEnabledTools = enabledTools.filter(toolId => availableToolIds.includes(toolId));
+    
+    // Update enabled tools if any were removed
+    if (cleanedEnabledTools.length !== enabledTools.length) {
+      setEnabledTools(cleanedEnabledTools);
+      // Also update preferences to persist the cleanup
+      if (preferences) {
+        void updatePreferences({
+          aiProvider: preferences.aiProvider,
+          model: preferences.model,
+          temperature: preferences.temperature,
+          enabledTools: cleanedEnabledTools,
+          favoriteModels: preferences.favoriteModels,
+          hideUserInfo: preferences.hideUserInfo,
+          showToolOutputs: preferences.showToolOutputs,
+          showMessageMetadata: preferences.showMessageMetadata,
+          showThinking: preferences.showThinking,
+          systemPrompt: preferences.systemPrompt,
+          useCustomSystemPrompt: preferences.useCustomSystemPrompt,
+          imageModel: preferences.imageModel,
+          theme: preferences.theme,
+          colorTheme: preferences.colorTheme,
+          modelReasoningEfforts: preferences.modelReasoningEfforts,
+        });
+      }
+    }
+  }, [availableTools, enabledTools, preferences, updatePreferences]);
+
   // Note: We don't auto-clear enabled tools when model doesn't support them
   // This preserves user preferences when switching between models
   // Tools are simply not sent to models that don't support them
@@ -492,19 +525,21 @@ export const MessageInput = memo(function MessageInput({ onSendMessage, disabled
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Check if any attachments are still uploading
-    const hasUploadingAttachments = attachments.some(att => att.isUploading);
-    
-    if (!message.trim() && attachments.length === 0 || disabled || hasUploadingAttachments) {
-      if (hasUploadingAttachments) {
-        toast.warning("Please wait", {
-          description: "Files are still uploading. Please wait for upload to complete.",
-        });
-      }
+    // Quick validation checks first
+    if (!message.trim() && attachments.length === 0 || disabled) {
       return;
     }
 
-    // Check if using non-multimodal model with images
+    // Check if any attachments are still uploading
+    const hasUploadingAttachments = attachments.some(att => att.isUploading);
+    if (hasUploadingAttachments) {
+      toast.warning("Please wait", {
+        description: "Files are still uploading. Please wait for upload to complete.",
+      });
+      return;
+    }
+
+    // Check if using non-multimodal model with images (only for validation, not blocking)
     const hasImages = attachments.some(att => att.type === "image");
     if (hasImages && !modelIsMultimodal) {
       toast.warning("Model Doesn't Support Images", {
@@ -517,9 +552,18 @@ export const MessageInput = memo(function MessageInput({ onSendMessage, disabled
       return;
     }
 
+    // Immediately clear UI state for faster UX
+    const currentMessage = message;
+    const currentAttachments = attachments.length > 0 ? [...attachments] : undefined;
+    
+    setMessage("");
+    setAttachments([]);
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
+
+    // Send message without blocking UI
     onSendMessage(
-      message, 
-      attachments.length > 0 ? attachments : undefined,
+      currentMessage, 
+      currentAttachments,
       { 
         provider: selectedProvider, 
         model: selectedModel,
@@ -527,15 +571,13 @@ export const MessageInput = memo(function MessageInput({ onSendMessage, disabled
       },
       modelSupportsTools ? enabledTools : [] // Only send tools if model supports them
     );
-    setMessage("");
-    setAttachments([]);
-    if (textareaRef.current) textareaRef.current.style.height = 'auto';
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(e as any);
+      // Use setTimeout to ensure DOM updates happen immediately
+      setTimeout(() => handleSubmit(e as any), 0);
     }
   };
   
@@ -592,8 +634,10 @@ export const MessageInput = memo(function MessageInput({ onSendMessage, disabled
         showThinking: preferences.showThinking,
         systemPrompt: preferences.systemPrompt,
         useCustomSystemPrompt: preferences.useCustomSystemPrompt,
+        imageModel: preferences.imageModel,
         theme: preferences.theme,
         colorTheme: preferences.colorTheme,
+        modelReasoningEfforts: preferences.modelReasoningEfforts,
       });
     }
   };

@@ -259,7 +259,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
   const [mcpForm, setMcpForm] = useState({
     name: "",
     description: "",
-    transportType: "sse" as "stdio" | "sse" | "http",
+    transportType: "sse" as "sse" | "http",
     command: "",
     args: "",
     url: "",
@@ -361,39 +361,69 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
       <div className="relative z-10 min-h-screen">
         {/* Header */}
         <header className="border-b border-border/40 backdrop-blur-sm bg-background/80 sticky top-0 z-20">
-          <div className="container mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="container mx-auto px-2 sm:px-4 lg:px-6 h-12 sm:h-16 lg:h-20 flex items-center justify-between">
+            <div className="flex items-center gap-1 sm:gap-2 lg:gap-4 min-w-0 flex-1">
               <Button 
                 variant="ghost" 
                 size="icon"
                 onClick={onBack}
-                className="rounded-xl h-12 w-12 hover:bg-primary/10"
+                className="rounded-lg h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 hover:bg-primary/10 flex-shrink-0"
               >
-                <ArrowLeft size={22} />
+                <ArrowLeft size={16} className="sm:w-[18px] sm:h-[18px] lg:w-[22px] lg:h-[22px]" />
               </Button>
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-primary/10 rounded-xl">
-                  <Settings className="h-6 w-6 text-primary" />
+              <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-3 min-w-0">
+                <div className="p-1 sm:p-1.5 lg:p-2 bg-primary/10 rounded-md sm:rounded-lg lg:rounded-xl flex-shrink-0">
+                  <Settings className="h-3 w-3 sm:h-4 sm:w-4 lg:h-6 lg:w-6 text-primary" />
                 </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-                  <p className="text-sm text-muted-foreground">Customize your ErzenAI experience</p>
+                <div className="min-w-0">
+                  <h1 className="text-base sm:text-lg lg:text-2xl font-bold text-foreground truncate">Settings</h1>
+                  <p className="text-xs sm:text-sm text-muted-foreground hidden lg:block">Customize your ErzenAI experience</p>
                 </div>
               </div>
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 sm:gap-2 lg:gap-3 flex-shrink-0">
               <SignOutButton />
             </div>
           </div>
         </header>
 
         {/* Main Content */}
-        <div className="container mx-auto px-4 sm:px-6 py-8">
-          <div className="flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto">
+        <div className="container mx-auto px-2 sm:px-3 lg:px-6 py-2 sm:py-4 lg:py-8">
+          <div className="flex flex-col xl:flex-row gap-3 sm:gap-4 lg:gap-8 max-w-7xl mx-auto">
             {/* Navigation Sidebar */}
-            <div className="lg:w-80 flex-shrink-0">
-              <div className="sticky top-28">
+            <div className="xl:w-80 flex-shrink-0">
+              {/* Mobile Navigation - Horizontal Scroll */}
+              <div className="xl:hidden mb-3 sm:mb-4 lg:mb-6">
+                <div className="flex gap-1 sm:gap-2 overflow-x-auto pb-1 sm:pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {[
+                    { id: "ai", icon: Brain, label: "AI", desc: "Models" },
+                    { id: "appearance", icon: Palette, label: "Theme", desc: "Colors" },
+                    { id: "apikeys", icon: Key, label: "Keys", desc: "API" },
+                    { id: "usage", icon: Zap, label: "Usage", desc: "Billing" },
+                    { id: "account", icon: UserCog, label: "Account", desc: "Profile" },
+                    { id: "data", icon: Brain, label: "Memory", desc: "Data" },
+                    { id: "mcp", icon: Wrench, label: "MCP", desc: "Tools" },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveSection(item.id)}
+                      className={cn(
+                        "flex-shrink-0 flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-md text-xs font-medium transition-all",
+                        activeSection === item.id
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      )}
+                    >
+                      <item.icon size={14} />
+                      <span className="whitespace-nowrap text-xs">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Desktop Navigation - Sidebar */}
+              <div className="hidden xl:block sticky top-24">
                 <Card className="border-2 border-primary/20 shadow-xl bg-gradient-to-br from-card/90 via-card to-muted/10 backdrop-blur-sm">
                   <CardHeader className="pb-4">
                     <CardTitle className="text-lg">Navigation</CardTitle>
@@ -541,33 +571,33 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
 
             {/* Content Area */}
             <div className="flex-1 min-w-0">
-              <div className="space-y-8">
+              <div className="space-y-3 sm:space-y-4 lg:space-y-8">
                 {/* AI & Behavior Section */}
                 {activeSection === "ai" && (
                   <>
                     {/* Current Configuration Status */}
-                    <div className="bg-gradient-to-r from-primary/5 via-primary/8 to-accent/5 border border-primary/20 rounded-xl p-6 shadow-lg">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse shadow-sm"></div>
-                          <span className="font-semibold text-lg">Current Setup</span>
+                    <div className="bg-gradient-to-r from-primary/5 via-primary/8 to-accent/5 border border-primary/20 rounded-lg p-3 sm:p-4 lg:p-6 shadow-lg">
+                      <div className="flex flex-col gap-2 sm:gap-3">
+                        <div className="flex items-center gap-1 sm:gap-2">
+                          <div className="w-2 h-2 sm:w-3 sm:h-3 bg-green-500 rounded-full animate-pulse shadow-sm"></div>
+                          <span className="font-semibold text-sm sm:text-base">Current Setup</span>
                         </div>
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 text-sm">
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground">AI:</span>
-                                                         <Badge variant="outline" className="font-medium">
-                               {MODEL_PROVIDER_CONFIGS[settings.aiProvider]?.icon} {MODEL_PROVIDER_CONFIGS[settings.aiProvider]?.name}
-                             </Badge>
+                        <div className="flex flex-col gap-1 sm:gap-2 text-xs sm:text-sm">
+                          <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+                            <span className="text-muted-foreground shrink-0">AI:</span>
+                            <Badge variant="outline" className="font-medium text-xs">
+                              {MODEL_PROVIDER_CONFIGS[settings.aiProvider]?.icon} {MODEL_PROVIDER_CONFIGS[settings.aiProvider]?.name}
+                            </Badge>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground">Model:</span>
-                            <Badge variant="outline" className="font-medium">
+                          <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+                            <span className="text-muted-foreground shrink-0">Model:</span>
+                            <Badge variant="outline" className="font-medium text-xs">
                               {getModelDisplayName(settings.model)}
                             </Badge>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground">Images:</span>
-                            <Badge variant="outline" className="font-medium">
+                          <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+                            <span className="text-muted-foreground shrink-0">Images:</span>
+                            <Badge variant="outline" className="font-medium text-xs">
                               {getImageModelDisplayName(settings.imageModel || "flux-1-schnell")}
                             </Badge>
                           </div>
@@ -577,66 +607,66 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
 
                     {/* AI Model Selection */}
                     <Card className="border-2 border-primary/20 shadow-xl">
-                      <CardHeader className="bg-gradient-to-r from-primary/10 via-primary/5 to-accent/5 rounded-t-xl border-b">
-                        <CardTitle className="flex items-center gap-3 text-xl">
-                          <div className="p-2 bg-primary/10 rounded-lg">
-                            <Brain className="h-6 w-6 text-primary" />
+                      <CardHeader className="bg-gradient-to-r from-primary/10 via-primary/5 to-accent/5 rounded-t-lg border-b p-3 sm:p-4 lg:p-6">
+                        <CardTitle className="flex items-center gap-1 sm:gap-2 text-base sm:text-lg lg:text-xl">
+                          <div className="p-1 sm:p-1.5 lg:p-2 bg-primary/10 rounded-md sm:rounded-lg">
+                            <Brain className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-primary" />
                           </div>
-                          Text Generation Model
+                          <span className="min-w-0">Text Generation Model</span>
                         </CardTitle>
-                        <CardDescription className="text-base">
+                        <CardDescription className="text-xs sm:text-sm lg:text-base">
                           Choose your preferred AI provider and model for conversations
                         </CardDescription>
                       </CardHeader>
-                      <CardContent className="space-y-8 p-8">
+                      <CardContent className="space-y-3 sm:space-y-4 lg:space-y-8 p-3 sm:p-4 lg:p-8">
                         {/* Provider Selection */}
-                        <div className="space-y-4">
-                          <Label className="text-lg font-semibold">AI Provider</Label>
-                                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                             {Object.entries(MODEL_PROVIDER_CONFIGS)
-                               .map(([key, config]) => {
-                                 const isSelected = settings.aiProvider === key;
-                                 return (
-                                   <div
-                                     key={key}
-                                     className={`relative p-4 border-2 rounded-xl cursor-pointer transition-all hover:shadow-md ${
-                                       isSelected 
-                                         ? "border-primary bg-primary/5 shadow-sm" 
-                                         : "border-border hover:border-primary/50"
-                                     }`}
-                                     onClick={() => setSettings(prev => ({
-                                       ...prev,
-                                       aiProvider: key as UserPreferences["aiProvider"],
-                                       model: config.models[0] ?? "",
-                                     }))}
-                                   >
-                                     <div className="flex items-center gap-3">
-                                       <div className={`w-4 h-4 rounded-full border-2 ${
-                                         isSelected 
-                                           ? "border-primary bg-primary" 
-                                           : "border-muted-foreground"
-                                       }`} />
-                                       <div className="flex-1">
-                                         <div className="font-semibold flex items-center gap-2">
-                                           <span className="text-lg">{config.icon}</span>
-                                           {config.name}
-                                         </div>
-                                         <div className="text-sm text-muted-foreground">
-                                           {config.models.length} models available
-                                         </div>
-                                       </div>
-                                     </div>
-                                   </div>
-                                 );
-                               })}
-                           </div>
+                        <div className="space-y-2 sm:space-y-3">
+                          <Label className="text-sm sm:text-base lg:text-lg font-semibold">AI Provider</Label>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-3">
+                            {Object.entries(MODEL_PROVIDER_CONFIGS)
+                              .map(([key, config]) => {
+                                const isSelected = settings.aiProvider === key;
+                                return (
+                                  <div
+                                    key={key}
+                                    className={`relative p-2 sm:p-3 lg:p-4 border-2 rounded-lg cursor-pointer transition-all hover:shadow-md ${
+                                      isSelected 
+                                        ? "border-primary bg-primary/5 shadow-sm" 
+                                        : "border-border hover:border-primary/50"
+                                    }`}
+                                    onClick={() => setSettings(prev => ({
+                                      ...prev,
+                                      aiProvider: key as UserPreferences["aiProvider"],
+                                      model: config.models[0] ?? "",
+                                    }))}
+                                  >
+                                    <div className="flex items-center gap-1 sm:gap-2">
+                                      <div className={`w-2 h-2 sm:w-3 sm:h-3 lg:w-4 lg:h-4 rounded-full border-2 ${
+                                        isSelected 
+                                          ? "border-primary bg-primary" 
+                                          : "border-muted-foreground"
+                                      }`} />
+                                      <div className="flex-1 min-w-0">
+                                        <div className="font-semibold flex items-center gap-1">
+                                          <span className="text-sm sm:text-base lg:text-lg">{config.icon}</span>
+                                          <span className="truncate text-sm sm:text-base">{config.name}</span>
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">
+                                          {config.models.length} models
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                          </div>
                         </div>
 
-                                                 {/* Model Selection */}
+                                                {/* Model Selection */}
                          {MODEL_PROVIDER_CONFIGS[settings.aiProvider]?.models?.length > 0 && (
-                           <div className="space-y-4">
-                             <Label className="text-lg font-semibold">Model Selection</Label>
-                             <div className="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto">
+                                                       <div className="space-y-2 sm:space-y-3">
+                              <Label className="text-sm sm:text-base lg:text-lg font-semibold">Model Selection</Label>
+                              <div className="grid grid-cols-1 gap-1 sm:gap-2 lg:gap-3 max-h-64 sm:max-h-80 lg:max-h-96 overflow-y-auto">
                                {MODEL_PROVIDER_CONFIGS[settings.aiProvider].models.map((modelId: string) => {
                                 const modelInfo = getModelInfo(modelId);
                                 const isSelected = settings.model === modelId;
@@ -644,55 +674,55 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                                 return (
                                   <div
                                     key={modelId}
-                                    className={`relative p-4 border-2 rounded-xl cursor-pointer transition-all hover:shadow-md ${
+                                    className={`relative p-2 sm:p-3 lg:p-4 border-2 rounded-lg cursor-pointer transition-all hover:shadow-md ${
                                       isSelected 
                                         ? "border-primary bg-primary/5 shadow-sm" 
                                         : "border-border hover:border-primary/50"
                                     }`}
                                     onClick={() => setSettings(prev => ({ ...prev, model: modelId }))}
                                   >
-                                    <div className="flex items-start justify-between">
-                                      <div className="flex items-start gap-3 flex-1">
-                                        <div className={`w-4 h-4 rounded-full border-2 mt-1 ${
+                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
+                                      <div className="flex items-start gap-1 sm:gap-2 lg:gap-3 flex-1 min-w-0">
+                                        <div className={`w-2 h-2 sm:w-3 sm:h-3 lg:w-4 lg:h-4 rounded-full border-2 mt-0.5 sm:mt-1 flex-shrink-0 ${
                                           isSelected 
                                             ? "border-primary bg-primary" 
                                             : "border-muted-foreground"
                                         }`} />
-                                        <div className="flex-1">
-                                          <div className="font-semibold flex items-center gap-2">
-                                            <span>{modelInfo.displayName}</span>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="font-semibold flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-1 lg:gap-2 mb-1">
+                                            <span className="truncate text-xs sm:text-sm lg:text-base">{modelInfo.displayName}</span>
                                             {modelInfo.parameters && (
-                                              <Badge variant="secondary" className="text-xs">
+                                              <Badge variant="secondary" className="text-xs w-fit">
                                                 {modelInfo.parameters}
                                               </Badge>
                                             )}
                                           </div>
-                                          <div className="text-sm text-muted-foreground mb-2">
+                                          <div className="text-xs text-muted-foreground mb-1 sm:mb-2 line-clamp-2">
                                             {modelInfo.description}
                                           </div>
-                                          <div className="flex flex-wrap gap-1">
-                                            {modelInfo.capabilities.slice(0, 4).map(cap => (
+                                          <div className="flex flex-wrap gap-0.5 sm:gap-1">
+                                            {modelInfo.capabilities.slice(0, 2).map(cap => (
                                               <Badge key={cap} variant="outline" className="text-xs">
                                                 {cap}
                                               </Badge>
                                             ))}
-                                            {modelInfo.capabilities.length > 4 && (
+                                            {modelInfo.capabilities.length > 2 && (
                                               <Badge variant="outline" className="text-xs">
-                                                +{modelInfo.capabilities.length - 4} more
+                                                +{modelInfo.capabilities.length - 2}
                                               </Badge>
                                             )}
                                           </div>
                                         </div>
                                       </div>
-                                      <div className="text-right ml-4">
+                                      <div className="text-left sm:text-right sm:ml-2 lg:ml-4 flex-shrink-0">
                                         {modelInfo.pricing && (
-                                          <div className="text-sm">
-                                            <div className="text-muted-foreground">Input: ${formatPricing(modelInfo.pricing.input)}/1M</div>
-                                            <div className="text-muted-foreground">Output: ${formatPricing(modelInfo.pricing.output)}/1M</div>
+                                          <div className="text-xs">
+                                            <div className="text-muted-foreground">In: ${formatPricing(modelInfo.pricing.input)}/1M</div>
+                                            <div className="text-muted-foreground">Out: ${formatPricing(modelInfo.pricing.output)}/1M</div>
                                           </div>
                                         )}
-                                        <div className="text-xs text-muted-foreground mt-1">
-                                          {formatTokenCount(modelInfo.contextWindow)} context
+                                        <div className="text-xs text-muted-foreground mt-0.5 sm:mt-1">
+                                          {formatTokenCount(modelInfo.contextWindow)} ctx
                                         </div>
                                       </div>
                                     </div>
@@ -704,14 +734,14 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                         )}
 
                         {/* Temperature Control */}
-                        <div className="space-y-4">
+                        <div className="space-y-2 sm:space-y-3">
                           <div className="flex justify-between items-center">
-                            <Label className="text-lg font-semibold">Temperature</Label>
-                            <Badge variant="secondary" className="text-base px-4 py-2 font-mono">
+                            <Label className="text-sm sm:text-base lg:text-lg font-semibold">Temperature</Label>
+                            <Badge variant="secondary" className="text-xs sm:text-sm px-1.5 sm:px-2 lg:px-4 py-0.5 sm:py-1 lg:py-2 font-mono">
                               {settings.temperature}
                             </Badge>
                           </div>
-                          <div className="space-y-4">
+                          <div className="space-y-2 sm:space-y-3">
                             <Slider
                               value={[settings.temperature]}
                               onValueChange={([value]) => setSettings(prev => ({ ...prev, temperature: value }))}
@@ -720,21 +750,21 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                               step={0.1}
                               className="w-full"
                             />
-                            <div className="grid grid-cols-3 gap-4 text-sm">
+                            <div className="grid grid-cols-3 gap-1 sm:gap-2 lg:gap-4 text-xs">
                               <div className="text-center">
-                                <div className="text-muted-foreground">0.0</div>
-                                <div className="font-medium">Focused</div>
-                                <div className="text-xs text-muted-foreground">Deterministic, precise</div>
+                                <div className="text-muted-foreground font-mono text-xs">0.0</div>
+                                <div className="font-medium text-xs">Focused</div>
+                                <div className="text-xs text-muted-foreground hidden lg:block">Deterministic, precise</div>
                               </div>
                               <div className="text-center">
-                                <div className="text-muted-foreground">1.0</div>
-                                <div className="font-medium">Balanced</div>
-                                <div className="text-xs text-muted-foreground">Good mix of creativity</div>
+                                <div className="text-muted-foreground font-mono text-xs">1.0</div>
+                                <div className="font-medium text-xs">Balanced</div>
+                                <div className="text-xs text-muted-foreground hidden lg:block">Good mix of creativity</div>
                               </div>
                               <div className="text-center">
-                                <div className="text-muted-foreground">2.0</div>
-                                <div className="font-medium">Creative</div>
-                                <div className="text-xs text-muted-foreground">Highly creative, diverse</div>
+                                <div className="text-muted-foreground font-mono text-xs">2.0</div>
+                                <div className="font-medium text-xs">Creative</div>
+                                <div className="text-xs text-muted-foreground hidden lg:block">Highly creative, diverse</div>
                               </div>
                             </div>
                           </div>
@@ -744,19 +774,19 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
 
                     {/* Image Generation Model */}
                     <Card className="border-2 border-primary/20 shadow-xl">
-                      <CardHeader className="bg-gradient-to-r from-primary/10 via-primary/5 to-accent/5 rounded-t-xl border-b">
-                        <CardTitle className="flex items-center gap-3 text-xl">
-                          <div className="p-2 bg-primary/10 rounded-lg">
-                            <Camera className="h-6 w-6 text-primary" />
+                      <CardHeader className="bg-gradient-to-r from-primary/10 via-primary/5 to-accent/5 rounded-t-xl border-b p-4 sm:p-6">
+                        <CardTitle className="flex items-center gap-2 sm:gap-3 text-lg sm:text-xl">
+                          <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg">
+                            <Camera className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                           </div>
-                          Image Generation Model
+                          <span className="min-w-0">Image Generation Model</span>
                         </CardTitle>
-                        <CardDescription className="text-base">
+                        <CardDescription className="text-sm sm:text-base">
                           Choose your preferred model for AI image generation
                         </CardDescription>
                       </CardHeader>
-                      <CardContent className="space-y-6 p-8">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6 lg:p-8">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
                           {Object.values(IMAGE_MODELS).map((model) => {
                             const isSelected = settings.imageModel === model.id;
                             const priceColor = model.pricing <= 0.03 ? "text-green-600" : 
@@ -767,40 +797,40 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                             return (
                               <div 
                                 key={model.id}
-                                className={`relative p-6 border-2 rounded-xl cursor-pointer transition-all hover:shadow-md ${
+                                className={`relative p-4 sm:p-6 border-2 rounded-xl cursor-pointer transition-all hover:shadow-md ${
                                   isSelected 
                                     ? "border-primary bg-primary/5 shadow-sm" 
                                     : "border-border hover:border-primary/50"
                                 }`}
                                 onClick={() => setSettings(prev => ({ ...prev, imageModel: model.id }))}
                               >
-                                <div className="flex items-start gap-4">
-                                  <div className={`w-5 h-5 rounded-full border-2 mt-1 ${
+                                <div className="flex items-start gap-3 sm:gap-4">
+                                  <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 mt-1 flex-shrink-0 ${
                                     isSelected 
                                       ? "border-primary bg-primary" 
                                       : "border-muted-foreground"
                                   }`} />
-                                  <div className="flex-1">
-                                    <div className="font-semibold text-lg mb-2">{model.displayName}</div>
-                                    <div className="text-sm text-muted-foreground mb-3">{model.description}</div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-semibold text-base sm:text-lg mb-2">{model.displayName}</div>
+                                    <div className="text-xs sm:text-sm text-muted-foreground mb-3 line-clamp-2">{model.description}</div>
                                     
-                                    <div className="flex items-center gap-4 mb-3">
+                                    <div className="flex items-center gap-3 sm:gap-4 mb-3">
                                       <div className="flex items-center gap-1">
                                         <span>{speedIcon}</span>
-                                        <span className="text-sm capitalize">{model.speed}</span>
+                                        <span className="text-xs sm:text-sm capitalize">{model.speed}</span>
                                       </div>
                                       <div className="flex items-center gap-1">
                                         <span>{qualityIcon}</span>
-                                        <span className="text-sm capitalize">{model.quality}</span>
+                                        <span className="text-xs sm:text-sm capitalize">{model.quality}</span>
                                       </div>
                                     </div>
                                     
-                                    <div className="flex items-center justify-between">
-                                      <Badge variant="outline" className="text-xs">
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                      <Badge variant="outline" className="text-xs w-fit">
                                         {model.provider === "cloudflare" ? "☁️ Cloudflare AI" : model.provider}
                                       </Badge>
-                                      <div className="text-right">
-                                        <div className={`text-lg font-bold ${priceColor}`}>
+                                      <div className="text-left sm:text-right">
+                                        <div className={`text-base sm:text-lg font-bold ${priceColor}`}>
                                           ${model.pricing.toFixed(2)}
                                         </div>
                                         <div className="text-xs text-muted-foreground">per image</div>
@@ -881,7 +911,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                     </Card>
 
                     {/* Save Button */}
-                    <div className="flex justify-end">
+                    <div className="flex justify-stretch sm:justify-end">
                       <Button 
                         onClick={() => {
                           void updatePreferences({
@@ -899,8 +929,8 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                             imageModel: settings.imageModel,
                           });
                         }}
-                        size="lg"
-                        className="px-8"
+                        size="sm"
+                        className="w-full sm:w-auto px-4 sm:px-6 lg:px-8 h-8 sm:h-10 lg:h-11 text-xs sm:text-sm"
                       >
                         Save AI Settings
                       </Button>
@@ -1114,7 +1144,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                     </Card>
 
                     {/* Save Button */}
-                    <div className="flex justify-end">
+                    <div className="flex justify-stretch sm:justify-end">
                       <Button 
                         onClick={() => {
                           void updatePreferences({
@@ -1135,7 +1165,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                           });
                         }}
                         size="lg"
-                        className="px-8"
+                        className="w-full sm:w-auto px-6 sm:px-8"
                       >
                         Save Appearance Settings
                       </Button>
@@ -1900,12 +1930,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                                         </p>
                                       )}
                                       <div className="text-sm text-muted-foreground">
-                                        {server.transportType === "stdio" && (
-                                          <div>Command: <code className="bg-muted px-1 rounded">{server.command} {server.args?.join(" ")}</code></div>
-                                        )}
-                                        {(server.transportType === "sse" || server.transportType === "http") && (
-                                          <div>URL: <code className="bg-muted px-1 rounded">{server.url}</code></div>
-                                        )}
+                                        <div>URL: <code className="bg-muted px-1 rounded">{server.url}</code></div>
                                         {server.availableTools && server.availableTools.length > 0 && (
                                           <div className="mt-2">
                                             Tools: {server.availableTools.join(", ")}
@@ -2084,14 +2109,14 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
 
         {/* Add/Edit MCP Server Dialog */}
         <Dialog open={showAddMcpDialog} onOpenChange={setShowAddMcpDialog}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingMcpServer ? "Edit MCP Server" : "Add MCP Server"}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-6 py-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="mcpName">Server Name</Label>
                   <Input
@@ -2105,7 +2130,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                   <Label htmlFor="mcpTransport">Transport Type</Label>
                   <Select
                     value={mcpForm.transportType}
-                    onValueChange={(value: "stdio" | "sse" | "http") => 
+                    onValueChange={(value: "sse" | "http") => 
                       setMcpForm(prev => ({ ...prev, transportType: value }))
                     }
                   >
@@ -2114,8 +2139,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="sse">SSE (Server-Sent Events)</SelectItem>
-                      <SelectItem value="stdio">Stdio (Local Command)</SelectItem>
-                      <SelectItem value="http">HTTP (Coming Soon)</SelectItem>
+                      <SelectItem value="http">HTTP (REST API)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -2132,67 +2156,50 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 />
               </div>
 
-              {mcpForm.transportType === "stdio" && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="mcpCommand">Command</Label>
-                    <Input
-                      id="mcpCommand"
-                      value={mcpForm.command}
-                      onChange={(e) => setMcpForm(prev => ({ ...prev, command: e.target.value }))}
-                      placeholder="node"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="mcpArgs">Arguments (space-separated)</Label>
-                    <Input
-                      id="mcpArgs"
-                      value={mcpForm.args}
-                      onChange={(e) => setMcpForm(prev => ({ ...prev, args: e.target.value }))}
-                      placeholder="server.js --port 3000"
-                    />
-                  </div>
-                </>
-              )}
-
-              {(mcpForm.transportType === "sse" || mcpForm.transportType === "http") && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="mcpUrl">Server URL</Label>
-                    <Input
-                      id="mcpUrl"
-                      value={mcpForm.url}
-                      onChange={(e) => setMcpForm(prev => ({ ...prev, url: e.target.value }))}
-                      placeholder="https://your-server.com/mcp"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="mcpHeaders">Headers (JSON, Optional)</Label>
-                    <Textarea
-                      id="mcpHeaders"
-                      value={mcpForm.headers}
-                      onChange={(e) => setMcpForm(prev => ({ ...prev, headers: e.target.value }))}
-                      placeholder='{"Authorization": "Bearer your-token"}'
-                      rows={3}
-                    />
-                  </div>
-                </>
-              )}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="mcpUrl">Server URL</Label>
+                  <Input
+                    id="mcpUrl"
+                    value={mcpForm.url}
+                    onChange={(e) => setMcpForm(prev => ({ ...prev, url: e.target.value }))}
+                    placeholder={mcpForm.transportType === "sse" ? "https://your-server.com/sse" : "https://your-server.com/mcp"}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="mcpHeaders">Headers (JSON, Optional)</Label>
+                  <Textarea
+                    id="mcpHeaders"
+                    value={mcpForm.headers}
+                    onChange={(e) => setMcpForm(prev => ({ ...prev, headers: e.target.value }))}
+                    placeholder='{"Authorization": "Bearer your-token", "Content-Type": "application/json"}'
+                    rows={3}
+                  />
+                </div>
+              </div>
 
               <div className="bg-muted/30 rounded-xl p-4 text-sm">
-                <h4 className="font-medium mb-2">💡 Popular MCP Servers</h4>
-                <div className="space-y-1 text-muted-foreground">
-                  <div><strong>Filesystem:</strong> file:// protocol access for local files</div>
+                <h4 className="font-medium mb-2 flex items-center gap-2">
+                  💡 Popular MCP Servers
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-muted-foreground">
                   <div><strong>GitHub:</strong> Repository management and code search</div>
                   <div><strong>PostgreSQL:</strong> Database queries and schema management</div>
                   <div><strong>Brave Search:</strong> Web search with privacy focus</div>
+                  <div><strong>Filesystem:</strong> File operations and management</div>
+                  <div><strong>Slack:</strong> Team communication and notifications</div>
+                  <div><strong>Notion:</strong> Document and knowledge base access</div>
+                </div>
+                <div className="mt-3 p-3 bg-primary/10 rounded-lg">
+                  <p className="text-xs"><strong>Note:</strong> Both SSE and HTTP protocols are fully supported. Choose SSE for real-time streaming or HTTP for traditional request-response patterns.</p>
                 </div>
               </div>
             </div>
-            <div className="flex justify-end gap-3">
+            <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t">
               <Button
                 variant="outline"
                 onClick={() => setShowAddMcpDialog(false)}
+                className="sm:order-1"
               >
                 Cancel
               </Button>
@@ -2206,20 +2213,16 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                           name: mcpForm.name,
                           description: mcpForm.description || undefined,
                           transportType: mcpForm.transportType,
-                          command: mcpForm.transportType === "stdio" ? mcpForm.command : undefined,
-                          args: mcpForm.transportType === "stdio" && mcpForm.args ? mcpForm.args.split(" ") : undefined,
-                          url: (mcpForm.transportType === "sse" || mcpForm.transportType === "http") ? mcpForm.url : undefined,
-                          headers: (mcpForm.transportType === "sse" || mcpForm.transportType === "http") && mcpForm.headers ? JSON.parse(mcpForm.headers) : undefined,
+                          url: mcpForm.url,
+                          headers: mcpForm.headers ? JSON.parse(mcpForm.headers) : undefined,
                         });
                       } else {
                         await addMcpServer({
                           name: mcpForm.name,
                           description: mcpForm.description || undefined,
                           transportType: mcpForm.transportType,
-                          command: mcpForm.transportType === "stdio" ? mcpForm.command : undefined,
-                          args: mcpForm.transportType === "stdio" && mcpForm.args ? mcpForm.args.split(" ") : undefined,
-                          url: (mcpForm.transportType === "sse" || mcpForm.transportType === "http") ? mcpForm.url : undefined,
-                          headers: (mcpForm.transportType === "sse" || mcpForm.transportType === "http") && mcpForm.headers ? JSON.parse(mcpForm.headers) : undefined,
+                          url: mcpForm.url,
+                          headers: mcpForm.headers ? JSON.parse(mcpForm.headers) : undefined,
                         });
                       }
                       setShowAddMcpDialog(false);
@@ -2238,10 +2241,8 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                     }
                   })();
                 }}
-                disabled={!mcpForm.name.trim() || 
-                  (mcpForm.transportType === "stdio" && !mcpForm.command.trim()) ||
-                  ((mcpForm.transportType === "sse" || mcpForm.transportType === "http") && !mcpForm.url.trim())
-                }
+                disabled={!mcpForm.name.trim() || !mcpForm.url.trim()}
+                className="sm:order-2"
               >
                 {editingMcpServer ? "Update" : "Add"} Server
               </Button>
