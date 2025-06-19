@@ -51,19 +51,25 @@ export async function generateNonStreamingResponse(
       }
     }, timeoutMs);
 
-    // Get user's API key for the provider
+    // Get API Key for the selected provider
     const apiKeyRecord = await ctx.runQuery(api.apiKeys.getByProvider, {
       provider,
     });
 
-    const { apiKey, usingUserKey: isUsingUserKey } = getProviderApiKey(
+    const { apiKey, usingUserKey: userKeyFlag } = getProviderApiKey(
       provider,
-      apiKeyRecord?.apiKey
+      apiKeyRecord
     );
-    usingUserKey = isUsingUserKey;
+    usingUserKey = userKeyFlag;
+
+    if (!apiKey) {
+      throw new Error(
+        `No API key available for ${provider}. Please configure your API key in settings or use a provider with built-in support.`
+      );
+    }
 
     // Only check usage limits if using built-in keys
-    if (!usingUserKey) {
+    if (!usingUserKey && provider !== "openrouter") {
       // Estimate token usage for credit check (rough estimate)
       const estimatedInputTokens = args.messages.reduce((total, msg) => {
         return total + Math.ceil(msg.content.length / 4); // Rough estimate: 4 chars per token
@@ -89,24 +95,26 @@ export async function generateNonStreamingResponse(
       }
     }
 
+    // Get MCP servers for the user
+    const { getAuthUserId } = await import("@convex-dev/auth/server");
+    const userId = await getAuthUserId(ctx);
+    let mcpServers: any[] = [];
+    if (userId) {
+      mcpServers = await ctx.runQuery(api.mcpServers.listEnabled, {});
+    }
+
     // Create tools based on enabled tools and model capabilities
-    const availableTools = createAvailableTools(
+    const availableTools = await createAvailableTools(
       ctx,
       enabledTools,
       model,
-      usingUserKey
+      usingUserKey,
+      mcpServers
     );
 
     // Check if model supports tools
     const modelInfo = getModelInfo(model);
     const hasTools = Object.keys(availableTools).length > 0;
-
-    // Validate API key is available
-    if (!apiKey) {
-      throw new Error(
-        `No API key available for ${provider}. Please configure your API key in settings or use a provider with built-in support.`
-      );
-    }
 
     // Get user preferences and instructions to build system prompt
     const userPreferences = await ctx.runQuery(api.preferences.get);

@@ -1880,9 +1880,6 @@ export function createEnhancedModel(
             }),
           });
 
-          console.log(
-            `Applied reasoning middleware with tag "${tagName}" to ${provider}/${model}`
-          );
           return enhancedModel;
         } catch (tagError) {
           // Continue to next tag if this one fails
@@ -1907,11 +1904,7 @@ export function createEnhancedModel(
       return aiModel;
     }
   }
-
-  console.log(
-    `Skipping reasoning middleware for ${provider}/${model} (not a text generation model)`
-  );
-  return aiModel; // Return original model if no middleware needed
+  return aiModel;
 }
 
 // Image Generation Models

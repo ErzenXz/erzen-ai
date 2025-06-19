@@ -1,10 +1,11 @@
 "use node";
 
 import { generateText } from "ai";
-import { groq } from "@ai-sdk/groq";
 import { api } from "../../_generated/api";
 import { getProviderApiKey } from "../providers";
 import { SUPPORTED_PROVIDERS } from "../providers/constants";
+import { createAIModel } from "../providers";
+import { PROVIDER_BASE_URLS } from "../providers/constants";
 
 export async function generateTitle(
   ctx: any,
@@ -18,10 +19,7 @@ export async function generateTitle(
     provider,
   });
 
-  const { apiKey, usingUserKey } = getProviderApiKey(
-    provider,
-    apiKeyRecord?.apiKey
-  );
+  const { apiKey, usingUserKey } = getProviderApiKey(provider, apiKeyRecord);
 
   if (!apiKey) {
     throw new Error(
@@ -29,7 +27,13 @@ export async function generateTitle(
     );
   }
 
-  const titleAiModel = groq(model as any, { apiKey } as any);
+  const { model: titleAiModel } = createAIModel({
+    provider,
+    model,
+    apiKey,
+    baseUrl: PROVIDER_BASE_URLS[provider],
+    skipMiddleware: true,
+  });
 
   const result = await generateText({
     model: titleAiModel,

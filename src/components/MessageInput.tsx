@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, forwardRef, memo } from "react";
+import { useState, useRef, useEffect, forwardRef, memo, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -26,7 +26,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 // A simple hook to check for desktop screen sizes
@@ -44,8 +43,8 @@ const useIsDesktop = () => {
 
 type AiProvider = "openai" | "anthropic" | "google" | "openrouter" | "groq" | "deepseek" | "grok" | "cohere" | "mistral";
 
-// Define the valid tool types to match backend
-type ValidTool = "web_search" | "deep_search" | "weather" | "datetime" | "calculator" | "thinking" | "memory" | "url_fetch" | "code_analysis" | "document_qa" | "task_planner" | "data_analysis" | "image_generation";
+// Define the valid tool types to match backend (including dynamic MCP tools)
+type ValidTool = string;
 
 export interface AttachmentData {
   type: "image" | "file" | "audio" | "video";
@@ -80,6 +79,11 @@ const ChatTextarea = forwardRef<HTMLTextAreaElement, any>((props, ref) => {
 
 // Helper function to get tool icons
 const getToolIcon = (toolId: string) => {
+  // Handle MCP tools
+  if (toolId.startsWith('mcp_')) {
+    return Bot; // Use Bot icon for MCP tools
+  }
+  
   switch (toolId) {
     case 'web_search':
       return Search;
@@ -179,7 +183,8 @@ export const MessageInput = memo(function MessageInput({ onSendMessage, disabled
   const preferences = useQuery(api.preferences.get);
   const updatePreferences = useMutation(api.preferences.update);
   const updateModelReasoningEffort = useMutation(api.preferences.updateModelReasoningEffort);
-  const userApiKeys = useQuery(api.apiKeys.list) || [];
+  const userApiKeysQuery = useQuery(api.apiKeys.list);
+  const userApiKeys = useMemo(() => userApiKeysQuery || [], [userApiKeysQuery]);
   const toggleFavoriteModel = useMutation(api.preferences.toggleFavoriteModel);
   const getAvailableProviders = useAction(api.ai.getAvailableProviders);
   const getAvailableTools = useAction(api.ai.getAvailableTools);
@@ -198,7 +203,7 @@ export const MessageInput = memo(function MessageInput({ onSendMessage, disabled
 
   useEffect(() => {
     if (preferences) {
-      setEnabledTools((preferences.enabledTools as ValidTool[]) ?? []);
+      setEnabledTools(preferences.enabledTools ?? []);
       setSelectedProvider(preferences.aiProvider ?? "google");
       setSelectedModel(preferences.model ?? "gemini-2.5-flash-preview-05-20");
     }
@@ -664,7 +669,6 @@ export const MessageInput = memo(function MessageInput({ onSendMessage, disabled
   };
 
   const getProviderIcon = (provider: string) => {
-    const providerConfig = PROVIDER_CONFIGS[provider as AiProvider];
     switch (provider) {
       case "openai": return AiOutlineOpenAI;
       case "google": return SiGooglegemini;
@@ -679,7 +683,6 @@ export const MessageInput = memo(function MessageInput({ onSendMessage, disabled
     }
   };
 
-  const currentProvider = PROVIDER_CONFIGS[selectedProvider];
   const IconComponent = getProviderIcon(selectedProvider);
 
   return (

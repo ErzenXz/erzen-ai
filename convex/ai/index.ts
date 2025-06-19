@@ -1,3 +1,5 @@
+"use node";
+
 // Export all AI functionality
 export * from "./core";
 export * from "./providers";

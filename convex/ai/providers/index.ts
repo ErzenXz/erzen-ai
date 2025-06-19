@@ -38,9 +38,8 @@ export function createAIModel(args: {
   temperature?: number;
   maxTokens?: number;
   thinkingBudget?: string | number;
+  skipMiddleware?: boolean;
 }) {
-  console.log(`[AI Provider] Creating model ${args.provider}/${args.model}`);
-
   let baseModel;
   const providerOptions: any = {};
 
@@ -116,10 +115,6 @@ export function createAIModel(args: {
               thinkingBudget,
             },
           };
-
-          console.log(
-            `[Google Provider] Enabling thinking for ${args.model} with budget: ${thinkingBudget}`
-          );
         }
         break;
       }
@@ -191,7 +186,7 @@ export function createAIModel(args: {
     );
 
     let finalModel;
-    if (needsMiddleware) {
+    if (needsMiddleware && !args.skipMiddleware) {
       // Apply reasoning middleware for providers that need it
       finalModel = wrapLanguageModel({
         model: baseModel,
@@ -199,14 +194,8 @@ export function createAIModel(args: {
           tagName: getReasoningTagName(args.provider, args.model),
         }),
       });
-      console.log(
-        `[AI Provider] Applied reasoning middleware to ${args.provider}/${args.model}`
-      );
     } else {
       finalModel = baseModel;
-      console.log(
-        `[AI Provider] Using native thinking support for ${args.provider}/${args.model}`
-      );
     }
 
     return {
@@ -244,14 +233,18 @@ function getReasoningTagName(provider: string, model: string): string {
 // Helper function to get API key for a provider based on user preferences
 export function getProviderApiKey(
   provider: SupportedProvider,
-  userApiKey?: string
+  apiKeyRecord?: { apiKey: string } | null
 ): { apiKey: string; usingUserKey: boolean } {
   let apiKey = "";
   let usingUserKey = false;
 
   // PRIORITIZE USER'S API KEY FIRST
-  if (userApiKey && userApiKey.trim().length > 0) {
-    apiKey = userApiKey.trim();
+  if (
+    apiKeyRecord &&
+    typeof apiKeyRecord.apiKey === "string" &&
+    apiKeyRecord.apiKey.trim().length > 0
+  ) {
+    apiKey = apiKeyRecord.apiKey.trim();
     usingUserKey = true;
   } else {
     // Use built-in keys only as fallback
@@ -284,12 +277,6 @@ export function getProviderApiKey(
   }
 
   const result = { apiKey, usingUserKey };
-  console.log(`[getProviderApiKey Debug] Final result for ${provider}:`, {
-    usingUserKey: result.usingUserKey,
-    hasApiKey: !!result.apiKey,
-    keyLength: result.apiKey?.length || 0,
-    keyPreview: result.apiKey || "none",
-  });
 
   return result;
 }

@@ -191,6 +191,32 @@ const applicationTables = {
     memory: v.string(),
     createdAt: v.number(),
   }).index("by_user", ["userId"]),
+
+  mcpServers: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    transportType: v.union(
+      v.literal("stdio"),
+      v.literal("sse"),
+      v.literal("http")
+    ),
+    // For stdio transport
+    command: v.optional(v.string()),
+    args: v.optional(v.array(v.string())),
+    // For SSE/HTTP transport
+    url: v.optional(v.string()),
+    headers: v.optional(v.record(v.string(), v.string())),
+    // Common fields
+    isEnabled: v.boolean(),
+    createdAt: v.number(),
+    lastUsed: v.optional(v.number()),
+    // Cached tool info
+    availableTools: v.optional(v.array(v.string())),
+    toolsLastUpdated: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_enabled", ["userId", "isEnabled"]),
 };
 
 export default defineSchema({

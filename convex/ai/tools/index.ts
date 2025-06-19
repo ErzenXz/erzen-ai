@@ -1,3 +1,5 @@
+"use node";
+
 import { getModelInfo } from "../../../src/lib/models";
 import { createWebSearchTool, createDeepSearchTool } from "./webSearch";
 import { createWeatherTool } from "./weather";
@@ -8,6 +10,7 @@ import { createMemoryTool } from "./memory";
 import { createUrlFetchTool } from "./urlFetch";
 import { createCodeAnalysisTool } from "./codeAnalysis";
 import { createImageGenerationTool } from "./imageGeneration";
+import { createMCPTools, getMCPToolInfo } from "./mcp";
 
 // Export all tool creators
 export {
@@ -21,15 +24,18 @@ export {
   createUrlFetchTool,
   createCodeAnalysisTool,
   createImageGenerationTool,
+  createMCPTools,
+  getMCPToolInfo,
 };
 
 // Helper function to create tools based on enabled tools and model capabilities
-export function createAvailableTools(
+export async function createAvailableTools(
   ctx: any,
   enabledTools: string[],
   model: string,
-  usingUserKey: boolean
-): Record<string, any> {
+  usingUserKey: boolean,
+  mcpServers?: any[]
+): Promise<Record<string, any>> {
   // Check if the selected model supports tools
   const modelInfo = getModelInfo(model);
   const modelSupportsTools = modelInfo.supportsTools;
@@ -85,6 +91,16 @@ export function createAvailableTools(
 
   if (enabledTools.includes("image_generation")) {
     availableTools.image_generation = createImageGenerationTool(ctx);
+  }
+
+  // Add MCP tools if servers are provided
+  if (mcpServers && mcpServers.length > 0) {
+    try {
+      const mcpTools = await createMCPTools(mcpServers);
+      Object.assign(availableTools, mcpTools);
+    } catch (error) {
+      console.error("Failed to create MCP tools:", error);
+    }
   }
 
   return availableTools;
@@ -168,6 +184,18 @@ export const TOOL_CONFIGS = {
 export type ToolId = keyof typeof TOOL_CONFIGS;
 
 // Function to get available tools configuration
-export function getAvailableToolsConfig(): typeof TOOL_CONFIGS {
-  return TOOL_CONFIGS;
+export function getAvailableToolsConfig(
+  mcpServers?: any[]
+): typeof TOOL_CONFIGS & Record<string, any> {
+  const baseConfig = { ...TOOL_CONFIGS };
+
+  // Add MCP server tool configs
+  if (mcpServers && mcpServers.length > 0) {
+    const mcpConfigs = getMCPToolInfo(mcpServers);
+    mcpConfigs.forEach((config) => {
+      (baseConfig as any)[config.id] = config;
+    });
+  }
+
+  return baseConfig;
 }

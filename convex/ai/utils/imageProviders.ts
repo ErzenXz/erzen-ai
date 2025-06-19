@@ -55,6 +55,10 @@ export const cloudflareImageProvider: ImageProvider = {
     const apiUrl = `https://api.cloudflare.com/client/v4/accounts/${cloudflareAccountId}/ai/run/${modelInfo.cloudflareModel}`;
 
     try {
+      console.log(
+        `Generating image with ${modelInfo.displayName} for prompt: "${enhancedPrompt}"`
+      );
+
       const response = await fetch(apiUrl, {
         method: "POST",
         headers: {
@@ -67,6 +71,10 @@ export const cloudflareImageProvider: ImageProvider = {
         }),
       });
 
+      console.log(
+        `Cloudflare response status: ${response.status}, content-type: ${response.headers.get("content-type")}`
+      );
+
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(
@@ -75,9 +83,11 @@ export const cloudflareImageProvider: ImageProvider = {
       }
 
       const contentType = response.headers.get("content-type");
+      console.log(`Response content-type: ${contentType}`);
 
       if (contentType?.includes("image/")) {
         // Direct image response (binary data)
+        console.log("Processing direct image response");
         const imageBuffer = await response.arrayBuffer();
 
         if (!imageBuffer || imageBuffer.byteLength === 0) {
@@ -86,6 +96,7 @@ export const cloudflareImageProvider: ImageProvider = {
           );
         }
 
+        console.log(`Image buffer size: ${imageBuffer.byteLength} bytes`);
         const imageBlob = new Blob([imageBuffer], { type: "image/png" });
         return await uploadImageToStorage(
           ctx,
@@ -97,12 +108,87 @@ export const cloudflareImageProvider: ImageProvider = {
         );
       } else if (contentType?.includes("application/json")) {
         // JSON response - check Cloudflare's response format
-        const data = await response.json();
+        console.log("Processing JSON response");
+        let data;
+        const responseText = await response.text();
+
+        try {
+          data = JSON.parse(responseText);
+          console.log(
+            "Parsed JSON response structure:",
+            JSON.stringify(data, null, 2)
+          );
+        } catch (parseError) {
+          // Sometimes Cloudflare returns binary data with wrong content-type
+          console.log("Failed to parse as JSON, treating as binary data");
+          const imageBuffer = Buffer.from(responseText, "binary");
+          const imageBlob = new Blob([imageBuffer], { type: "image/png" });
+          return await uploadImageToStorage(
+            ctx,
+            imageBlob,
+            options.prompt,
+            options.style,
+            options.aspectRatio,
+            modelInfo.displayName
+          );
+        }
 
         if (data.success && data.result) {
-          // Cloudflare returns base64 image data in result field
-          const base64Data = data.result;
-          const imageBuffer = Buffer.from(base64Data, "base64");
+          let imageBuffer: ArrayBuffer;
+
+          // Handle different Cloudflare response formats
+          if (typeof data.result === "string") {
+            // Base64 string response
+            imageBuffer = Buffer.from(data.result, "base64");
+          } else if (
+            data.result.image &&
+            typeof data.result.image === "string"
+          ) {
+            // Image in nested object as base64 string
+            imageBuffer = Buffer.from(data.result.image, "base64");
+          } else if (Array.isArray(data.result) && data.result.length > 0) {
+            // Array response - take first result
+            const firstResult = data.result[0];
+            if (typeof firstResult === "string") {
+              imageBuffer = Buffer.from(firstResult, "base64");
+            } else if (
+              firstResult.image &&
+              typeof firstResult.image === "string"
+            ) {
+              imageBuffer = Buffer.from(firstResult.image, "base64");
+            } else if (
+              firstResult instanceof ArrayBuffer ||
+              Buffer.isBuffer(firstResult)
+            ) {
+              imageBuffer = firstResult;
+            } else {
+              throw new Error(
+                `Unexpected result format: ${JSON.stringify(firstResult).substring(0, 200)}`
+              );
+            }
+          } else if (
+            data.result instanceof ArrayBuffer ||
+            Buffer.isBuffer(data.result)
+          ) {
+            // Direct buffer response
+            imageBuffer = data.result;
+          } else {
+            // Log the actual structure for debugging
+            console.error(
+              "Unexpected Cloudflare response structure:",
+              JSON.stringify(data, null, 2)
+            );
+            throw new Error(
+              `Unexpected result format from ${modelInfo.displayName}. Expected base64 string or buffer, got: ${typeof data.result}`
+            );
+          }
+
+          if (!imageBuffer || imageBuffer.byteLength === 0) {
+            throw new Error(
+              `Received empty image data from ${modelInfo.displayName}`
+            );
+          }
+
           const imageBlob = new Blob([imageBuffer], { type: "image/png" });
 
           return await uploadImageToStorage(
@@ -119,8 +205,39 @@ export const cloudflareImageProvider: ImageProvider = {
           );
         }
       } else {
-        // Unknown content type
+        // Unknown content type - try to handle as binary data first, then text
+        console.log(
+          `Unknown content type: ${contentType}, attempting binary handling`
+        );
+
+        try {
+          const imageBuffer = await response.arrayBuffer();
+          if (imageBuffer && imageBuffer.byteLength > 0) {
+            console.log(
+              `Successfully read ${imageBuffer.byteLength} bytes as binary data`
+            );
+            const imageBlob = new Blob([imageBuffer], { type: "image/png" });
+            return await uploadImageToStorage(
+              ctx,
+              imageBlob,
+              options.prompt,
+              options.style,
+              options.aspectRatio,
+              modelInfo.displayName
+            );
+          }
+        } catch (binaryError) {
+          console.log("Binary handling failed, trying text");
+        }
+
+        // Fallback to text handling
         const responseText = await response.text();
+        console.error(`Unexpected response from ${modelInfo.displayName}:`, {
+          contentType,
+          responseLength: responseText.length,
+          responsePreview: responseText.substring(0, 200),
+        });
+
         throw new Error(
           `Unexpected content type from ${modelInfo.displayName}: ${contentType}. Response: ${responseText.substring(0, 200)}`
         );

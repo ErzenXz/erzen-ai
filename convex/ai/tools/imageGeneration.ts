@@ -1,3 +1,5 @@
+"use node";
+
 import { tool } from "ai";
 import { z } from "zod";
 import { IMAGE_PROVIDERS, ImageModelId } from "../utils/imageProviders";

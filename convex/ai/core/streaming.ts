@@ -152,16 +152,22 @@ export async function generateStreamingResponse(
       })
     );
 
-    // Get user's API key for the provider
+    // 1. Get API Key for the selected provider
     const apiKeyRecord = await ctx.runQuery(api.apiKeys.getByProvider, {
       provider,
     });
 
-    const { apiKey, usingUserKey: isUsingUserKey } = getProviderApiKey(
+    const { apiKey, usingUserKey: userKeyFlag } = getProviderApiKey(
       provider,
-      apiKeyRecord?.apiKey
+      apiKeyRecord
     );
-    usingUserKey = isUsingUserKey;
+    usingUserKey = userKeyFlag;
+
+    if (!apiKey) {
+      throw new Error(
+        `No API key available for ${provider}. Please configure your API key in settings or use a provider with built-in support.`
+      );
+    }
 
     // Only check usage limits if using built-in keys
     if (!usingUserKey) {
@@ -196,12 +202,21 @@ export async function generateStreamingResponse(
       }
     }
 
+    // Get MCP servers for the user
+    const { getAuthUserId } = await import("@convex-dev/auth/server");
+    const userId = await getAuthUserId(ctx);
+    let mcpServers: any[] = [];
+    if (userId) {
+      mcpServers = await ctx.runQuery(api.mcpServers.listEnabled, {});
+    }
+
     // Create tools based on enabled tools and model capabilities
-    const availableTools = createAvailableTools(
+    const availableTools = await createAvailableTools(
       ctx,
       enabledTools,
       model,
-      usingUserKey
+      usingUserKey,
+      mcpServers
     );
 
     // Check if model supports tools
@@ -209,13 +224,6 @@ export async function generateStreamingResponse(
 
     // Track generation start time
     const generationStartTime = Date.now();
-
-    // Validate API key is available
-    if (!apiKey) {
-      throw new Error(
-        `No API key available for ${provider}. Please configure your API key in settings or use a provider with built-in support.`
-      );
-    }
 
     // Create AI model instance with native thinking support
     const { model: streamingAiModel, providerOptions } = createAIModel({

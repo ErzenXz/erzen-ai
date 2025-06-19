@@ -5,7 +5,7 @@ import { Id } from "../../convex/_generated/dataModel";
 import { Sidebar } from "./Sidebar";
 import { ChatArea } from "./ChatArea";
 import { MessageInput } from "./MessageInput";
-import { SettingsModal } from "./SettingsModal";
+
 import { Menu, Settings, GitBranch, ChevronDown, Trash2, MessageSquare, Clock, Hash, Plus, MoreHorizontal } from 'lucide-react';
 import { SignOutButton } from "../SignOutButton";
 import { ModeToggle } from "./ModeToggle";
@@ -29,8 +29,8 @@ import { toast } from "sonner";
 // Import types from MessageInput
 import type { AttachmentData } from "./MessageInput";
 
-// Define the valid tool types to match backend
-type ValidTool = "web_search" | "deep_search" | "weather" | "datetime" | "calculator" | "thinking" | "memory" | "url_fetch" | "code_analysis" | "document_qa" | "task_planner" | "data_analysis" | "image_generation";
+// Define the valid tool types to match backend (including dynamic MCP tools)
+type ValidTool = string;
 
 interface BranchManagerProps {
   conversationId: Id<"conversations">;
@@ -63,7 +63,7 @@ function BranchManager({ conversationId, currentBranchId, onSwitchBranch, onDele
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2 max-w-48">
+        <Button variant="outline" size="sm" className="gap-1 sm:gap-2 max-w-28 sm:max-w-48">
           <GitBranch size={14} />
           <span className="truncate">
             {currentBranch?.title || currentBranchId}
@@ -165,7 +165,7 @@ export function ChatInterface() {
   const [currentBranchId, setCurrentBranchId] = useState<string>("main");
   const [sidebarOpen, setSidebarOpen] = useState(false); // Will be set correctly in useEffect
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentGenerationController, setCurrentGenerationController] = useState<AbortController | null>(null);
   const [lastMessageId, setLastMessageId] = useState<Id<"messages"> | null>(null);
@@ -701,7 +701,10 @@ export function ChatInterface() {
         description: toastDescription,
         action: {
           label: "Open Settings",
-          onClick: () => setSettingsOpen(true),
+          onClick: () => {
+            window.history.pushState({}, '', '/settings');
+            window.dispatchEvent(new PopStateEvent('popstate'));
+          },
         },
       });
       
@@ -836,7 +839,15 @@ export function ChatInterface() {
               <ModeToggle />
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" onClick={() => setSettingsOpen(true)} className="rounded-xl h-10 w-10 sm:h-12 sm:w-12">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => {
+                      window.history.pushState({}, '', '/settings');
+                      window.dispatchEvent(new PopStateEvent('popstate'));
+                    }} 
+                    className="rounded-xl h-10 w-10 sm:h-12 sm:w-12"
+                  >
                     <Settings size={22} />
                   </Button>
                 </TooltipTrigger>
@@ -872,12 +883,7 @@ export function ChatInterface() {
           </div>
         </div>
 
-        {settingsOpen && (
-          <SettingsModal 
-            onClose={() => setSettingsOpen(false)} 
-            preferences={preferences || null}
-          />
-        )}
+
       </TooltipProvider>
     </div>
   );

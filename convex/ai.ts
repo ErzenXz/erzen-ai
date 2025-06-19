@@ -1,6 +1,7 @@
 "use node";
 
 import { action } from "./_generated/server";
+import { api } from "./_generated/api";
 import { v } from "convex/values";
 import {
   generateStreamingResponse as streamingHandler,
@@ -62,25 +63,7 @@ export const generateStreamingResponse = action({
     ),
     model: v.optional(v.string()),
     temperature: v.optional(v.number()),
-    enabledTools: v.optional(
-      v.array(
-        v.union(
-          v.literal("web_search"),
-          v.literal("deep_search"),
-          v.literal("weather"),
-          v.literal("datetime"),
-          v.literal("calculator"),
-          v.literal("thinking"),
-          v.literal("memory"),
-          v.literal("url_fetch"),
-          v.literal("code_analysis"),
-          v.literal("document_qa"),
-          v.literal("task_planner"),
-          v.literal("data_analysis"),
-          v.literal("image_generation")
-        )
-      )
-    ),
+    enabledTools: v.optional(v.array(v.string())),
     thinkingBudget: v.optional(v.union(v.string(), v.number())),
   },
   handler: streamingHandler,
@@ -115,25 +98,7 @@ export const generateResponse = action({
     ),
     model: v.optional(v.string()),
     temperature: v.optional(v.number()),
-    enabledTools: v.optional(
-      v.array(
-        v.union(
-          v.literal("web_search"),
-          v.literal("deep_search"),
-          v.literal("weather"),
-          v.literal("datetime"),
-          v.literal("calculator"),
-          v.literal("thinking"),
-          v.literal("memory"),
-          v.literal("url_fetch"),
-          v.literal("code_analysis"),
-          v.literal("document_qa"),
-          v.literal("task_planner"),
-          v.literal("data_analysis"),
-          v.literal("image_generation")
-        )
-      )
-    ),
+    enabledTools: v.optional(v.array(v.string())),
   },
   handler: nonStreamingHandler,
 });
@@ -180,7 +145,17 @@ export const generateTitle = action({
 
 export const getAvailableTools = action({
   args: {},
-  handler: async (_ctx, _args) => {
-    return getAvailableToolsConfig();
+  handler: async (ctx, _args) => {
+    // Get enabled MCP servers
+    let mcpServers: any[] = [];
+    try {
+      mcpServers = await ctx.runQuery(api.mcpServers.listEnabled);
+    } catch (error) {
+      console.error("Failed to load MCP servers:", error);
+      // Continue without MCP servers if not authenticated or error occurs
+    }
+
+    // Return base tool configuration with MCP tools
+    return getAvailableToolsConfig(mcpServers);
   },
 });

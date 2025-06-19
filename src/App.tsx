@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import { ChatInterface } from "./components/ChatInterface";
 import { SharedConversation } from "./components/SharedConversation";
 import { Homepage } from "./components/Homepage";
+import { SettingsPage } from "./components/SettingsPage";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { LoginPage } from "./components/LoginPage";
@@ -53,6 +54,29 @@ function AppContent() {
         </Authenticated>
         <Unauthenticated>
           <LoginPage />
+        </Unauthenticated>
+        <Toaster theme={theme as "light" | "dark" | "system"} richColors />
+      </>
+    );
+  }
+
+  // Settings page route (authenticated)
+  if (currentRoute === '/settings') {
+    return (
+      <>
+        <Authenticated>
+          <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background/98 to-muted/20 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-tr from-primary/2 via-transparent to-accent/2 pointer-events-none"></div>
+            <div className="relative z-10 min-h-screen flex flex-col">
+              <SettingsPage onBack={() => {
+                window.history.pushState({}, '', '/');
+                window.dispatchEvent(new PopStateEvent('popstate'));
+              }} />
+            </div>
+          </div>
+        </Authenticated>
+        <Unauthenticated>
+          <Redirect to="/homepage" />
         </Unauthenticated>
         <Toaster theme={theme as "light" | "dark" | "system"} richColors />
       </>
