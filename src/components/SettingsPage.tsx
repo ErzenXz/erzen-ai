@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { Eye, EyeOff, Key, Trash2, Zap, Infinity as InfinityIcon, Settings, User, UserCog, FileText, Brain, Edit, Camera, Lock, Wrench, Sun, Moon, Monitor, Palette, Upload, ArrowLeft, ChevronRight, Plus } from "lucide-react";
+import { Eye, EyeOff, Key, Trash2, Zap, Infinity as InfinityIcon, Settings, User, UserCog, FileText, Brain, Edit, Camera, Lock, Wrench, Sun, Moon, Monitor, Palette, Upload, Download, ArrowLeft, ChevronRight, Plus } from "lucide-react";
 import { IMAGE_MODELS, ImageModelId, getImageModelDisplayName, getModelInfo, getModelDisplayName, formatTokenCount, formatPricing, PROVIDER_CONFIGS as MODEL_PROVIDER_CONFIGS } from "@/lib/models";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -251,6 +251,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [showDeleteMemoriesDialog, setShowDeleteMemoriesDialog] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   
   // MCP Server states
   const [mcpServers, setMcpServers] = useState<any[]>([]);
@@ -288,6 +289,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
   const preferences = useQuery(api.preferences.get);
   const changePassword = useMutation(api.userAccount.changePassword);
   const importConversation = useMutation(api.conversations.importConversation);
+  const exportAllConversations = useQuery(api.conversations.exportAllConversations);
   
   // MCP Server mutations and queries
   const mcpServersListQuery = useQuery(api.mcpServers.list);
@@ -1762,10 +1764,10 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                           <div className="p-2 bg-primary/10 rounded-lg">
                             <Upload className="h-6 w-6 text-primary" />
                           </div>
-                          Import Conversations
+                          Import & Export Conversations
                         </CardTitle>
                         <CardDescription className="text-base">
-                          Upload a previously exported conversation JSON file to import it into your account
+                          Import a previously exported conversation JSON file or export all your conversations for backup
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-6 p-8">
@@ -1789,38 +1791,105 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                           </div>
                         )}
 
-                        <Button
-                          onClick={() => {
-                            if (importFile) {
-                              setIsImporting(true);
-                              importFile.text().then(text => {
-                                const importData = JSON.parse(text);
-                                return importConversation({ exportData: importData });
-                              }).then(() => {
-                                setImportFile(null);
-                              }).catch(error => {
-                                console.error("Failed to import conversation:", error);
-                              }).finally(() => {
-                                setIsImporting(false);
-                              });
-                            }
-                          }}
-                          disabled={!importFile || isImporting}
-                          size="lg"
-                          className="w-full"
-                        >
-                          {isImporting ? (
-                            <>
-                              <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2" />
-                              Importing...
-                            </>
-                          ) : (
-                            <>
-                              <Upload size={18} className="mr-2" />
-                              Import Conversation
-                            </>
-                          )}
-                        </Button>
+                        {exportAllConversations && (
+                          <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+                            <div className="flex items-start gap-3">
+                              <div className="text-2xl">📦</div>
+                              <div>
+                                <div className="font-semibold text-blue-800 dark:text-blue-200 mb-1">
+                                  Export Ready
+                                </div>
+                                <div className="text-sm text-blue-700 dark:text-blue-300">
+                                  Found <strong>{exportAllConversations.totalConversations}</strong> conversations ready to export. 
+                                  The export will include all messages, branches, and conversation metadata.
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <Button
+                            onClick={() => {
+                              if (importFile) {
+                                setIsImporting(true);
+                                importFile.text().then(text => {
+                                  const importData = JSON.parse(text);
+                                  return importConversation({ exportData: importData });
+                                }).then((result) => {
+                                  setImportFile(null);
+                                  // Show success feedback
+                                  if (typeof result === 'object' && result !== null && 'importedConversations' in result) {
+                                    alert(`Successfully imported ${result.importedConversations} conversations!`);
+                                  } else {
+                                    alert("Successfully imported conversation!");
+                                  }
+                                }).catch(error => {
+                                  console.error("Failed to import conversation:", error);
+                                  alert(`Failed to import: ${error.message || 'Unknown error'}`);
+                                }).finally(() => {
+                                  setIsImporting(false);
+                                });
+                              }
+                            }}
+                            disabled={!importFile || isImporting}
+                            size="lg"
+                            className="flex-1"
+                          >
+                            {isImporting ? (
+                              <>
+                                <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2" />
+                                Importing...
+                              </>
+                            ) : (
+                              <>
+                                <Upload size={18} className="mr-2" />
+                                Import Conversation
+                              </>
+                            )}
+                          </Button>
+
+                          <Button
+                            onClick={() => {
+                              if (exportAllConversations) {
+                                setIsExporting(true);
+                                try {
+                                  const blob = new Blob([JSON.stringify(exportAllConversations, null, 2)], {
+                                    type: 'application/json',
+                                  });
+                                  const url = URL.createObjectURL(blob);
+                                  const a = document.createElement('a');
+                                  a.href = url;
+                                  a.download = `all-conversations-export-${new Date().toISOString().split('T')[0]}.json`;
+                                  document.body.appendChild(a);
+                                  a.click();
+                                  document.body.removeChild(a);
+                                  URL.revokeObjectURL(url);
+                                } catch (error) {
+                                  console.error("Failed to export conversations:", error);
+                                } finally {
+                                  setIsExporting(false);
+                                }
+                              }
+                            }}
+                            disabled={!exportAllConversations || isExporting}
+                            size="lg"
+                            variant="outline"
+                            className="flex-1"
+                          >
+                            {isExporting ? (
+                              <>
+                                <div className="animate-spin w-5 h-5 border-2 border-current border-t-transparent rounded-full mr-2" />
+                                Exporting...
+                              </>
+                            ) : (
+                              <>
+                                <Download size={18} className="mr-2" />
+                                Export All Conversations
+                              </>
+                            )}
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   </>

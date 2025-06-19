@@ -818,17 +818,7 @@ export const markExported = mutation({
 
 export const importConversation = mutation({
   args: {
-    exportData: v.object({
-      version: v.string(),
-      exportedAt: v.number(),
-      conversation: v.object({
-        title: v.string(),
-        lastMessageAt: v.number(),
-        currentBranch: v.optional(v.string()),
-      }),
-      branches: v.array(v.any()),
-      messages: v.array(v.any()),
-    }),
+    exportData: v.any(),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -836,58 +826,176 @@ export const importConversation = mutation({
       throw new Error("Not authenticated");
     }
 
-    // Validate export data version
-    if (args.exportData.version !== "1.0") {
-      throw new Error("Unsupported export data version");
+    const exportData = args.exportData;
+
+    // Basic validation
+    if (!exportData || typeof exportData !== "object") {
+      throw new Error("Invalid export data format");
     }
 
-    // Create new conversation
-    const conversationId = await ctx.db.insert("conversations", {
-      userId,
-      title: `${args.exportData.conversation.title} (Imported)`,
-      lastMessageAt: args.exportData.conversation.lastMessageAt,
-      currentBranch: args.exportData.conversation.currentBranch || "main",
-    });
+    // Handle different export formats
+    if ("threads" in exportData) {
+      // Handle external format with threads (like ChatGPT exports)
+      let importedCount = 0;
 
-    // Import branches (first pass - without branchPoint references)
-    const branchIdMap = new Map<string, string>();
-    for (const branch of args.exportData.branches) {
-      const newBranchId = await ctx.db.insert("conversationBranches", {
-        conversationId,
-        branchId: branch.branchId,
-        parentBranchId: branch.parentBranchId,
-        branchPoint: undefined, // Will be updated after messages are imported
-        title: branch.title,
-        createdAt: branch.createdAt,
-        isActive: branch.isActive,
+      for (const thread of exportData.threads) {
+        if (!thread.messages || thread.messages.length === 0) continue;
+
+        const title =
+          thread.title || thread.messages[0].content.substring(0, 50) + "...";
+        const createdAt =
+          typeof thread.createdAt === "string"
+            ? new Date(thread.createdAt).getTime()
+            : thread.createdAt || Date.now();
+
+        // Create conversation
+        const conversationId = await ctx.db.insert("conversations", {
+          userId,
+          title: `${title} (Imported)`,
+          lastMessageAt: createdAt,
+          currentBranch: "main",
+        });
+
+        // Create main branch
+        await ctx.db.insert("conversationBranches", {
+          conversationId,
+          branchId: "main",
+          title: "Main",
+          createdAt,
+          isActive: true,
+        });
+
+        // Import messages
+        for (let i = 0; i < thread.messages.length; i++) {
+          const message = thread.messages[i];
+          await ctx.db.insert("messages", {
+            conversationId,
+            branchId: "main",
+            parentMessageId: i > 0 ? undefined : undefined,
+            role: message.role === "model" ? "assistant" : message.role,
+            content: message.content,
+          });
+        }
+
+        importedCount++;
+      }
+
+      return { importedConversations: importedCount };
+    }
+
+    if ("conversations" in exportData) {
+      // Handle bulk export format
+      let importedCount = 0;
+
+      for (const conv of exportData.conversations) {
+        const conversationId = await ctx.db.insert("conversations", {
+          userId,
+          title: `${conv.conversation.title} (Imported)`,
+          lastMessageAt: conv.conversation.lastMessageAt,
+          currentBranch: conv.conversation.currentBranch || "main",
+        });
+
+        // Import branches
+        const branchIdMap = new Map<string, string>();
+        for (const branch of conv.branches || []) {
+          const newBranchId = await ctx.db.insert("conversationBranches", {
+            conversationId,
+            branchId: branch.branchId,
+            parentBranchId: branch.parentBranchId,
+            branchPoint: undefined,
+            title: branch.title,
+            createdAt: branch.createdAt,
+            isActive: branch.isActive,
+          });
+          branchIdMap.set(branch._id, newBranchId);
+        }
+
+        // Import messages
+        const messageIdMap = new Map<string, string>();
+        for (const message of conv.messages || []) {
+          const newMessageId = await ctx.db.insert("messages", {
+            conversationId,
+            branchId: message.branchId,
+            parentMessageId: message.parentMessageId
+              ? (messageIdMap.get(message.parentMessageId) as any)
+              : undefined,
+            role: message.role,
+            content: message.content,
+            thinking: message.thinking,
+            attachments: message.attachments,
+            toolCalls: message.toolCalls,
+            toolCallId: message.toolCallId,
+            generationMetrics: message.generationMetrics,
+            isEdited: message.isEdited,
+            editedAt: message.editedAt,
+            isError: message.isError,
+          });
+          messageIdMap.set(message._id, newMessageId);
+        }
+
+        importedCount++;
+      }
+
+      return { importedConversations: importedCount };
+    }
+
+    // Handle our native single conversation format
+    if ("conversation" in exportData && "branches" in exportData) {
+      // Validate export data version
+      if (exportData.version && exportData.version !== "1.0") {
+        throw new Error("Unsupported export data version");
+      }
+
+      // Create new conversation
+      const conversationId = await ctx.db.insert("conversations", {
+        userId,
+        title: `${exportData.conversation.title} (Imported)`,
+        lastMessageAt: exportData.conversation.lastMessageAt,
+        currentBranch: exportData.conversation.currentBranch || "main",
       });
-      branchIdMap.set(branch._id, newBranchId);
+
+      // Import branches (first pass - without branchPoint references)
+      const branchIdMap = new Map<string, string>();
+      for (const branch of exportData.branches) {
+        const newBranchId = await ctx.db.insert("conversationBranches", {
+          conversationId,
+          branchId: branch.branchId,
+          parentBranchId: branch.parentBranchId,
+          branchPoint: undefined, // Will be updated after messages are imported
+          title: branch.title,
+          createdAt: branch.createdAt,
+          isActive: branch.isActive,
+        });
+        branchIdMap.set(branch._id, newBranchId);
+      }
+
+      // Import messages
+      const messageIdMap = new Map<string, string>();
+      for (const message of exportData.messages) {
+        const newMessageId = await ctx.db.insert("messages", {
+          conversationId,
+          branchId: message.branchId,
+          parentMessageId: message.parentMessageId
+            ? (messageIdMap.get(message.parentMessageId) as any)
+            : undefined,
+          role: message.role,
+          content: message.content,
+          thinking: message.thinking,
+          attachments: message.attachments,
+          toolCalls: message.toolCalls,
+          toolCallId: message.toolCallId,
+          generationMetrics: message.generationMetrics,
+          isEdited: message.isEdited,
+          editedAt: message.editedAt,
+          isError: message.isError,
+        });
+        messageIdMap.set(message._id, newMessageId);
+      }
+
+      return conversationId;
     }
 
-    // Import messages
-    const messageIdMap = new Map<string, string>();
-    for (const message of args.exportData.messages) {
-      const newMessageId = await ctx.db.insert("messages", {
-        conversationId,
-        branchId: message.branchId,
-        parentMessageId: message.parentMessageId
-          ? (messageIdMap.get(message.parentMessageId) as any)
-          : undefined,
-        role: message.role,
-        content: message.content,
-        thinking: message.thinking,
-        attachments: message.attachments,
-        toolCalls: message.toolCalls,
-        toolCallId: message.toolCallId,
-        generationMetrics: message.generationMetrics,
-        isEdited: message.isEdited,
-        editedAt: message.editedAt,
-        isError: message.isError,
-      });
-      messageIdMap.set(message._id, newMessageId);
-    }
-
-    return conversationId;
+    throw new Error("Unsupported export format");
   },
 });
 
@@ -940,6 +1048,62 @@ export const bulkExportConversations = query({
     return {
       version: "1.0",
       exportedAt: Date.now(),
+      conversations: exports,
+    };
+  },
+});
+
+export const exportAllConversations = query({
+  args: {},
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    // Get all conversations for the user
+    const conversations = await ctx.db
+      .query("conversations")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    const exports = [];
+    for (const conversation of conversations) {
+      // Get branches and messages for this conversation
+      const branches = await ctx.db
+        .query("conversationBranches")
+        .withIndex("by_conversation", (q) =>
+          q.eq("conversationId", conversation._id)
+        )
+        .collect();
+
+      const messages = await ctx.db
+        .query("messages")
+        .withIndex("by_conversation", (q) =>
+          q.eq("conversationId", conversation._id)
+        )
+        .collect();
+
+      exports.push({
+        version: "1.0",
+        exportedAt: Date.now(),
+        conversation: {
+          title: conversation.title,
+          lastMessageAt: conversation.lastMessageAt,
+          currentBranch: conversation.currentBranch,
+        },
+        branches,
+        messages: messages.map((msg) => ({
+          ...msg,
+          conversationId: undefined,
+        })),
+      });
+    }
+
+    return {
+      version: "1.0",
+      exportedAt: Date.now(),
+      totalConversations: exports.length,
       conversations: exports,
     };
   },

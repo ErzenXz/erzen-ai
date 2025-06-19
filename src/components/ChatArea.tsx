@@ -279,7 +279,7 @@ export const ChatArea = memo(function ChatArea({ messages, isGenerating, convers
             </div>
             <div className="bg-muted/50 p-3 rounded-lg hidden sm:block">
               <h3 className="font-semibold mb-1 text-sm sm:text-base">Smart Tools</h3>
-              <p className="text-xs sm:text-sm text-muted-foreground">Use tools like web search, calculator, and more.</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Use MCP servers and tools like web search, calculator, and more.</p>
             </div>
             <div className="bg-muted/50 p-3 rounded-lg">
               <h3 className="font-semibold mb-1 text-sm sm:text-base">Multimodal</h3>
